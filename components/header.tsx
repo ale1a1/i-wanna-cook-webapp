@@ -50,7 +50,7 @@ export default function Header() {
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-2">
           <>
-            <Link href="/" className={pathname === "/" ? "text-primary" : ""}>
+            <Link href="/search" className={pathname === "/search" ? "text-primary" : ""}>
               <Button variant="ghost" size="sm" className="flex items-center">
                 <Search className="h-5 w-5 mr-1" />
                 <span>Search Recipes</span>
@@ -136,7 +136,7 @@ export default function Header() {
         <div className="md:hidden absolute top-full left-0 right-0 bg-background border-b shadow-lg z-50">
           <div className="container mx-auto px-4 py-4 flex flex-col gap-2">
             <>
-              <Link href="/" className={pathname === "/" ? "text-primary" : ""}>
+              <Link href="/search" className={pathname === "/search" ? "text-primary" : ""}>
                 <Button variant="ghost" size="sm" className="w-full justify-start">
                   <Search className="h-5 w-5 mr-2" />
                   <span>Search Recipes</span>
