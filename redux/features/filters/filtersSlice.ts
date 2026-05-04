@@ -6,6 +6,8 @@ export interface FiltersState {
   budget: string
   diet: string
   taste: string
+  healthiness: string
+  cuisine: string
   ingredients: string[]
   applied: boolean
   hasActiveFilters: boolean
@@ -16,6 +18,8 @@ const initialState: FiltersState = {
   budget: "any",
   diet: "any",
   taste: "any",
+  healthiness: "any",
+  cuisine: "any",
   ingredients: [],
   applied: false,
   hasActiveFilters: false,
@@ -41,6 +45,14 @@ export const filtersSlice = createSlice({
       state.taste = action.payload
       state.hasActiveFilters = checkHasActiveFilters(state)
     },
+    updateHealthiness: (state, action: PayloadAction<string>) => {
+      state.healthiness = action.payload
+      state.hasActiveFilters = checkHasActiveFilters(state)
+    },
+    updateCuisine: (state, action: PayloadAction<string>) => {
+      state.cuisine = action.payload
+      state.hasActiveFilters = checkHasActiveFilters(state)
+    },
     addIngredient: (state, action: PayloadAction<string>) => {
       if (!state.ingredients.includes(action.payload)) {
         state.ingredients.push(action.payload)
@@ -51,22 +63,21 @@ export const filtersSlice = createSlice({
       state.ingredients = state.ingredients.filter((ingredient) => ingredient !== action.payload)
       state.hasActiveFilters = checkHasActiveFilters(state)
     },
-    resetFilters: (state) => {
-      return initialState
-    },
+    resetFilters: () => initialState,
     applyFilters: (state) => {
       state.applied = true
     },
   },
 })
 
-// Helper function to check if any filters are active
 const checkHasActiveFilters = (state: FiltersState): boolean => {
   return (
     state.prepTime !== "any" ||
     state.budget !== "any" ||
     state.diet !== "any" ||
     state.taste !== "any" ||
+    state.healthiness !== "any" ||
+    state.cuisine !== "any" ||
     state.ingredients.length > 0
   )
 }
@@ -76,6 +87,8 @@ export const {
   updateBudget,
   updateDiet,
   updateTaste,
+  updateHealthiness,
+  updateCuisine,
   addIngredient,
   removeIngredient,
   resetFilters,

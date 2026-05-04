@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useAppSelector, useAppDispatch } from "@/redux/hooks"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -17,10 +18,11 @@ export default function ProfilePage() {
   const router = useRouter()
   const dispatch = useAppDispatch()
 
-  if (!user) {
-    router.push("/login")
-    return null
-  }
+  useEffect(() => {
+    if (!user) router.push("/login")
+  }, [user, router])
+
+  if (!user) return null
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark")

@@ -2,13 +2,15 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { useAppDispatch, useAppSelector } from "@/redux/hooks"
 import {
   updatePrepTime,
   updateBudget,
   updateDiet,
   updateTaste,
+  updateHealthiness,
+  updateCuisine,
   addIngredient,
   removeIngredient,
   resetFilters,
@@ -16,55 +18,31 @@ import {
   selectFilters,
   selectHasActiveFilters,
 } from "@/redux/features/filters/filtersSlice"
-import { filterRecipes, resetFiltersApplied } from "@/redux/features/recipes/recipesSlice"
+import { fetchRecipes, resetFiltersApplied } from "@/redux/features/recipes/recipesSlice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Clock, DollarSign, Utensils, Coffee, ShoppingBag, RefreshCw, X } from "lucide-react"
-import { mockIngredients } from "@/lib/mock-data"
+import { Clock, DollarSign, Utensils, Coffee, ShoppingBag, RefreshCw, X, Globe, Heart } from "lucide-react"
+
+const CUISINES = [
+  "African", "Asian", "American", "British", "Cajun", "Caribbean",
+  "Chinese", "Eastern European", "European", "French", "German",
+  "Greek", "Indian", "Irish", "Italian", "Japanese", "Jewish",
+  "Korean", "Latin American", "Mediterranean", "Mexican", "Middle Eastern",
+  "Nordic", "Southern", "Spanish", "Thai", "Vietnamese",
+]
 
 export default function RecipeFilters() {
   const dispatch = useAppDispatch()
   const filters = useAppSelector(selectFilters)
   const hasActiveFilters = useAppSelector(selectHasActiveFilters)
   const [ingredientInput, setIngredientInput] = useState("")
-  const [suggestedIngredients, setSuggestedIngredients] = useState<string[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const suggestionsRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    // Filter ingredients based on input
-    if (ingredientInput.trim()) {
-      const filtered = mockIngredients
-        .filter((ingredient) => ingredient.toLowerCase().includes(ingredientInput.toLowerCase()))
-        .slice(0, 5) // Limit to 5 suggestions
-      setSuggestedIngredients(filtered)
-      setShowSuggestions(filtered.length > 0)
-    } else {
-      setSuggestedIngredients([])
-      setShowSuggestions(false)
-    }
-  }, [ingredientInput])
-
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
 
   const handleAddIngredient = (ingredient: string = ingredientInput) => {
     if (ingredient.trim()) {
       dispatch(addIngredient(ingredient.trim()))
       setIngredientInput("")
-      setShowSuggestions(false)
     }
   }
 
@@ -80,29 +58,26 @@ export default function RecipeFilters() {
     dispatch(resetFiltersApplied())
   }
 
-  const handleClearAll = () => {
-    // Only clear the applied filters, not resetting the form
-    dispatch(resetFiltersApplied())
-  }
-
   const handleApplyFilters = () => {
     dispatch(applyFilters())
-    dispatch(filterRecipes(filters))
+    dispatch(fetchRecipes(filters))
   }
 
   const handleSurpriseMe = () => {
-    // Reset filters first
+    const randomFilters = {
+      ...filters,
+      prepTime: "any",
+      budget: "any",
+      diet: "any",
+      taste: "any",
+      healthiness: "any",
+      cuisine: "any",
+      ingredients: [],
+      applied: false,
+      hasActiveFilters: false,
+    }
     dispatch(resetFilters())
-
-    // Then apply a random filter
-    const randomRecipeIndex = Math.floor(Math.random() * mockIngredients.length)
-    const randomIngredient = mockIngredients[randomRecipeIndex]
-
-    dispatch(addIngredient(randomIngredient))
-    setTimeout(() => {
-      dispatch(applyFilters())
-      dispatch(filterRecipes({ ...filters, ingredients: [randomIngredient] }))
-    }, 100)
+    dispatch(fetchRecipes(randomFilters))
   }
 
   return (
@@ -110,6 +85,7 @@ export default function RecipeFilters() {
       <div className="border-l-4 border-primary pl-3 font-semibold">Filter Recipes</div>
 
       <div className="space-y-4">
+        {/* Prep Time */}
         <div className="space-y-2">
           <label className="flex items-center text-sm font-medium">
             <Clock className="h-4 w-4 mr-2 text-primary" />
@@ -129,6 +105,7 @@ export default function RecipeFilters() {
           </Select>
         </div>
 
+        {/* Budget */}
         <div className="space-y-2">
           <label className="flex items-center text-sm font-medium">
             <DollarSign className="h-4 w-4 mr-2 text-primary" />
@@ -147,6 +124,7 @@ export default function RecipeFilters() {
           </Select>
         </div>
 
+        {/* Diet */}
         <div className="space-y-2">
           <label className="flex items-center text-sm font-medium">
             <Utensils className="h-4 w-4 mr-2 text-primary" />
@@ -167,6 +145,45 @@ export default function RecipeFilters() {
           </Select>
         </div>
 
+        {/* Cuisine */}
+        <div className="space-y-2">
+          <label className="flex items-center text-sm font-medium">
+            <Globe className="h-4 w-4 mr-2 text-primary" />
+            Cuisine
+          </label>
+          <Select value={filters.cuisine} onValueChange={(value) => dispatch(updateCuisine(value))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Any cuisine" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any cuisine</SelectItem>
+              {CUISINES.map((c) => (
+                <SelectItem key={c} value={c.toLowerCase()}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Healthiness */}
+        <div className="space-y-2">
+          <label className="flex items-center text-sm font-medium">
+            <Heart className="h-4 w-4 mr-2 text-primary" />
+            Healthiness
+          </label>
+          <Select value={filters.healthiness} onValueChange={(value) => dispatch(updateHealthiness(value))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Any" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any</SelectItem>
+              <SelectItem value="healthy">Healthy</SelectItem>
+              <SelectItem value="veryHealthy">Very Healthy</SelectItem>
+              <SelectItem value="indulgent">Indulgent</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Taste */}
         <div className="space-y-2">
           <label className="flex items-center text-sm font-medium">
             <Coffee className="h-4 w-4 mr-2 text-primary" />
@@ -186,36 +203,22 @@ export default function RecipeFilters() {
           </Select>
         </div>
 
+        {/* Ingredients */}
         <div className="space-y-2">
           <label className="flex items-center text-sm font-medium">
             <ShoppingBag className="h-4 w-4 mr-2 text-primary" />
             Ingredients
           </label>
-          <div className="relative">
+          <div className="flex gap-2">
             <Input
-              placeholder="Search ingredients..."
+              placeholder="e.g. chicken, garlic..."
               value={ingredientInput}
               onChange={(e) => setIngredientInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              onFocus={() => setShowSuggestions(suggestedIngredients.length > 0)}
             />
-
-            {showSuggestions && (
-              <div
-                ref={suggestionsRef}
-                className="absolute z-10 mt-1 w-full bg-background border rounded-md shadow-lg max-h-60 overflow-auto"
-              >
-                {suggestedIngredients.map((ingredient, index) => (
-                  <div
-                    key={index}
-                    className="px-4 py-2 hover:bg-muted cursor-pointer"
-                    onClick={() => handleAddIngredient(ingredient)}
-                  >
-                    {ingredient}
-                  </div>
-                ))}
-              </div>
-            )}
+            <Button type="button" size="sm" onClick={() => handleAddIngredient()} disabled={!ingredientInput.trim()}>
+              Add
+            </Button>
           </div>
 
           {filters.ingredients.length > 0 && (
@@ -245,10 +248,10 @@ export default function RecipeFilters() {
         <div className="flex justify-between">
           <Button variant="outline" size="sm" onClick={handleResetForm} className="flex items-center">
             <RefreshCw className="h-4 w-4 mr-1" />
-            Reset Form
+            Reset
           </Button>
 
-          <Button variant="destructive" size="sm" onClick={handleClearAll}>
+          <Button variant="destructive" size="sm" onClick={() => dispatch(resetFiltersApplied())}>
             <X className="h-4 w-4 mr-1" />
             Clear Results
           </Button>
