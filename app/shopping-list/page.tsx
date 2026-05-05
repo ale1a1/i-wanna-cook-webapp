@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ShoppingCart, Trash2, Loader2, ChevronDown, ChevronUp } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 type ShoppingItem = {
   id: string
@@ -110,6 +111,7 @@ export default function ShoppingListPage() {
   }
 
   return (
+    <TooltipProvider>
     <div className="container max-w-2xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6 gap-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -120,9 +122,14 @@ export default function ShoppingListPage() {
           )}
         </div>
         {items.length > 0 && (
-          <Button variant="outline" size="sm" className="text-destructive flex-shrink-0" onClick={clearAll}>
-            <Trash2 className="h-4 w-4 mr-1" /> Clear All
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" className="text-destructive flex-shrink-0" onClick={clearAll}>
+                <Trash2 className="h-4 w-4 mr-1" /> Clear All
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Remove all items from shopping list</TooltipContent>
+          </Tooltip>
         )}
       </div>
 
@@ -143,18 +150,28 @@ export default function ShoppingListPage() {
             return (
               <Card key={recipeId} className={allChecked ? "opacity-60" : ""}>
                 <CardHeader className="p-4 pb-2">
-                  <div className="flex items-center justify-between">
-                    <button
-                      className="flex items-center gap-2 text-left flex-1"
-                      onClick={() => toggleCollapse(recipeId)}
-                    >
-                      {isCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-                      <CardTitle className="text-base">{recipeItems[0].recipe_title}</CardTitle>
-                      <span className="text-sm text-muted-foreground ml-1">({recipeItems.length})</span>
-                    </button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteByRecipe(recipeId)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className="flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          className="flex items-center gap-2 text-left flex-1"
+                          onClick={() => toggleCollapse(recipeId)}
+                        >
+                          {isCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+                          <CardTitle className="text-base">{recipeItems[0].recipe_title}</CardTitle>
+                          <span className="text-sm text-muted-foreground ml-1">({recipeItems.length})</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{isCollapsed ? "Expand" : "Collapse"}</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive flex-shrink-0" onClick={() => deleteByRecipe(recipeId)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Remove all ingredients from this recipe</TooltipContent>
+                    </Tooltip>
                   </div>
                 </CardHeader>
                 {!isCollapsed && (
@@ -176,14 +193,19 @@ export default function ShoppingListPage() {
                               <span className="text-muted-foreground"> — {item.ingredient_amount}</span>
                             )}
                           </label>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-destructive flex-shrink-0"
-                            onClick={() => deleteItem(item.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive flex-shrink-0"
+                                onClick={() => deleteItem(item.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Remove {item.ingredient_name}</TooltipContent>
+                          </Tooltip>
                         </li>
                       ))}
                     </ul>
@@ -195,5 +217,6 @@ export default function ShoppingListPage() {
         </div>
       )}
     </div>
+    </TooltipProvider>
   )
 }
