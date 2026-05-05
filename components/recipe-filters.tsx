@@ -61,6 +61,11 @@ export default function RecipeFilters() {
   const handleApplyFilters = () => {
     dispatch(applyFilters())
     dispatch(fetchRecipes(filters))
+    if (window.innerWidth < 768) {
+      setTimeout(() => {
+        document.getElementById("recipe-results")?.scrollIntoView({ behavior: "smooth" })
+      }, 300)
+    }
   }
 
   const handleSurpriseMe = () => {

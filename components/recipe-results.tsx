@@ -110,7 +110,7 @@ export default function RecipeResults() {
   }
 
   return (
-    <div className="space-y-4">
+    <div id="recipe-results" className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold">Recipe Results</h2>
         <p className="text-sm text-muted-foreground">
