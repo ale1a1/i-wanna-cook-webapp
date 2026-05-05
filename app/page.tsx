@@ -6,7 +6,7 @@ import { useAppDispatch } from "@/redux/hooks"
 import { resetFilters } from "@/redux/features/filters/filtersSlice"
 import { fetchRecipes, resetFiltersApplied } from "@/redux/features/recipes/recipesSlice"
 import { Button } from "@/components/ui/button"
-import { ChefHat, Shuffle, Search, Clock, Globe, Heart } from "lucide-react"
+import { ChefHat, Shuffle, Search, Clock, Globe, Heart, SlidersHorizontal, UtensilsCrossed, Star } from "lucide-react"
 
 const FEATURES = [
   {
@@ -93,6 +93,39 @@ export default function LandingPage() {
                 <p className="text-sm text-muted-foreground">{description}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="py-16 px-4">
+        <div className="container max-w-4xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">How it works</h2>
+          <div className="flex flex-col md:flex-row gap-8 items-start justify-center">
+            <div className="flex flex-col items-center text-center gap-3 flex-1">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center relative">
+                <SlidersHorizontal className="h-6 w-6 text-primary" />
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">1</span>
+              </div>
+              <h3 className="font-semibold text-lg">Set your filters</h3>
+              <p className="text-sm text-muted-foreground">Choose your prep time, budget, diet, cuisine, healthiness and taste — or type in ingredients you already have at home.</p>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3 flex-1">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center relative">
+                <UtensilsCrossed className="h-6 w-6 text-primary" />
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">2</span>
+              </div>
+              <h3 className="font-semibold text-lg">Browse recipes</h3>
+              <p className="text-sm text-muted-foreground">Get real recipes from Spoonacular's database — with ingredients, steps, calories and nutrition info all in one place.</p>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3 flex-1">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center relative">
+                <Star className="h-6 w-6 text-primary" />
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">3</span>
+              </div>
+              <h3 className="font-semibold text-lg">Track what you make</h3>
+              <p className="text-sm text-muted-foreground">Log the recipes you've tried, rate your satisfaction, and build your personal cookbook over time.</p>
+            </div>
           </div>
         </div>
       </section>
