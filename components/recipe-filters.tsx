@@ -246,7 +246,7 @@ export default function RecipeFilters() {
       </div>
 
       <div className="space-y-2">
-        <Button className="w-full" onClick={handleApplyFilters} disabled={!hasActiveFilters}>
+        <Button className="w-full" onClick={handleApplyFilters}>
           Apply Filters
         </Button>
 

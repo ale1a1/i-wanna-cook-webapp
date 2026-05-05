@@ -6,7 +6,7 @@ import { useAppDispatch } from "@/redux/hooks"
 import { resetFilters } from "@/redux/features/filters/filtersSlice"
 import { fetchRecipes, resetFiltersApplied } from "@/redux/features/recipes/recipesSlice"
 import { Button } from "@/components/ui/button"
-import { ChefHat, Shuffle, Search, Clock, Globe, Heart, SlidersHorizontal, UtensilsCrossed, Star } from "lucide-react"
+import { ChefHat, Shuffle, Search, Clock, Globe, Heart, SlidersHorizontal, UtensilsCrossed, Star, ShoppingCart } from "lucide-react"
 
 const FEATURES = [
   {
@@ -120,8 +120,16 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col items-center text-center gap-3 flex-1">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center relative">
-                <Star className="h-6 w-6 text-primary" />
+                <ShoppingCart className="h-6 w-6 text-primary" />
                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">3</span>
+              </div>
+              <h3 className="font-semibold text-lg">Build your shopping list</h3>
+              <p className="text-sm text-muted-foreground">Add ingredients from any recipe to your shopping list — one by one or all at once. Check them off as you shop.</p>
+            </div>
+            <div className="flex flex-col items-center text-center gap-3 flex-1">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center relative">
+                <Star className="h-6 w-6 text-primary" />
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">4</span>
               </div>
               <h3 className="font-semibold text-lg">Track what you make</h3>
               <p className="text-sm text-muted-foreground">Log the recipes you've tried, rate your satisfaction, and build your personal cookbook over time.</p>

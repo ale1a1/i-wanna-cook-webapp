@@ -266,11 +266,13 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
         </TabsList>
 
         <TabsContent value="ingredients" className="pt-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-1">
             <h3 className="text-lg font-semibold">Ingredients for {recipe.servings} servings</h3>
-            <Button size="sm" variant={addedAll ? "secondary" : "outline"} onClick={handleAddAllToShoppingList} disabled={addingAll || addedAll} className="flex items-center gap-1">
+          </div>
+          <div className="mb-4">
+            <Button size="sm" variant={addedAll ? "secondary" : "default"} onClick={handleAddAllToShoppingList} disabled={addingAll || addedAll} className="flex items-center gap-2">
               {addingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
-              {addedAll ? "Added!" : "Add All"}
+              {addedAll ? "All Added to Cart!" : "Add All to Shopping List"}
             </Button>
           </div>
           <ul className="space-y-2">
@@ -285,23 +287,24 @@ export default function RecipeDetailPage({ params }: { params: Promise<{ id: str
                 </div>
                 {(addedIngredients.has(ingredient.name) || addedAll) ? (
                   <Button
-                    size="icon"
+                    size="sm"
                     variant="ghost"
-                    className="h-7 w-7 text-destructive flex-shrink-0"
+                    className="text-destructive flex-shrink-0 gap-1 text-xs"
                     onClick={() => handleRemoveOneFromShoppingList(ingredient)}
-                    title="Remove from shopping list"
                   >
-                    <Minus className="h-4 w-4" />
+                    <Minus className="h-3 w-3" />
+                    <span className="hidden sm:inline">Remove</span>
                   </Button>
                 ) : (
                   <Button
-                    size="icon"
+                    size="sm"
                     variant="ghost"
-                    className="h-7 w-7 text-primary flex-shrink-0"
+                    className="text-primary flex-shrink-0 gap-1 text-xs"
                     onClick={() => handleAddOneToShoppingList(ingredient)}
                     title="Add to shopping list"
                   >
-                    <Plus className="h-4 w-4" />
+                    <ShoppingCart className="h-3 w-3" />
+                    <span className="hidden sm:inline">Add</span>
                   </Button>
                 )}
               </li>
