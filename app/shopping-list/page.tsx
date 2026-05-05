@@ -97,9 +97,9 @@ export default function ShoppingListPage() {
   if (loading) {
     return (
       <div className="container max-w-2xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-3 mb-6">
           <ShoppingCart className="h-6 w-6 text-primary flex-shrink-0" />
-          <h1 className="text-2xl font-bold whitespace-nowrap">Shopping List</h1>
+          <h1 className="text-2xl font-bold">Shopping List</h1>
         </div>
         <Card>
           <CardContent className="flex items-center justify-center h-64">
@@ -113,18 +113,16 @@ export default function ShoppingListPage() {
   return (
     <TooltipProvider>
     <div className="container max-w-2xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6 gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <ShoppingCart className="h-6 w-6 text-primary flex-shrink-0" />
-          <h1 className="text-2xl font-bold whitespace-nowrap">Shopping List</h1>
-          {items.length > 0 && (
-            <span className="text-sm text-muted-foreground whitespace-nowrap">{checkedCount}/{items.length}</span>
-          )}
-        </div>
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <ShoppingCart className="h-6 w-6 text-primary flex-shrink-0" />
+        <h1 className="text-2xl font-bold">Shopping List</h1>
+        {items.length > 0 && (
+          <span className="text-sm text-muted-foreground">{checkedCount}/{items.length}</span>
+        )}
         {items.length > 0 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="text-destructive flex-shrink-0" onClick={clearAll}>
+              <Button variant="outline" size="sm" className="text-destructive ml-auto flex-shrink-0" onClick={clearAll}>
                 <Trash2 className="h-4 w-4 mr-1" /> Clear All
               </Button>
             </TooltipTrigger>
@@ -150,20 +148,20 @@ export default function ShoppingListPage() {
             return (
               <Card key={recipeId} className={allChecked ? "opacity-60" : ""}>
                 <CardHeader className="p-4 pb-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
-                          className="flex items-center gap-2 text-left flex-1"
+                          className="flex items-center gap-1.5 text-left min-w-0"
                           onClick={() => toggleCollapse(recipeId)}
                         >
-                          {isCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-                          <CardTitle className="text-base">{recipeItems[0].recipe_title}</CardTitle>
-                          <span className="text-sm text-muted-foreground ml-1">({recipeItems.length})</span>
+                          {isCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" /> : <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />}
+                          <CardTitle className="text-base leading-snug">{recipeItems[0].recipe_title}</CardTitle>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>{isCollapsed ? "Expand" : "Collapse"}</TooltipContent>
                     </Tooltip>
+                    <span className="text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">({recipeItems.length})</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive flex-shrink-0" onClick={() => deleteByRecipe(recipeId)}>
