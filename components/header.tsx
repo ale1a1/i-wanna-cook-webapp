@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
@@ -39,7 +40,20 @@ export default function Header() {
     setMobileMenuOpen(!mobileMenuOpen)
   }
 
+  const backdrop = mounted && mobileMenuOpen
+    ? createPortal(
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm md:hidden"
+          style={{ zIndex: 45, top: "53px" }}
+          onClick={() => setMobileMenuOpen(false)}
+        />,
+        document.body
+      )
+    : null
+
   return (
+    <>
+    {backdrop}
     <header className="border-b border-primary/40 relative z-50">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
@@ -131,14 +145,6 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Backdrop */}
-      {mobileMenuOpen && (
-        <div
-          className="md:hidden fixed inset-x-0 bottom-0 bg-black/40 backdrop-blur-sm z-40"
-          style={{ top: "53px" }}
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
@@ -185,5 +191,6 @@ export default function Header() {
         </div>
       )}
     </header>
+    </>
   )
 }
