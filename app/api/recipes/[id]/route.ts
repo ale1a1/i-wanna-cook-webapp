@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const apiKey = process.env.SPOONACULAR_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: "API key not configured" }, { status: 500 })
   }
 
+  const { id } = await params
+
   try {
     const res = await fetch(
-      `https://api.spoonacular.com/recipes/${params.id}/information?apiKey=${apiKey}&includeNutrition=true`,
+      `https://api.spoonacular.com/recipes/${id}/information?apiKey=${apiKey}&includeNutrition=true`,
       { next: { revalidate: 3600 } }
     )
 

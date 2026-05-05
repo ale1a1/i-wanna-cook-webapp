@@ -17,6 +17,17 @@ CREATE TABLE IF NOT EXISTS tried_recipes (
   UNIQUE(user_id, recipe_id)
 );
 
+CREATE TABLE IF NOT EXISTS shopping_list (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  recipe_id TEXT NOT NULL,
+  recipe_title TEXT NOT NULL,
+  ingredient_name TEXT NOT NULL,
+  ingredient_amount TEXT,
+  checked BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS ratings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
-import { ChefHat, Moon, Search, Sun, User, ClipboardList, LogOut, Menu, X } from "lucide-react"
+import { ChefHat, Moon, Search, Sun, User, ClipboardList, LogOut, Menu, X, ShoppingCart } from "lucide-react"
 import { useAppSelector, useAppDispatch } from "@/redux/hooks"
 import { selectAuth, logout } from "@/redux/features/auth/authSlice"
 import { usePathname, useRouter } from "next/navigation"
@@ -77,6 +77,13 @@ export default function Header() {
                   <Button variant="ghost" size="sm" className="flex items-center">
                     <ClipboardList className="h-5 w-5 mr-1" />
                     <span>Tried Recipes</span>
+                  </Button>
+                </Link>
+
+                <Link href="/shopping-list" className={pathname === "/shopping-list" ? "text-primary" : ""}>
+                  <Button variant="ghost" size="sm" className="flex items-center">
+                    <ShoppingCart className="h-5 w-5 mr-1" />
+                    <span>Shopping List</span>
                   </Button>
                 </Link>
 
@@ -164,6 +171,13 @@ export default function Header() {
                     <Button variant="ghost" size="sm" className="w-full justify-start">
                       <ClipboardList className="h-5 w-5 mr-2" />
                       <span>Tried Recipes</span>
+                    </Button>
+                  </Link>
+
+                  <Link href="/shopping-list" className={pathname === "/shopping-list" ? "text-primary" : ""}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start">
+                      <ShoppingCart className="h-5 w-5 mr-2" />
+                      <span>Shopping List</span>
                     </Button>
                   </Link>
 

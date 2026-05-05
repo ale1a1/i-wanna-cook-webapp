@@ -31,11 +31,11 @@ export default function RecipeResults() {
   }
 
   const RecipeCard = ({ recipe }: { recipe: any }) => (
-    <Card className="overflow-hidden border-2 border-border hover:border-primary/40 transition-colors">
-      <div className="relative h-48 w-full">
+    <Card className="overflow-hidden border-2 border-border hover:border-primary/40 transition-colors flex flex-col">
+      <div className="relative h-48 w-full flex-shrink-0">
         <Image src={recipe.image || "/placeholder.svg"} alt={recipe.title} fill style={{ objectFit: "cover" }} />
       </div>
-      <CardHeader className="p-4">
+      <CardHeader className="p-4 pb-2">
         <CardTitle className="line-clamp-2">{recipe.title}</CardTitle>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center">
@@ -48,25 +48,11 @@ export default function RecipeResults() {
           </div>
         </div>
       </CardHeader>
-      {recipe.summary && (
-        <CardContent className="p-4 pt-0">
+      <CardContent className="p-4 pt-0 flex-1">
+        {recipe.summary && (
           <p className="text-sm text-muted-foreground line-clamp-3">{stripHtml(recipe.summary)}</p>
-          {recipe.extendedIngredients?.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {recipe.extendedIngredients.slice(0, 5).map((ingredient: any, index: number) => (
-                <span key={index} className="text-xs bg-muted px-2 py-1 rounded-full">
-                  {ingredient.name}
-                </span>
-              ))}
-              {recipe.extendedIngredients.length > 5 && (
-                <span className="text-xs bg-muted px-2 py-1 rounded-full">
-                  +{recipe.extendedIngredients.length - 5} more
-                </span>
-              )}
-            </div>
-          )}
-        </CardContent>
-      )}
+        )}
+      </CardContent>
       <CardFooter className="p-4 pt-0">
         <Link href={`/recipe/${recipe.id}`} className="w-full">
           <Button className="w-full">View Recipe</Button>

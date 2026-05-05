@@ -1,19 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Users, ChefHat, ArrowLeft, Heart, Star, Bookmark, Share2, CheckCircle, Loader2 } from "lucide-react"
+import { Clock, Users, ChefHat, ArrowLeft, Heart, Star, Bookmark, Share2, CheckCircle, Loader2, ShoppingCart, Plus, Minus } from "lucide-react"
 import { useAppSelector, useAppDispatch } from "@/redux/hooks"
 import { selectAuth } from "@/redux/features/auth/authSlice"
 import { addTriedRecipe, selectTriedRecipes } from "@/redux/features/recipes/recipesSlice"
 import Link from "next/link"
 
-export default function RecipeDetailPage({ params }: { params: { id: string } }) {
+export default function RecipeDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const dispatch = useAppDispatch()
   const { user } = useAppSelector(selectAuth)
@@ -21,16 +22,32 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
   const [recipe, setRecipe] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [addingAll, setAddingAll] = useState(false)
+  const [addedIngredients, setAddedIngredients] = useState<Set<string>>(new Set())
+  const [addedAll, setAddedAll] = useState(false)
 
-  const isRecipeTried = triedRecipes.some((tried) => tried.id === params.id)
+  const isRecipeTried = triedRecipes.some((tried) => tried.id === id)
 
   useEffect(() => {
     async function loadRecipe() {
       try {
-        const res = await fetch(`/api/recipes/${params.id}`)
-        if (!res.ok) throw new Error("Recipe not found")
-        const data = await res.json()
+        const [recipeRes, listRes] = await Promise.all([
+          fetch(`/api/recipes/${id}`),
+          user ? fetch(`/api/shopping-list?userId=${user.id}`) : Promise.resolve(null),
+        ])
+        if (!recipeRes.ok) throw new Error("Recipe not found")
+        const data = await recipeRes.json()
         setRecipe(data)
+        if (listRes) {
+          const listData = await listRes.json()
+          const existingForThisRecipe = (listData.items || [])
+            .filter((i: any) => i.recipe_id === data.id.toString())
+            .map((i: any) => i.ingredient_name)
+          setAddedIngredients(new Set(existingForThisRecipe))
+          if (existingForThisRecipe.length > 0 && existingForThisRecipe.length === data.extendedIngredients?.length) {
+            setAddedAll(true)
+          }
+        }
       } catch (err) {
         setError("Could not load recipe. Please try again.")
       } finally {
@@ -38,11 +55,11 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
       }
     }
     loadRecipe()
-  }, [params.id])
+  }, [id, user])
 
   const handleMarkAsTried = () => {
     if (!user) {
-      router.push("/login?returnUrl=" + encodeURIComponent(`/recipe/${params.id}`))
+      router.push("/login?returnUrl=" + encodeURIComponent(`/recipe/${id}`))
       return
     }
     if (recipe) {
@@ -55,6 +72,57 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
         estimatedTime: recipe.readyInMinutes,
       }))
     }
+  }
+
+  const handleAddAllToShoppingList = async () => {
+    if (!user) { router.push("/login"); return }
+    setAddingAll(true)
+    const ingredients = recipe.extendedIngredients?.map((ing: any) => ({
+      name: ing.name,
+      amount: `${ing.amount} ${ing.unit}`.trim(),
+    })) || []
+    await fetch("/api/shopping-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: user.id, recipeId: recipe.id.toString(), recipeTitle: recipe.title, ingredients }),
+    })
+    setAddedAll(true)
+    setAddingAll(false)
+  }
+
+  const handleAddOneToShoppingList = async (ing: any) => {
+    if (!user) { router.push("/login"); return }
+    await fetch("/api/shopping-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id,
+        recipeId: recipe.id.toString(),
+        recipeTitle: recipe.title,
+        ingredients: [{ name: ing.name, amount: `${ing.amount} ${ing.unit}`.trim() }],
+      }),
+    })
+    setAddedIngredients((prev) => new Set(prev).add(ing.name))
+  }
+
+  const handleRemoveOneFromShoppingList = async (ing: any) => {
+    if (!user) return
+    const res = await fetch(`/api/shopping-list?userId=${user.id}`)
+    const data = await res.json()
+    const item = data.items?.find((i: any) => i.recipe_id === recipe.id.toString() && i.ingredient_name === ing.name)
+    if (item) {
+      await fetch("/api/shopping-list", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, itemId: item.id }),
+      })
+    }
+    setAddedIngredients((prev) => {
+      const next = new Set(prev)
+      next.delete(ing.name)
+      return next
+    })
+    setAddedAll(false)
   }
 
   const stripHtml = (html: string) => {
@@ -70,11 +138,12 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
 
   if (loading) {
     return (
-      <div className="container max-w-4xl mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Loader2 className="animate-spin rounded-full h-12 w-12 text-primary mx-auto" />
-          <p className="mt-4 text-muted-foreground">Loading recipe...</p>
-        </div>
+      <div className="container max-w-4xl mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -197,18 +266,44 @@ export default function RecipeDetailPage({ params }: { params: { id: string } })
         </TabsList>
 
         <TabsContent value="ingredients" className="pt-4">
-          <h3 className="text-lg font-semibold mb-4">Ingredients for {recipe.servings} servings</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Ingredients for {recipe.servings} servings</h3>
+            <Button size="sm" variant={addedAll ? "secondary" : "outline"} onClick={handleAddAllToShoppingList} disabled={addingAll || addedAll} className="flex items-center gap-1">
+              {addingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
+              {addedAll ? "Added!" : "Add All"}
+            </Button>
+          </div>
           <ul className="space-y-2">
             {recipe.extendedIngredients?.map((ingredient: any, index: number) => (
-              <li key={index} className="flex items-start gap-2 p-2 hover:bg-muted rounded-md">
+              <li key={index} className="flex items-center gap-2 p-2 hover:bg-muted rounded-md">
                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0 text-sm">
                   {index + 1}
                 </div>
-                <div>
+                <div className="flex-1">
                   <span className="font-medium">{ingredient.name}</span>
                   <span className="text-muted-foreground"> — {ingredient.amount} {ingredient.unit}</span>
-                  {ingredient.original && <p className="text-sm text-muted-foreground">{ingredient.original}</p>}
                 </div>
+                {(addedIngredients.has(ingredient.name) || addedAll) ? (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-destructive flex-shrink-0"
+                    onClick={() => handleRemoveOneFromShoppingList(ingredient)}
+                    title="Remove from shopping list"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-primary flex-shrink-0"
+                    onClick={() => handleAddOneToShoppingList(ingredient)}
+                    title="Add to shopping list"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
