@@ -19,7 +19,7 @@ export default function Footer() {
           <span className="font-semibold text-foreground">ALW Media</span>
           <p className="text-sm text-muted-foreground italic mt-0.5">"Creativity is nothing but the way to solve new problems..."</p>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-5 mt-2 sm:mt-0">
           {SOCIALS.map(({ icon: Icon, href, label }) => (
             <Link
               key={label}
