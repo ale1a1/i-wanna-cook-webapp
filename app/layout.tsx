@@ -5,13 +5,16 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Providers } from "@/redux/providers"
 import Header from "@/components/header"
+import Footer from "@/components/footer"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "What Should I Cook?",
   description: "Discover recipes based on your preferences and ingredients",
-    generator: 'v0.dev'
+  icons: {
+    icon: "/favicon.svg",
+  },
 }
 
 export default function RootLayout({
@@ -27,6 +30,7 @@ export default function RootLayout({
             <div className="min-h-screen flex flex-col">
               <Header />
               <main className="flex-1">{children}</main>
+              <Footer />
             </div>
           </Providers>
         </ThemeProvider>

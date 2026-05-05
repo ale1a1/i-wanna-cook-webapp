@@ -9,11 +9,12 @@ import { Separator } from "@/components/ui/separator"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { selectAuth, logout } from "@/redux/features/auth/authSlice"
-import { selectTriedRecipes } from "@/redux/features/recipes/recipesSlice"
+import { selectTriedRecipes, selectSearchHistory } from "@/redux/features/recipes/recipesSlice"
 
 export default function ProfilePage() {
   const { user } = useAppSelector(selectAuth)
   const triedRecipes = useAppSelector(selectTriedRecipes)
+  const searchHistory = useAppSelector(selectSearchHistory)
   const { setTheme, theme } = useTheme()
   const router = useRouter()
   const dispatch = useAppDispatch()
@@ -41,8 +42,9 @@ export default function ProfilePage() {
       ? (triedRecipes.reduce((sum, recipe) => sum + (recipe.satisfaction || 0), 0) / recipesTried).toFixed(1)
       : "0.0"
 
-  // Get favorite cuisines (simplified)
-  const favoriteCuisines = 2
+  const favoriteCuisines = new Set(
+    searchHistory.flatMap((s) => s.recipes.flatMap((r: any) => r.cuisines ?? []))
+  ).size
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8">

@@ -2,12 +2,9 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 import type { RootState } from "../../store"
 
 interface User {
+  id: string
+  email: string
   username: string
-  preferences?: {
-    diet?: string
-    allergies?: string[]
-    favoriteCuisines?: string[]
-  }
 }
 
 interface AuthState {
@@ -24,14 +21,11 @@ export const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    login: (state, action: PayloadAction<{ username: string }>) => {
+    login: (state, action: PayloadAction<{ id: string; email: string; username: string }>) => {
       state.user = {
+        id: action.payload.id,
+        email: action.payload.email,
         username: action.payload.username,
-        preferences: {
-          diet: "none",
-          allergies: [],
-          favoriteCuisines: ["Italian", "Mexican"],
-        },
       }
       state.isAuthenticated = true
     },
@@ -39,26 +33,9 @@ export const authSlice = createSlice({
       state.user = null
       state.isAuthenticated = false
     },
-    updatePreferences: (
-      state,
-      action: PayloadAction<{
-        diet?: string
-        allergies?: string[]
-        favoriteCuisines?: string[]
-      }>,
-    ) => {
-      if (state.user) {
-        state.user.preferences = {
-          ...state.user.preferences,
-          ...action.payload,
-        }
-      }
-    },
   },
 })
 
-export const { login, logout, updatePreferences } = authSlice.actions
-
+export const { login, logout } = authSlice.actions
 export const selectAuth = (state: RootState) => state.auth
-
 export default authSlice.reducer
