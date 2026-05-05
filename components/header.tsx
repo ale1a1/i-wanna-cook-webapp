@@ -43,7 +43,7 @@ export default function Header() {
   const backdrop = mounted && mobileMenuOpen
     ? createPortal(
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-md md:hidden"
           style={{ zIndex: 45, top: "53px" }}
           onClick={() => setMobileMenuOpen(false)}
         />,
