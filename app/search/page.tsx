@@ -6,7 +6,6 @@ import { resetFilters } from "@/redux/features/filters/filtersSlice"
 import { resetFiltersApplied } from "@/redux/features/recipes/recipesSlice"
 import RecipeFilters from "@/components/recipe-filters"
 import RecipeResults from "@/components/recipe-results"
-import RecipeAssistant from "@/components/recipe-assistant"
 
 export default function Home() {
   const dispatch = useAppDispatch()
@@ -26,7 +25,7 @@ export default function Home() {
           <RecipeResults />
         </div>
       </div>
-      <RecipeAssistant />
+
     </div>
   )
 }
