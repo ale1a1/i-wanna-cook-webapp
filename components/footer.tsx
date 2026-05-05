@@ -14,12 +14,11 @@ const SOCIALS = [
 export default function Footer() {
   return (
     <footer className="border-t border-primary/40 bg-background">
-      <div className="container mx-auto px-4 py-6 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="container mx-auto px-4 py-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+        <div className="text-center sm:text-left">
           <span className="font-semibold text-foreground">ALW Media</span>
-          <span className="mx-2 text-primary">—</span>
-          <span className="italic">"Creativity is nothing but the way to solve new problems..."</span>
-        </p>
+          <p className="text-sm text-muted-foreground italic mt-0.5">"Creativity is nothing but the way to solve new problems..."</p>
+        </div>
         <div className="flex items-center gap-5">
           {SOCIALS.map(({ icon: Icon, href, label }) => (
             <Link
