@@ -7,6 +7,7 @@ frontend:
         - pnpm install
     build:
       commands:
+        - env | grep -e DATABASE_URL -e SPOONACULAR_API_KEY -e NEXTAUTH_SECRET -e NEXTAUTH_URL -e COGNITO_CLIENT_ID -e COGNITO_USER_POOL_ID -e COGNITO_REGION >> .env.production
         - pnpm run build
   artifacts:
     baseDirectory: .next
