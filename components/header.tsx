@@ -134,7 +134,8 @@ export default function Header() {
       {/* Backdrop */}
       {mobileMenuOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+          className="md:hidden fixed inset-x-0 bottom-0 bg-black/40 backdrop-blur-sm z-40"
+          style={{ top: "53px" }}
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
