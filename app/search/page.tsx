@@ -17,7 +17,7 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col md:flex-row gap-10 md:gap-6">
         <div className="md:w-1/3 lg:w-1/4">
           <RecipeFilters />
         </div>

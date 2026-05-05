@@ -31,7 +31,7 @@ export default function RecipeResults() {
   }
 
   const RecipeCard = ({ recipe }: { recipe: any }) => (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-2 border-border hover:border-primary/40 transition-colors">
       <div className="relative h-48 w-full">
         <Image src={recipe.image || "/placeholder.svg"} alt={recipe.title} fill style={{ objectFit: "cover" }} />
       </div>
@@ -120,7 +120,7 @@ export default function RecipeResults() {
 
       {filtersApplied ? (
         recipes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {recipes.map((recipe) => (
               <RecipeCard key={recipe.id} recipe={recipe} />
             ))}
@@ -159,7 +159,7 @@ export default function RecipeResults() {
                     <p className="text-sm text-muted-foreground">
                       {formatDistanceToNow(search.timestamp, { addSuffix: true })}
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {search.recipes.map((recipe) => (
                         <RecipeCard key={recipe.id} recipe={recipe} />
                       ))}
