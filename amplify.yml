@@ -4,7 +4,6 @@ frontend:
     preBuild:
       commands:
         - npm install -g pnpm
-        - pnpm config set ignore-scripts false
         - pnpm install --no-frozen-lockfile
     build:
       commands:
