@@ -1,8 +1,9 @@
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cognito_sub TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   username TEXT NOT NULL,
-  password_hash TEXT NOT NULL,
+  theme TEXT NOT NULL DEFAULT 'system',
   created_at TIMESTAMP DEFAULT NOW()
 );
 

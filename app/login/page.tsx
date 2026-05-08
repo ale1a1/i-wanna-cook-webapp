@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChefHat, Loader2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react"
 import { login } from "@/redux/features/auth/authSlice"
 import { useAppDispatch } from "@/redux/hooks"
+import { useTheme } from "next-themes"
+import Link from "next/link"
 
-// Password rules
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
   { label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
@@ -75,16 +76,13 @@ function PasswordStrength({ password }: { password: string }) {
 export default function LoginPage() {
   const router = useRouter()
   const dispatch = useAppDispatch()
+  const { setTheme } = useTheme()
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [registerForm, setRegisterForm] = useState({ email: "", username: "", password: "", confirmPassword: "" })
-
   const [activeTab, setActiveTab] = useState("login")
-
-  // Per-field touched state for inline validation
   const [touched, setTouched] = useState({ email: false, username: false, password: false, confirmPassword: false })
   const [loginTouched, setLoginTouched] = useState({ email: false })
-
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [showPasswords, setShowPasswords] = useState({ login: false, register: false, confirm: false })
@@ -93,18 +91,14 @@ export default function LoginPage() {
 
   const loginEmailError = loginTouched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginForm.email)
     ? "Enter a valid email address" : ""
-
-  // Inline validation
   const emailError = touched.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email)
     ? "Enter a valid email address" : ""
   const usernameError = touched.username && registerForm.username.length < 3
     ? "Username must be at least 3 characters" : ""
   const passwordAllPassed = PASSWORD_RULES.every((r) => r.test(registerForm.password))
-  const passwordError = touched.password && !passwordAllPassed
-    ? "Password does not meet requirements" : ""
+  const passwordError = touched.password && !passwordAllPassed ? "Password does not meet requirements" : ""
   const confirmError = touched.confirmPassword && registerForm.confirmPassword !== registerForm.password
     ? "Passwords do not match" : ""
-
   const registerValid = !emailError && !usernameError && !passwordError && !confirmError
     && registerForm.email && registerForm.username && registerForm.password && registerForm.confirmPassword
 
@@ -119,9 +113,24 @@ export default function LoginPage() {
         body: JSON.stringify(loginForm),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error); return }
-      dispatch(login({ username: data.user.username, email: data.user.email, id: data.user.id }))
-      localStorage.setItem("user", JSON.stringify(data.user))
+      if (!res.ok) {
+        if (data.code === "EMAIL_NOT_VERIFIED") {
+          router.push("/verify?email=" + encodeURIComponent(loginForm.email))
+          return
+        }
+        setError(data.error)
+        return
+      }
+      const userTheme = data.user.theme ?? "system"
+      dispatch(login({
+        username: data.user.username,
+        email: data.user.email,
+        id: data.user.id,
+        theme: userTheme,
+        accessToken: data.tokens?.accessToken,
+      }))
+      localStorage.setItem("user", JSON.stringify({ ...data.user, accessToken: data.tokens?.accessToken }))
+      setTheme(userTheme)
       router.push("/")
     } catch {
       setError("Something went wrong. Please try again.")
@@ -143,9 +152,7 @@ export default function LoginPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error); return }
-      dispatch(login({ username: data.user.username, email: data.user.email, id: data.user.id }))
-      localStorage.setItem("user", JSON.stringify(data.user))
-      router.push("/")
+      router.push("/verify?email=" + encodeURIComponent(registerForm.email))
     } catch {
       setError("Something went wrong. Please try again.")
     } finally {
@@ -165,7 +172,12 @@ export default function LoginPage() {
         </CardHeader>
 
         <CardContent>
-          <Tabs defaultValue="login" onValueChange={(val) => { setActiveTab(val); setError(""); setTouched({ email: false, username: false, password: false, confirmPassword: false }); setLoginTouched({ email: false }) }}>
+          <Tabs defaultValue="login" onValueChange={(val) => {
+            setActiveTab(val)
+            setError("")
+            setTouched({ email: false, username: false, password: false, confirmPassword: false })
+            setLoginTouched({ email: false })
+          }}>
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="register">Register</TabsTrigger>
@@ -173,7 +185,7 @@ export default function LoginPage() {
 
             {/* Login */}
             <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4" autoComplete="on">
                 <div className="space-y-1">
                   <Label htmlFor="login-email">Email</Label>
                   <Input
@@ -184,12 +196,18 @@ export default function LoginPage() {
                     onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                     onBlur={() => setLoginTouched({ email: true })}
                     className={loginEmailError ? "border-destructive focus-visible:ring-destructive" : ""}
+                    autoComplete="email"
                     required
                   />
                   <FieldError message={loginEmailError} />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="login-password">Password</Label>
+                    <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                      Forgot password?
+                    </Link>
+                  </div>
                   <div className="relative">
                     <Input
                       id="login-password"
@@ -198,21 +216,12 @@ export default function LoginPage() {
                       value={loginForm.password}
                       onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
                       className="pr-10"
+                      autoComplete="current-password"
                       required
                     />
                     <EyeToggle show={showPasswords.login} onToggle={() => setShowPasswords((s) => ({ ...s, login: !s.login }))} />
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="w-full text-xs text-primary animate-pulse hover:animate-none hover:underline text-center"
-                  onClick={() => {
-                    setLoginForm({ email: "ale1a184@gmail.com", password: "TestChef123!" })
-                    setLoginTouched({ email: false })
-                  }}
-                >
-                  ✨ Click here to use test credentials
-                </button>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -224,9 +233,7 @@ export default function LoginPage() {
 
             {/* Register */}
             <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4">
-
-                {/* Email */}
+              <form onSubmit={handleRegister} className="space-y-4" autoComplete="on">
                 <div className="space-y-1">
                   <Label htmlFor="reg-email">Email</Label>
                   <Input
@@ -237,11 +244,10 @@ export default function LoginPage() {
                     onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                     onBlur={() => touch("email")}
                     className={emailError ? "border-destructive focus-visible:ring-destructive" : ""}
+                    autoComplete="email"
                   />
                   <FieldError message={emailError} />
                 </div>
-
-                {/* Username */}
                 <div className="space-y-1">
                   <Label htmlFor="reg-username">Username</Label>
                   <Input
@@ -252,11 +258,10 @@ export default function LoginPage() {
                     onChange={(e) => setRegisterForm({ ...registerForm, username: e.target.value })}
                     onBlur={() => touch("username")}
                     className={usernameError ? "border-destructive focus-visible:ring-destructive" : ""}
+                    autoComplete="username"
                   />
                   <FieldError message={usernameError} />
                 </div>
-
-                {/* Password */}
                 <div className="space-y-1">
                   <Label htmlFor="reg-password">Password</Label>
                   <div className="relative">
@@ -268,13 +273,12 @@ export default function LoginPage() {
                       onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
                       onBlur={() => touch("password")}
                       className={`pr-10 ${passwordError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      autoComplete="new-password"
                     />
                     <EyeToggle show={showPasswords.register} onToggle={() => setShowPasswords((s) => ({ ...s, register: !s.register }))} />
                   </div>
                   <PasswordStrength password={registerForm.password} />
                 </div>
-
-                {/* Confirm Password */}
                 <div className="space-y-1">
                   <Label htmlFor="reg-confirm">Confirm Password</Label>
                   <div className="relative">
@@ -286,6 +290,7 @@ export default function LoginPage() {
                       onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
                       onBlur={() => touch("confirmPassword")}
                       className={`pr-10 ${confirmError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                      autoComplete="new-password"
                     />
                     <EyeToggle show={showPasswords.confirm} onToggle={() => setShowPasswords((s) => ({ ...s, confirm: !s.confirm }))} />
                   </div>
