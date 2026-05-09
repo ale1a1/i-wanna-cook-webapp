@@ -13,7 +13,7 @@ const SOCIALS = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-primary/40 bg-background">
+    <footer className="border-t border-primary/40 bg-background mt-20">
       <div className="container mx-auto px-4 py-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
         <div className="text-center sm:text-left">
           <span className="font-semibold text-foreground">ALW Media</span>
