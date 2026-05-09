@@ -12,7 +12,7 @@ import { User, Settings, Moon, Sun, Monitor, Loader2, Eye, EyeOff, Pencil, Check
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { selectAuth, logout, updateUser } from "@/redux/features/auth/authSlice"
-import { selectTriedRecipes, selectSearchHistory } from "@/redux/features/recipes/recipesSlice"
+import { selectTriedRecipes } from "@/redux/features/recipes/recipesSlice"
 
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -27,7 +27,6 @@ type ThemeOption = "light" | "dark" | "system"
 export default function ProfilePage() {
   const { user, accessToken } = useAppSelector(selectAuth)
   const triedRecipes = useAppSelector(selectTriedRecipes)
-  const searchHistory = useAppSelector(selectSearchHistory)
   const { setTheme, theme, resolvedTheme } = useTheme()
   const router = useRouter()
   const dispatch = useAppDispatch()
@@ -163,9 +162,6 @@ export default function ProfilePage() {
   const avgRating = triedRecipes.length > 0
     ? (triedRecipes.reduce((sum, r) => sum + (r.satisfaction || 0), 0) / recipesTried).toFixed(1)
     : "0.0"
-  const favoriteCuisines = new Set(
-    searchHistory.flatMap((s) => s.recipes.flatMap((r: any) => r.cuisines ?? []))
-  ).size
 
   const themeOptions: { value: ThemeOption; label: string; icon: React.ReactNode }[] = [
     { value: "light", label: "Light", icon: <Sun className="h-4 w-4" /> },
@@ -226,10 +222,6 @@ export default function ProfilePage() {
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-2xl font-bold text-primary">{avgRating}</p>
               <p className="text-sm text-muted-foreground">Avg. Rating</p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-2xl font-bold text-primary">{favoriteCuisines}</p>
-              <p className="text-sm text-muted-foreground">Cuisines Explored</p>
             </div>
           </div>
         </CardContent>
