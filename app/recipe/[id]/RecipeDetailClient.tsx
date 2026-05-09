@@ -29,7 +29,18 @@ export default function RecipeDetailClient({ recipe }: Props) {
   const [addedAll, setAddedAll] = useState(false)
   const [favourited, setFavourited] = useState(false)
 
-  const isRecipeTried = triedRecipes.some((tried) => tried.id === String(recipe.id))
+  const [isTried, setIsTried] = useState(triedRecipes.some((tried) => tried.id === String(recipe.id)))
+
+  useEffect(() => {
+    if (!user) return
+    fetch(`/api/tried-recipes?userId=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const ids = (data.triedRecipes || []).map((t: any) => t.recipe_id)
+        setIsTried(ids.includes(String(recipe.id)))
+      })
+      .catch(() => {})
+  }, [user, recipe.id])
 
   useEffect(() => {
     if (!user) return
@@ -94,19 +105,32 @@ export default function RecipeDetailClient({ recipe }: Props) {
       .catch(() => {})
   }, [user, recipe.id, recipe.extendedIngredients?.length])
 
-  const handleMarkAsTried = () => {
+  const handleMarkAsTried = async () => {
     if (!user) {
       router.push("/login?returnUrl=" + encodeURIComponent(`/recipe/${recipe.id}`))
       return
     }
     const today = new Date()
-    const formattedDate = `${today.getDate().toString().padStart(2, "0")}/${(today.getMonth() + 1).toString().padStart(2, "0")}/${today.getFullYear()}`
+    const triedOn = `${today.getDate().toString().padStart(2, "0")}/${(today.getMonth() + 1).toString().padStart(2, "0")}/${today.getFullYear()}`
+    await fetch("/api/tried-recipes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id,
+        recipeId: recipe.id,
+        recipeTitle: recipe.title,
+        triedOn,
+        estimatedTime: recipe.readyInMinutes,
+      }),
+    })
     dispatch(addTriedRecipe({
       id: String(recipe.id),
       title: recipe.title,
-      triedOn: formattedDate,
+      triedOn,
       estimatedTime: recipe.readyInMinutes,
     }))
+    setIsTried(true)
+    toast.success("Marked as tried!")
   }
 
   const handleAddAllToShoppingList = async () => {
@@ -228,7 +252,7 @@ export default function RecipeDetailClient({ recipe }: Props) {
           </Button>
         </div>
 
-        {isRecipeTried ? (
+        {isTried ? (
           <Badge variant="secondary" className="flex items-center gap-1 px-3 py-2 h-10">
             <CheckCircle className="h-4 w-4 mr-1" />
             You've Tried This Recipe

@@ -47,21 +47,6 @@ interface RecipesState {
   currentFilters: FiltersState | null
 }
 
-const loadTriedRecipes = (): TriedRecipe[] => {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("triedRecipes")
-    if (saved) {
-      try { return JSON.parse(saved) } catch { /* ignore */ }
-    }
-  }
-  return [
-    { id: "1", title: "Creamy Mushroom Pasta", triedOn: "01/04/2024", satisfaction: 4, timeAccuracy: 5, difficulty: "Easy", estimatedTime: 25 },
-    { id: "2", title: "Vegan Chili Bowl", triedOn: "08/04/2024", satisfaction: 5, timeAccuracy: 4, difficulty: "Very Easy", estimatedTime: 40 },
-    { id: "3", title: "Mediterranean Quinoa Bowl", triedOn: "15/04/2024" },
-    { id: "4", title: "Spicy Thai Noodles", triedOn: "20/04/2024" },
-  ]
-}
-
 // Map our filter state to Spoonacular API query params
 function buildSearchParams(filters: FiltersState): URLSearchParams {
   const params = new URLSearchParams()
@@ -164,7 +149,7 @@ export const loadMoreRecipes = createAsyncThunk(
 const initialState: RecipesState = {
   recipes: [],
   filteredRecipes: [],
-  triedRecipes: loadTriedRecipes(),
+  triedRecipes: [],
   filtersApplied: false,
   loading: false,
   loadingMore: false,
@@ -181,6 +166,9 @@ export const recipesSlice = createSlice({
     setRecipes: (state, action: PayloadAction<Recipe[]>) => {
       state.recipes = action.payload
     },
+    setTriedRecipes: (state, action: PayloadAction<TriedRecipe[]>) => {
+      state.triedRecipes = action.payload
+    },
     addTriedRecipe: (state, action: PayloadAction<TriedRecipe>) => {
       const existingIndex = state.triedRecipes.findIndex((r) => r.id === action.payload.id)
       if (existingIndex >= 0) {
@@ -188,25 +176,16 @@ export const recipesSlice = createSlice({
       } else {
         state.triedRecipes.push(action.payload)
       }
-      if (typeof window !== "undefined") {
-        localStorage.setItem("triedRecipes", JSON.stringify(state.triedRecipes))
-      }
     },
     updateTriedRecipe: (state, action: PayloadAction<{ id: string; satisfaction?: number; timeAccuracy?: number; difficulty?: string }>) => {
       const { id, ...updates } = action.payload
       const idx = state.triedRecipes.findIndex((r) => r.id === id)
       if (idx >= 0) {
         state.triedRecipes[idx] = { ...state.triedRecipes[idx], ...updates }
-        if (typeof window !== "undefined") {
-          localStorage.setItem("triedRecipes", JSON.stringify(state.triedRecipes))
-        }
       }
     },
     removeTriedRecipe: (state, action: PayloadAction<string>) => {
       state.triedRecipes = state.triedRecipes.filter((r) => r.id !== action.payload)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("triedRecipes", JSON.stringify(state.triedRecipes))
-      }
     },
     resetFiltersApplied: (state) => {
       state.filtersApplied = false
@@ -252,6 +231,7 @@ export const recipesSlice = createSlice({
 
 export const {
   setRecipes,
+  setTriedRecipes,
   addTriedRecipe,
   updateTriedRecipe,
   removeTriedRecipe,

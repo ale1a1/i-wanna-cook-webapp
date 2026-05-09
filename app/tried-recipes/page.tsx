@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Calendar, Clock, AlertTriangle, Star, Trash2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { selectAuth } from "@/redux/features/auth/authSlice"
-import { selectTriedRecipes, updateTriedRecipe, removeTriedRecipe } from "@/redux/features/recipes/recipesSlice"
+import { setTriedRecipes, updateTriedRecipe, removeTriedRecipe, selectTriedRecipes } from "@/redux/features/recipes/recipesSlice"
 import {
   Dialog,
   DialogContent,
@@ -36,16 +36,26 @@ export default function TriedRecipesPage() {
     difficulty: "Moderate",
   })
 
-  // Check if user is logged in
   useEffect(() => {
-    if (!user) {
-      router.push("/login")
-    }
-  }, [user, router])
+    if (!user) { router.push("/login"); return }
+    fetch(`/api/tried-recipes?userId=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const recipes = (data.triedRecipes || []).map((r: any) => ({
+          id: r.recipe_id,
+          title: r.recipe_title,
+          triedOn: r.tried_on,
+          estimatedTime: r.estimated_time,
+          satisfaction: r.satisfaction,
+          timeAccuracy: r.time_accuracy,
+          difficulty: r.difficulty,
+        }))
+        dispatch(setTriedRecipes(recipes))
+      })
+      .catch(() => {})
+  }, [user, router, dispatch])
 
-  if (!user) {
-    return null
-  }
+  if (!user) return null
 
   const handleRateRecipe = (recipe: any) => {
     setSelectedRecipe(recipe)
@@ -58,16 +68,25 @@ export default function TriedRecipesPage() {
     setRatingDialogOpen(true)
   }
 
-  const handleSubmitRating = () => {
+  const handleSubmitRating = async () => {
     if (selectedRecipe) {
-      dispatch(
-        updateTriedRecipe({
-          id: selectedRecipe.id,
+      await fetch("/api/tried-recipes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user!.id,
+          recipeId: selectedRecipe.id,
           satisfaction: ratingValues.satisfaction,
           timeAccuracy: ratingValues.timeAccuracy,
           difficulty: ratingValues.difficulty,
         }),
-      )
+      })
+      dispatch(updateTriedRecipe({
+        id: selectedRecipe.id,
+        satisfaction: ratingValues.satisfaction,
+        timeAccuracy: ratingValues.timeAccuracy,
+        difficulty: ratingValues.difficulty,
+      }))
       setRatingDialogOpen(false)
     }
   }
@@ -77,8 +96,13 @@ export default function TriedRecipesPage() {
     setConfirmDialogOpen(true)
   }
 
-  const confirmRemoveRecipe = () => {
+  const confirmRemoveRecipe = async () => {
     if (recipeToRemove) {
+      await fetch("/api/tried-recipes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user!.id, recipeId: recipeToRemove }),
+      })
       dispatch(removeTriedRecipe(recipeToRemove))
       setConfirmDialogOpen(false)
       setRecipeToRemove(null)
