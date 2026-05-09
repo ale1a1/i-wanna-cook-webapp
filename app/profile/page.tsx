@@ -174,7 +174,7 @@ export default function ProfilePage() {
   ]
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8 space-y-6">
+    <div className="container max-w-4xl mx-auto px-4 space-y-6">
 
       {/* Header */}
       <Card>

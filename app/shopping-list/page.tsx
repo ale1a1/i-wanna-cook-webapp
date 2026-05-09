@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ShoppingCart, Trash2, Loader2, ChevronDown, ChevronUp } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from "@/components/ui/dialog"
 
 type ShoppingItem = {
   id: string
@@ -27,6 +28,8 @@ export default function ShoppingListPage() {
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [loading, setLoading] = useState(true)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [clearAllOpen, setClearAllOpen] = useState(false)
+  const [removeRecipe, setRemoveRecipe] = useState<{ id: string; title: string } | null>(null)
 
   useEffect(() => {
     if (!user) { router.push("/login"); return }
@@ -96,7 +99,7 @@ export default function ShoppingListPage() {
 
   if (loading) {
     return (
-      <div className="container max-w-2xl mx-auto px-4 py-8">
+      <div className="container max-w-2xl mx-auto px-4 py-12">
         <div className="flex items-center gap-3 mb-6">
           <ShoppingCart className="h-6 w-6 text-primary flex-shrink-0" />
           <h1 className="text-2xl font-bold">Shopping List</h1>
@@ -112,7 +115,7 @@ export default function ShoppingListPage() {
 
   return (
     <TooltipProvider>
-    <div className="container max-w-2xl mx-auto px-4 py-8">
+    <div className="container max-w-2xl mx-auto px-4 py-12">
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <ShoppingCart className="h-6 w-6 text-primary flex-shrink-0" />
         <h1 className="text-2xl font-bold">Shopping List</h1>
@@ -122,7 +125,7 @@ export default function ShoppingListPage() {
         {items.length > 0 && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="text-destructive ml-auto flex-shrink-0" onClick={clearAll}>
+              <Button variant="outline" size="sm" className="text-destructive ml-auto flex-shrink-0" onClick={() => setClearAllOpen(true)}>
                 <Trash2 className="h-4 w-4 mr-1" /> Clear All
               </Button>
             </TooltipTrigger>
@@ -164,7 +167,7 @@ export default function ShoppingListPage() {
                     <span className="text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">({recipeItems.length})</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive flex-shrink-0" onClick={() => deleteByRecipe(recipeId)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive flex-shrink-0" onClick={() => setRemoveRecipe({ id: recipeId, title: recipeItems[0].recipe_title })}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -215,6 +218,47 @@ export default function ShoppingListPage() {
         </div>
       )}
     </div>
+
+    {/* Clear all confirmation */}
+    <Dialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Clear entire shopping list?</DialogTitle>
+          <DialogDescription>
+            This will remove every ingredient from all recipes in one go. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="sm:justify-between">
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button variant="destructive" onClick={() => { clearAll(); setClearAllOpen(false) }}>
+            Yes, clear everything
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    {/* Remove recipe group confirmation */}
+    <Dialog open={!!removeRecipe} onOpenChange={(open) => { if (!open) setRemoveRecipe(null) }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remove all ingredients?</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to remove all ingredients from <span className="font-semibold">{removeRecipe?.title}</span>?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="sm:justify-between">
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button variant="destructive" onClick={() => { if (removeRecipe) { deleteByRecipe(removeRecipe.id); setRemoveRecipe(null) } }}>
+            Yes, remove
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     </TooltipProvider>
   )
 }

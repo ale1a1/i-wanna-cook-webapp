@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ChefHat, Search, User, ClipboardList, LogOut, Menu, X, ShoppingCart, Sun, Moon } from "lucide-react"
+import { ChefHat, Search, User, ClipboardList, LogOut, Menu, X, ShoppingCart, Sun, Moon, Heart } from "lucide-react"
 import { useAppSelector, useAppDispatch } from "@/redux/hooks"
 import { selectAuth, logout } from "@/redux/features/auth/authSlice"
 import { usePathname, useRouter } from "next/navigation"
@@ -19,7 +19,17 @@ export default function Header() {
   const [mounted, setMounted] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  useEffect(() => { setMounted(true) }, [])
+  useEffect(() => {
+    setMounted(true)
+    try {
+      const saved = localStorage.getItem("user")
+      if (saved) {
+        const u = JSON.parse(saved)
+        if (u.theme && setTheme) setTheme(u.theme)
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => { setMobileMenuOpen(false) }, [pathname])
 
@@ -62,6 +72,13 @@ export default function Header() {
 
             {user ? (
               <>
+                <Link href="/favourites" className={pathname === "/favourites" ? "text-primary" : ""}>
+                  <Button variant="ghost" size="sm" className="flex items-center">
+                    <Heart className="h-5 w-5 mr-1" />
+                    <span>Favourites</span>
+                  </Button>
+                </Link>
+
                 <Link href="/tried-recipes" className={pathname === "/tried-recipes" ? "text-primary" : ""}>
                   <Button variant="ghost" size="sm" className="flex items-center">
                     <ClipboardList className="h-5 w-5 mr-1" />
@@ -90,9 +107,8 @@ export default function Header() {
                   </Button>
                 )}
 
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-destructive flex items-center">
-                  <LogOut className="h-5 w-5 mr-1" />
-                  <span>Logout</span>
+                <Button variant="ghost" size="icon" onClick={handleLogout} className="text-destructive">
+                  <LogOut className="h-5 w-5" />
                 </Button>
               </>
             ) : (
@@ -137,6 +153,13 @@ export default function Header() {
 
               {user ? (
                 <>
+                  <Link href="/favourites" className={pathname === "/favourites" ? "text-primary" : ""}>
+                    <Button variant="ghost" size="sm" className="w-full justify-start">
+                      <Heart className="h-5 w-5 mr-2" />
+                      Favourites
+                    </Button>
+                  </Link>
+
                   <Link href="/tried-recipes" className={pathname === "/tried-recipes" ? "text-primary" : ""}>
                     <Button variant="ghost" size="sm" className="w-full justify-start">
                       <ClipboardList className="h-5 w-5 mr-2" />

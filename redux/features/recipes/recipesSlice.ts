@@ -34,21 +34,17 @@ interface TriedRecipe {
   estimatedTime?: number
 }
 
-interface SearchHistory {
-  id: string
-  timestamp: number
-  filters: any
-  recipes: Recipe[]
-}
-
 interface RecipesState {
   recipes: Recipe[]
   filteredRecipes: Recipe[]
   triedRecipes: TriedRecipe[]
   filtersApplied: boolean
-  searchHistory: SearchHistory[]
   loading: boolean
+  loadingMore: boolean
   error: string | null
+  currentOffset: number
+  hasMore: boolean
+  currentFilters: FiltersState | null
 }
 
 const loadTriedRecipes = (): TriedRecipe[] => {
@@ -64,16 +60,6 @@ const loadTriedRecipes = (): TriedRecipe[] => {
     { id: "3", title: "Mediterranean Quinoa Bowl", triedOn: "15/04/2024" },
     { id: "4", title: "Spicy Thai Noodles", triedOn: "20/04/2024" },
   ]
-}
-
-const loadSearchHistory = (): SearchHistory[] => {
-  if (typeof window !== "undefined") {
-    const saved = localStorage.getItem("searchHistory")
-    if (saved) {
-      try { return JSON.parse(saved) } catch { /* ignore */ }
-    }
-  }
-  return []
 }
 
 // Map our filter state to Spoonacular API query params
@@ -146,7 +132,29 @@ export const fetchRecipes = createAsyncThunk(
         return rejectWithValue(err.error || "Failed to fetch recipes")
       }
       const data = await res.json()
-      return data.results as Recipe[]
+      return { results: data.results as Recipe[], totalResults: data.totalResults as number }
+    } catch (err) {
+      return rejectWithValue("Network error")
+    }
+  }
+)
+
+export const loadMoreRecipes = createAsyncThunk(
+  "recipes/loadMoreRecipes",
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState() as RootState
+    const { currentOffset, currentFilters } = state.recipes
+    if (!currentFilters) return rejectWithValue("No filters")
+    try {
+      const params = buildSearchParams(currentFilters)
+      params.set("offset", String(currentOffset))
+      const res = await fetch(`/api/recipes/search?${params.toString()}`)
+      if (!res.ok) {
+        const err = await res.json()
+        return rejectWithValue(err.error || "Failed to fetch recipes")
+      }
+      const data = await res.json()
+      return { results: data.results as Recipe[], totalResults: data.totalResults as number }
     } catch (err) {
       return rejectWithValue("Network error")
     }
@@ -158,9 +166,12 @@ const initialState: RecipesState = {
   filteredRecipes: [],
   triedRecipes: loadTriedRecipes(),
   filtersApplied: false,
-  searchHistory: loadSearchHistory(),
   loading: false,
+  loadingMore: false,
   error: null,
+  currentOffset: 0,
+  hasMore: false,
+  currentFilters: null,
 }
 
 export const recipesSlice = createSlice({
@@ -201,19 +212,9 @@ export const recipesSlice = createSlice({
       state.filtersApplied = false
       state.filteredRecipes = []
       state.error = null
-    },
-    clearSearchHistory: (state) => {
-      state.searchHistory = []
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("searchHistory")
-      }
-    },
-    searchAgain: (state, action: PayloadAction<string>) => {
-      const searchItem = state.searchHistory.find((item) => item.id === action.payload)
-      if (searchItem) {
-        state.filteredRecipes = searchItem.recipes
-        state.filtersApplied = true
-      }
+      state.currentOffset = 0
+      state.hasMore = false
+      state.currentFilters = null
     },
   },
   extraReducers: (builder) => {
@@ -224,23 +225,27 @@ export const recipesSlice = createSlice({
       })
       .addCase(fetchRecipes.fulfilled, (state, action) => {
         state.loading = false
-        state.filteredRecipes = action.payload
+        state.filteredRecipes = action.payload.results
         state.filtersApplied = true
-
-        const newSearch: SearchHistory = {
-          id: Date.now().toString(),
-          timestamp: Date.now(),
-          filters: {},
-          recipes: action.payload.slice(0, 4),
-        }
-        state.searchHistory = [newSearch, ...state.searchHistory].slice(0, 5)
-        if (typeof window !== "undefined") {
-          localStorage.setItem("searchHistory", JSON.stringify(state.searchHistory))
-        }
+        state.currentOffset = action.payload.results.length
+        state.hasMore = action.payload.results.length < action.payload.totalResults
+        state.currentFilters = action.meta.arg
       })
       .addCase(fetchRecipes.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+      })
+      .addCase(loadMoreRecipes.pending, (state) => {
+        state.loadingMore = true
+      })
+      .addCase(loadMoreRecipes.fulfilled, (state, action) => {
+        state.loadingMore = false
+        state.filteredRecipes = [...state.filteredRecipes, ...action.payload.results]
+        state.currentOffset = state.filteredRecipes.length
+        state.hasMore = state.filteredRecipes.length < action.payload.totalResults
+      })
+      .addCase(loadMoreRecipes.rejected, (state) => {
+        state.loadingMore = false
       })
   },
 })
@@ -251,16 +256,15 @@ export const {
   updateTriedRecipe,
   removeTriedRecipe,
   resetFiltersApplied,
-  clearSearchHistory,
-  searchAgain,
 } = recipesSlice.actions
 
 export const selectRecipes = (state: RootState) => state.recipes.recipes
 export const selectFilteredRecipes = (state: RootState) => state.recipes.filteredRecipes
 export const selectTriedRecipes = (state: RootState) => state.recipes.triedRecipes
 export const selectFiltersApplied = (state: RootState) => state.recipes.filtersApplied
-export const selectSearchHistory = (state: RootState) => state.recipes.searchHistory
 export const selectRecipesLoading = (state: RootState) => state.recipes.loading
+export const selectRecipesLoadingMore = (state: RootState) => state.recipes.loadingMore
 export const selectRecipesError = (state: RootState) => state.recipes.error
+export const selectHasMore = (state: RootState) => state.recipes.hasMore
 
 export default recipesSlice.reducer

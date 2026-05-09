@@ -4,25 +4,48 @@ import { useAppSelector, useAppDispatch } from "@/redux/hooks"
 import {
   selectFilteredRecipes,
   selectFiltersApplied,
-  selectSearchHistory,
   selectRecipesLoading,
+  selectRecipesLoadingMore,
   selectRecipesError,
-  clearSearchHistory,
+  selectHasMore,
+  loadMoreRecipes,
 } from "@/redux/features/recipes/recipesSlice"
+import { selectFilters } from "@/redux/features/filters/filtersSlice"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Search, Clock, Users, History, Trash2, Loader2, AlertCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Search, Clock, Users, Loader2, AlertCircle, ChevronDown } from "lucide-react"
 import Image from "next/image"
-import { formatDistanceToNow } from "date-fns"
 import Link from "next/link"
+
+const FILTER_LABELS: Record<string, Record<string, string>> = {
+  prepTime: { under15: "Under 15 min", under30: "Under 30 min", under60: "Under 1 hour", over60: "Over 1 hour" },
+  budget: { cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium" },
+  diet: { vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" },
+  taste: { sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" },
+  healthiness: { healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" },
+  cuisine: {},
+}
 
 export default function RecipeResults() {
   const recipes = useAppSelector(selectFilteredRecipes)
   const filtersApplied = useAppSelector(selectFiltersApplied)
-  const searchHistory = useAppSelector(selectSearchHistory)
+  const filters = useAppSelector(selectFilters)
   const loading = useAppSelector(selectRecipesLoading)
+  const loadingMore = useAppSelector(selectRecipesLoadingMore)
   const error = useAppSelector(selectRecipesError)
+  const hasMore = useAppSelector(selectHasMore)
   const dispatch = useAppDispatch()
+
+  const activeFilterLabels = [
+    ...["prepTime", "budget", "diet", "taste", "healthiness"].flatMap((key) => {
+      const val = filters[key as keyof typeof filters] as string
+      if (val === "any") return []
+      return [FILTER_LABELS[key][val] ?? val]
+    }),
+    ...(filters.cuisine !== "any" ? [filters.cuisine.charAt(0).toUpperCase() + filters.cuisine.slice(1)] : []),
+    ...filters.ingredients.map((i) => i),
+  ]
 
   const stripHtml = (html: string) => {
     const tmp = document.createElement("DIV")
@@ -64,10 +87,7 @@ export default function RecipeResults() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold">Recipe Results</h2>
-          <p className="text-sm text-muted-foreground">Searching Spoonacular for recipes...</p>
-        </div>
+        <h2 className="text-2xl font-bold">Recipe Results</h2>
         <Card className="min-h-[400px] flex items-center justify-center">
           <CardContent className="p-6 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
@@ -81,9 +101,7 @@ export default function RecipeResults() {
   if (error) {
     return (
       <div className="space-y-4">
-        <div>
-          <h2 className="text-2xl font-bold">Recipe Results</h2>
-        </div>
+        <h2 className="text-2xl font-bold">Recipe Results</h2>
         <Card className="min-h-[200px] flex items-center justify-center border-destructive">
           <CardContent className="p-6 text-center">
             <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-3" />
@@ -97,19 +115,41 @@ export default function RecipeResults() {
 
   return (
     <div id="recipe-results" className="space-y-4">
-      <div>
+      <div className="space-y-2">
         <h2 className="text-2xl font-bold">Recipe Results</h2>
-        <p className="text-sm text-muted-foreground">
-          Showing recipes that match your filter criteria. Adjust the filters to find exactly what you're looking for.
-        </p>
+        {filtersApplied && activeFilterLabels.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/30">
+            <span className="text-sm font-medium text-primary">Filters active:</span>
+            {activeFilterLabels.map((label) => (
+              <Badge key={label} className="bg-primary text-primary-foreground hover:bg-primary/90">{label}</Badge>
+            ))}
+          </div>
+        ) : !filtersApplied ? null : (
+          <p className="text-sm text-muted-foreground">
+            Adjust the filters to find exactly what you're looking for.
+          </p>
+        )}
       </div>
 
       {filtersApplied ? (
         recipes.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {recipes.map((recipe) => (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center">
+                <Button variant="outline" onClick={() => dispatch(loadMoreRecipes())} disabled={loadingMore} className="min-w-[160px]">
+                  {loadingMore ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading...</>
+                  ) : (
+                    <><ChevronDown className="h-4 w-4 mr-2" />Load More</>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <Card className="min-h-[400px] flex items-center justify-center">
@@ -120,52 +160,15 @@ export default function RecipeResults() {
           </Card>
         )
       ) : (
-        <Card className="min-h-[400px]">
-          <CardContent className="p-6">
-            {searchHistory.length > 0 ? (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <History className="h-5 w-5 mr-2 text-muted-foreground" />
-                    <h3 className="text-lg font-medium">Recently Viewed Recipes</h3>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => dispatch(clearSearchHistory())}
-                    className="flex items-center"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Clear History
-                  </Button>
-                </div>
-
-                {searchHistory.map((search) => (
-                  <div key={search.id} className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(search.timestamp, { addSuffix: true })}
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {search.recipes.map((recipe) => (
-                        <RecipeCard key={recipe.id} recipe={recipe} />
-                      ))}
-                    </div>
-                    <div className="border-b my-6"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[300px]">
-                <div className="bg-muted rounded-full p-6 mb-4">
-                  <Search className="h-12 w-12 text-muted-foreground" />
-                </div>
-                <p className="text-lg font-medium">No search performed yet</p>
-                <p className="text-sm text-muted-foreground mt-1 max-w-md text-center">
-                  Use the filters on the left to find recipes that match your preferences, or try the "Surprise Me"
-                  button for a random suggestion.
-                </p>
-              </div>
-            )}
+        <Card className="min-h-[400px] flex items-center justify-center">
+          <CardContent className="p-6 text-center">
+            <div className="bg-muted rounded-full p-6 mb-4 inline-flex">
+              <Search className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <p className="text-lg font-medium">Select filters to find recipes</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md">
+              Choose at least one filter on the left, then hit Apply Filters.
+            </p>
           </CardContent>
         </Card>
       )}

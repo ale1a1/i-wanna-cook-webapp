@@ -119,7 +119,7 @@ export default function TriedRecipesPage() {
   }
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
+    <div className="container max-w-4xl mx-auto px-4 py-12">
       <h1 className="text-2xl font-bold mb-6">Your Recipe History</h1>
 
       {triedRecipes.length === 0 ? (

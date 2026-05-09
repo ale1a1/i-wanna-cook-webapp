@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
     const values = ingredients.map((_: any, i: number) => {
-      const base = i * 3
+      const base = i * 2
       return `($1, $2, $3, $${base + 4}, $${base + 5})`
     })
     const params: any[] = [userId, recipeId, recipeTitle]

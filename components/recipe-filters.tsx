@@ -18,7 +18,7 @@ import {
   selectFilters,
   selectHasActiveFilters,
 } from "@/redux/features/filters/filtersSlice"
-import { fetchRecipes, resetFiltersApplied } from "@/redux/features/recipes/recipesSlice"
+import { fetchRecipes, resetFiltersApplied, selectFiltersApplied } from "@/redux/features/recipes/recipesSlice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -37,6 +37,7 @@ export default function RecipeFilters() {
   const dispatch = useAppDispatch()
   const filters = useAppSelector(selectFilters)
   const hasActiveFilters = useAppSelector(selectHasActiveFilters)
+  const filtersApplied = useAppSelector(selectFiltersApplied)
   const [ingredientInput, setIngredientInput] = useState("")
 
   const handleAddIngredient = (ingredient: string = ingredientInput) => {
@@ -97,7 +98,7 @@ export default function RecipeFilters() {
             Prep Time
           </label>
           <Select value={filters.prepTime} onValueChange={(value) => dispatch(updatePrepTime(value))}>
-            <SelectTrigger>
+            <SelectTrigger className={filters.prepTime !== "any" ? "border-primary text-primary" : ""}>
               <SelectValue placeholder="Any time" />
             </SelectTrigger>
             <SelectContent>
@@ -117,7 +118,7 @@ export default function RecipeFilters() {
             Budget
           </label>
           <Select value={filters.budget} onValueChange={(value) => dispatch(updateBudget(value))}>
-            <SelectTrigger>
+            <SelectTrigger className={filters.budget !== "any" ? "border-primary text-primary" : ""}>
               <SelectValue placeholder="Any budget" />
             </SelectTrigger>
             <SelectContent>
@@ -136,7 +137,7 @@ export default function RecipeFilters() {
             Diet
           </label>
           <Select value={filters.diet} onValueChange={(value) => dispatch(updateDiet(value))}>
-            <SelectTrigger>
+            <SelectTrigger className={filters.diet !== "any" ? "border-primary text-primary" : ""}>
               <SelectValue placeholder="Any diet" />
             </SelectTrigger>
             <SelectContent>
@@ -157,7 +158,7 @@ export default function RecipeFilters() {
             Cuisine
           </label>
           <Select value={filters.cuisine} onValueChange={(value) => dispatch(updateCuisine(value))}>
-            <SelectTrigger>
+            <SelectTrigger className={filters.cuisine !== "any" ? "border-primary text-primary" : ""}>
               <SelectValue placeholder="Any cuisine" />
             </SelectTrigger>
             <SelectContent>
@@ -176,7 +177,7 @@ export default function RecipeFilters() {
             Healthiness
           </label>
           <Select value={filters.healthiness} onValueChange={(value) => dispatch(updateHealthiness(value))}>
-            <SelectTrigger>
+            <SelectTrigger className={filters.healthiness !== "any" ? "border-primary text-primary" : ""}>
               <SelectValue placeholder="Any" />
             </SelectTrigger>
             <SelectContent>
@@ -195,7 +196,7 @@ export default function RecipeFilters() {
             Taste
           </label>
           <Select value={filters.taste} onValueChange={(value) => dispatch(updateTaste(value))}>
-            <SelectTrigger>
+            <SelectTrigger className={filters.taste !== "any" ? "border-primary text-primary" : ""}>
               <SelectValue placeholder="Any taste" />
             </SelectTrigger>
             <SelectContent>
@@ -221,9 +222,11 @@ export default function RecipeFilters() {
               onChange={(e) => setIngredientInput(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <Button type="button" size="sm" onClick={() => handleAddIngredient()} disabled={!ingredientInput.trim()}>
-              Add
-            </Button>
+            <span className={!ingredientInput.trim() ? "cursor-not-allowed" : undefined}>
+              <Button type="button" size="sm" onClick={() => handleAddIngredient()} disabled={!ingredientInput.trim()} className={!ingredientInput.trim() ? "pointer-events-none" : ""}>
+                Add
+              </Button>
+            </span>
           </div>
 
           {filters.ingredients.length > 0 && (
@@ -246,21 +249,18 @@ export default function RecipeFilters() {
       </div>
 
       <div className="space-y-2">
-        <Button className="w-full" onClick={handleApplyFilters}>
-          Apply Filters
-        </Button>
+        <span className={!hasActiveFilters ? "cursor-not-allowed" : undefined}>
+          <Button className={`w-full${!hasActiveFilters ? " pointer-events-none" : ""}`} onClick={handleApplyFilters} disabled={!hasActiveFilters}>
+            Apply Filters
+          </Button>
+        </span>
 
-        <div className="flex justify-between">
-          <Button variant="outline" size="sm" onClick={handleResetForm} className="flex items-center">
+        <span className={!hasActiveFilters && !filtersApplied ? "cursor-not-allowed" : undefined}>
+          <Button variant="outline" className={`w-full flex items-center justify-center${!hasActiveFilters && !filtersApplied ? " pointer-events-none" : ""}`} onClick={handleResetForm} disabled={!hasActiveFilters && !filtersApplied}>
             <RefreshCw className="h-4 w-4 mr-1" />
             Reset
           </Button>
-
-          <Button variant="destructive" size="sm" onClick={() => dispatch(resetFiltersApplied())}>
-            <X className="h-4 w-4 mr-1" />
-            Clear Results
-          </Button>
-        </div>
+        </span>
       </div>
 
       <Button variant="secondary" className="w-full flex items-center justify-center" onClick={handleSurpriseMe}>

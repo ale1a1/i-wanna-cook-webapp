@@ -16,16 +16,17 @@ export default function Home() {
   }, [dispatch])
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row gap-10 md:gap-6">
+    <div className="container mx-auto px-4 py-12">
+      <div className="flex flex-col md:flex-row gap-10 md:gap-8">
         <div className="md:w-1/3 lg:w-1/4">
-          <RecipeFilters />
+          <div className="sticky top-6">
+            <RecipeFilters />
+          </div>
         </div>
         <div className="md:w-2/3 lg:w-3/4">
           <RecipeResults />
         </div>
       </div>
-
     </div>
   )
 }

@@ -10,8 +10,28 @@ const rootReducer = combineReducers({
   auth: authReducer,
 })
 
+function loadAuthFromStorage() {
+  if (typeof window === "undefined") return undefined
+  try {
+    const saved = localStorage.getItem("user")
+    if (!saved) return undefined
+    const user = JSON.parse(saved)
+    if (user.id && user.email && user.username) {
+      return {
+        auth: {
+          user: { id: user.id, email: user.email, username: user.username, theme: user.theme ?? "system" },
+          isAuthenticated: true,
+          accessToken: user.accessToken ?? null,
+        },
+      }
+    }
+  } catch { /* ignore */ }
+  return undefined
+}
+
 export const store = configureStore({
   reducer: rootReducer,
+  preloadedState: loadAuthFromStorage(),
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: true,

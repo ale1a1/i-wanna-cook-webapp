@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Users, ChefHat, ArrowLeft, Heart, Star, Bookmark, Share2, CheckCircle, Loader2, ShoppingCart, Plus, Minus } from "lucide-react"
+import { Clock, Users, ChefHat, ArrowLeft, Star, Heart, Share2, CheckCircle, Loader2, ShoppingCart, Minus } from "lucide-react"
 import { useAppSelector, useAppDispatch } from "@/redux/hooks"
 import { selectAuth } from "@/redux/features/auth/authSlice"
 import { addTriedRecipe, selectTriedRecipes } from "@/redux/features/recipes/recipesSlice"
+import { toast } from "sonner"
 import Link from "next/link"
 
 interface Props {
@@ -26,8 +27,56 @@ export default function RecipeDetailClient({ recipe }: Props) {
   const [addingAll, setAddingAll] = useState(false)
   const [addedIngredients, setAddedIngredients] = useState<Set<string>>(new Set())
   const [addedAll, setAddedAll] = useState(false)
+  const [favourited, setFavourited] = useState(false)
 
   const isRecipeTried = triedRecipes.some((tried) => tried.id === String(recipe.id))
+
+  useEffect(() => {
+    if (!user) return
+    fetch(`/api/favourites?userId=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const ids = (data.favourites || []).map((f: any) => f.recipe_id)
+        setFavourited(ids.includes(String(recipe.id)))
+      })
+      .catch(() => {})
+  }, [user, recipe.id])
+
+  const handleFavourite = async () => {
+    if (!user) {
+      router.push("/login?returnUrl=" + encodeURIComponent(`/recipe/${recipe.id}`))
+      return
+    }
+    if (favourited) {
+      await fetch("/api/favourites", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, recipeId: recipe.id }),
+      })
+      setFavourited(false)
+      toast("Removed from favourites")
+    } else {
+      await fetch("/api/favourites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          recipeId: recipe.id,
+          recipeTitle: recipe.title,
+          recipeImage: recipe.image,
+          readyInMinutes: recipe.readyInMinutes,
+          servings: recipe.servings,
+        }),
+      })
+      setFavourited(true)
+      toast.success("Added to favourites!")
+    }
+  }
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href)
+    toast.success("Link copied to clipboard!")
+  }
 
   useEffect(() => {
     if (!user) return
@@ -115,7 +164,7 @@ export default function RecipeDetailClient({ recipe }: Props) {
   }
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
+    <div className="container max-w-4xl mx-auto px-4 py-12">
       <Button variant="ghost" onClick={() => router.back()} className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Recipes
       </Button>
@@ -169,15 +218,11 @@ export default function RecipeDetailClient({ recipe }: Props) {
 
       <div className="flex justify-between mb-8">
         <div className="flex gap-2">
-          <Button variant="outline" className="flex items-center gap-1">
-            <Heart className="h-4 w-4" />
-            <span className="hidden sm:inline">Like</span>
+          <Button variant={favourited ? "default" : "outline"} className={`flex items-center gap-1 ${favourited ? "bg-red-500 hover:bg-red-600 border-red-500 text-white" : ""}`} onClick={handleFavourite}>
+            <Heart className={`h-4 w-4 ${favourited ? "fill-white" : ""}`} />
+            <span className="hidden sm:inline">{favourited ? "Favourited" : "Favourite"}</span>
           </Button>
-          <Button variant="outline" className="flex items-center gap-1">
-            <Bookmark className="h-4 w-4" />
-            <span className="hidden sm:inline">Save</span>
-          </Button>
-          <Button variant="outline" className="flex items-center gap-1">
+          <Button variant="outline" className="flex items-center gap-1" onClick={handleShare}>
             <Share2 className="h-4 w-4" />
             <span className="hidden sm:inline">Share</span>
           </Button>

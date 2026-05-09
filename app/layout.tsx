@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Providers } from "@/redux/providers"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
+import { Toaster } from "@/components/ui/sonner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -33,6 +34,7 @@ export default function RootLayout({
               <Footer />
             </div>
           </Providers>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

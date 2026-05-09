@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url)
 
-  const params = new URLSearchParams({ apiKey, number: "12", addRecipeInformation: "true" })
+  const number = searchParams.get("number") || "24"
+  const offset = searchParams.get("offset") || "0"
+  const params = new URLSearchParams({ apiKey, number, offset, addRecipeInformation: "true" })
 
   const maxReadyTime = searchParams.get("maxReadyTime")
   if (maxReadyTime) params.set("maxReadyTime", maxReadyTime)
