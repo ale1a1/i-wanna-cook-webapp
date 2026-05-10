@@ -42,11 +42,13 @@ export default function SearchScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
 
-  const [filters, setFilters] = useState({
+  const defaultFilters = {
     prepTime: "any", budget: "any", diet: "any",
     taste: "any", healthiness: "any", cuisine: "any",
     ingredients: [] as string[],
-  })
+  }
+
+  const [filters, setFilters] = useState(defaultFilters)
 
   const fetchRecipes = useCallback(async (f = filters) => {
     setLoading(true)
@@ -75,6 +77,15 @@ export default function SearchScreen() {
       fetchRecipes({ prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] })
     }
   }, [route.params?.surprise])
+
+  const hasActiveFilters =
+    filters.prepTime !== "any" ||
+    filters.budget !== "any" ||
+    filters.diet !== "any" ||
+    filters.taste !== "any" ||
+    filters.healthiness !== "any" ||
+    filters.cuisine !== "any" ||
+    filters.ingredients.length > 0
 
   const addIngredient = () => {
     if (ingredientInput.trim()) {
@@ -113,11 +124,13 @@ export default function SearchScreen() {
         <TouchableOpacity style={styles.filterToggle} onPress={() => setFiltersOpen(true)}>
           <Ionicons name="options-outline" size={20} color={colors.primary} />
           <Text style={styles.filterToggleText}>Filters</Text>
-          {Object.values(filters).some(v => v !== "any" && (Array.isArray(v) ? v.length > 0 : true) && v !== "any") && (
-            <View style={styles.filterDot} />
-          )}
+          {hasActiveFilters && <View style={styles.filterDot} />}
         </TouchableOpacity>
-        <TouchableOpacity style={styles.applyBtn} onPress={() => fetchRecipes()}>
+        <TouchableOpacity
+          style={[styles.applyBtn, !hasActiveFilters && styles.btnDisabled]}
+          onPress={() => fetchRecipes()}
+          disabled={!hasActiveFilters}
+        >
           <Text style={styles.applyBtnText}>Search</Text>
         </TouchableOpacity>
       </View>
@@ -152,7 +165,11 @@ export default function SearchScreen() {
                   onSubmitEditing={addIngredient}
                   returnKeyType="done"
                 />
-                <TouchableOpacity style={styles.addBtn} onPress={addIngredient}>
+                <TouchableOpacity
+                  style={[styles.addBtn, !ingredientInput.trim() && styles.btnDisabled]}
+                  onPress={addIngredient}
+                  disabled={!ingredientInput.trim()}
+                >
                   <Text style={styles.addBtnText}>Add</Text>
                 </TouchableOpacity>
               </View>
@@ -170,11 +187,19 @@ export default function SearchScreen() {
           </ScrollView>
 
           <View style={styles.modalFooter}>
-            <TouchableOpacity style={styles.resetBtn} onPress={() => setFilters({ prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] })}>
+            <TouchableOpacity
+              style={[styles.resetBtn, !hasActiveFilters && !searched && styles.btnDisabled]}
+              onPress={() => { setFilters(defaultFilters); setSearched(false) }}
+              disabled={!hasActiveFilters && !searched}
+            >
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={styles.resetBtnText}>Reset</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.applyBtnLarge} onPress={() => { setFiltersOpen(false); fetchRecipes() }}>
+            <TouchableOpacity
+              style={[styles.applyBtnLarge, !hasActiveFilters && styles.btnDisabled]}
+              onPress={() => { setFiltersOpen(false); fetchRecipes() }}
+              disabled={!hasActiveFilters}
+            >
               <Text style={styles.applyBtnText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
@@ -273,4 +298,5 @@ const styles = StyleSheet.create({
   resetBtn: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.md },
   resetBtnText: { color: colors.text, fontWeight: "500" },
   applyBtnLarge: { flex: 1, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: radius.md, alignItems: "center" },
+  btnDisabled: { opacity: 0.4 },
 })
