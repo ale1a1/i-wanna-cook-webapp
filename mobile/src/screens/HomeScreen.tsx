@@ -1,0 +1,121 @@
+import React from "react"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { Ionicons } from "@expo/vector-icons"
+import { useNavigation } from "@react-navigation/native"
+import { colors, spacing, radius } from "../lib/theme"
+
+const FEATURES = [
+  { icon: "time-outline", title: "Filter by Time", desc: "Find recipes that fit your schedule." },
+  { icon: "globe-outline", title: "Explore Cuisines", desc: "Browse 27 world cuisines." },
+  { icon: "heart-outline", title: "Track What You Try", desc: "Rate recipes and build your cookbook." },
+]
+
+const HOW_IT_WORKS = [
+  { icon: "options-outline", title: "Set your filters", desc: "Prep time, budget, diet, cuisine and more." },
+  { icon: "restaurant-outline", title: "Browse recipes", desc: "Real recipes with ingredients and steps." },
+  { icon: "cart-outline", title: "Build shopping list", desc: "Add ingredients from any recipe." },
+  { icon: "star-outline", title: "Track what you make", desc: "Log and rate the recipes you've tried." },
+]
+
+export default function HomeScreen() {
+  const navigation = useNavigation<any>()
+
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+    <ScrollView contentContainerStyle={styles.content}>
+      {/* Hero */}
+      <View style={styles.hero}>
+        <View style={styles.iconCircle}>
+          <Ionicons name="restaurant" size={48} color={colors.primary} />
+        </View>
+        <Text style={styles.heroTitle}>What Should I Cook?</Text>
+        <Text style={styles.heroSub}>
+          Discover your next favourite meal. Filter by ingredients, diet, cuisine, budget and more.
+        </Text>
+        <View style={styles.heroButtons}>
+          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate("Search")}>
+            <Ionicons name="search" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryBtnText}>Find Recipes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.outlineBtn} onPress={() => navigation.navigate("Search", { surprise: true })}>
+            <Ionicons name="shuffle" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+            <Text style={styles.outlineBtnText}>Surprise Me</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Features */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Everything you need to decide</Text>
+        {FEATURES.map((f) => (
+          <View key={f.title} style={styles.featureRow}>
+            <View style={styles.featureIcon}>
+              <Ionicons name={f.icon as any} size={24} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureTitle}>{f.title}</Text>
+              <Text style={styles.featureDesc}>{f.desc}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* How it works */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>How it works</Text>
+        {HOW_IT_WORKS.map((s, i) => (
+          <View key={s.title} style={styles.stepRow}>
+            <View style={styles.stepBadge}>
+              <Ionicons name={s.icon as any} size={20} color={colors.primary} />
+              <View style={styles.stepNum}>
+                <Text style={styles.stepNumText}>{i + 1}</Text>
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.featureTitle}>{s.title}</Text>
+              <Text style={styles.featureDesc}>{s.desc}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* CTA */}
+      <View style={styles.cta}>
+        <Text style={styles.ctaTitle}>Ready to cook something great?</Text>
+        <Text style={styles.ctaSub}>No sign-up needed to start searching.</Text>
+        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate("Search")}>
+          <Text style={styles.primaryBtnText}>Get Started</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+    </SafeAreaView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { paddingBottom: 40 },
+  hero: { alignItems: "center", paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: 40, backgroundColor: colors.background },
+  iconCircle: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  heroTitle: { fontSize: 30, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 12 },
+  heroSub: { fontSize: 16, color: colors.mutedForeground, textAlign: "center", marginBottom: 28, lineHeight: 24 },
+  heroButtons: { flexDirection: "row", gap: 12, flexWrap: "wrap", justifyContent: "center" },
+  primaryBtn: { flexDirection: "row", alignItems: "center", backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: radius.md },
+  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  outlineBtn: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: radius.md },
+  outlineBtnText: { color: colors.primary, fontWeight: "700", fontSize: 16 },
+  section: { paddingHorizontal: spacing.md, paddingVertical: spacing.lg, backgroundColor: colors.card, marginTop: 8 },
+  sectionTitle: { fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center", marginBottom: 20 },
+  featureRow: { flexDirection: "row", alignItems: "flex-start", gap: 14, marginBottom: 16 },
+  featureIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center" },
+  featureTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 2 },
+  featureDesc: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18 },
+  stepRow: { flexDirection: "row", alignItems: "flex-start", gap: 14, marginBottom: 16 },
+  stepBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center", position: "relative" },
+  stepNum: { position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: 9, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  stepNumText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  cta: { alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: 40 },
+  ctaTitle: { fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center", marginBottom: 8 },
+  ctaSub: { fontSize: 14, color: colors.mutedForeground, marginBottom: 20 },
+})
