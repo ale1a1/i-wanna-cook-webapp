@@ -199,7 +199,7 @@ export default function SearchScreen() {
       {loading ? (
         <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
       ) : error ? (
-        <ErrorCard error={error} screen="Search" onRetry={() => fetchRecipes()} retrying={loading} />
+        <ErrorCard key={error} error={error} screen="Search" onRetry={() => fetchRecipes()} retrying={loading} />
       ) : !searched ? (
         <View style={s.center}><Ionicons name="search" size={48} color={colors.muted} /><Text style={s.emptyText}>Set filters and tap Search</Text></View>
       ) : recipes.length === 0 ? (
