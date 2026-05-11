@@ -1,6 +1,6 @@
 import "react-native-gesture-handler"
 import React, { Component } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native"
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
@@ -11,10 +11,11 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context"
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null }
   static getDerivedStateFromError(e: Error) { return { error: e.message || String(e) } }
-  report() {
-    const subject = encodeURIComponent("App Crash Report")
-    const body = encodeURIComponent(`Hi,\n\nThe What Should I Cook app crashed:\n\n${this.state.error}\n\nPlease fix it!`)
-    Linking.openURL(`mailto:alessandro.dev.ladu@gmail.com?subject=${subject}&body=${body}`)
+  async report() {
+    const result = await reportError(this.state.error ?? "Unknown crash", "App crash")
+    if (result === "sent") Alert.alert("Reported", "The developer has been notified.")
+    else if (result === "cooldown") Alert.alert("Already reported", "You've already sent a report recently.")
+    else Alert.alert("Failed", "Could not send report.")
   }
   render() {
     if (this.state.error) {
@@ -49,6 +50,7 @@ const eb = StyleSheet.create({
 
 import { AuthProvider, useAuth } from "./src/context/AuthContext"
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
+import { reportError } from "./src/lib/reportError"
 import HomeScreen from "./src/screens/HomeScreen"
 import SearchScreen from "./src/screens/SearchScreen"
 import RecipeDetailScreen from "./src/screens/RecipeDetailScreen"

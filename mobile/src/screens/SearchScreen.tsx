@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal, Linking } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
+import { reportError } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
 import { spacing, radius } from "../lib/theme"
 
@@ -57,12 +58,6 @@ function buildSearchParams(f: { prepTime: string; budget: string; diet: string; 
   if (f.ingredients.length) params.set("includeIngredients", f.ingredients.join(","))
 
   return params
-}
-
-function reportError(error: string) {
-  const subject = encodeURIComponent("App Error Report")
-  const body = encodeURIComponent(`Hi,\n\nI encountered an error in the What Should I Cook app:\n\n${error}\n\nPlease fix it!`)
-  Linking.openURL(`mailto:alessandro.dev.ladu@gmail.com?subject=${subject}&body=${body}`)
 }
 
 export default function SearchScreen() {
@@ -193,7 +188,12 @@ export default function SearchScreen() {
             <Ionicons name="refresh" size={16} color="#fff" style={{ marginRight: 6 }} />
             <Text style={s.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.reportBtn} onPress={() => reportError(error)}>
+          <TouchableOpacity style={s.reportBtn} onPress={async () => {
+            const result = await reportError(error, "Search")
+            if (result === "sent") Alert.alert("Reported", "The developer has been notified.")
+            else if (result === "cooldown") Alert.alert("Already reported", "You've already sent a report recently.")
+            else Alert.alert("Failed", "Could not send report. Please try again later.")
+          }}>
             <Ionicons name="mail-outline" size={16} color={colors.mutedForeground} style={{ marginRight: 6 }} />
             <Text style={s.reportBtnText}>Report to developer</Text>
           </TouchableOpacity>
