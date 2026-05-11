@@ -1,11 +1,51 @@
 import "react-native-gesture-handler"
-import React from "react"
+import React, { Component } from "react"
+import { View, Text, TouchableOpacity, StyleSheet, Linking } from "react-native"
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
-import { SafeAreaProvider } from "react-native-safe-area-context"
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context"
+
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
+  state = { error: null }
+  static getDerivedStateFromError(e: Error) { return { error: e.message || String(e) } }
+  report() {
+    const subject = encodeURIComponent("App Crash Report")
+    const body = encodeURIComponent(`Hi,\n\nThe What Should I Cook app crashed:\n\n${this.state.error}\n\nPlease fix it!`)
+    Linking.openURL(`mailto:alessandro.dev.ladu@gmail.com?subject=${subject}&body=${body}`)
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <SafeAreaView style={eb.container}>
+          <Ionicons name="alert-circle-outline" size={56} color="#ef4444" />
+          <Text style={eb.title}>Something went wrong</Text>
+          <Text style={eb.msg}>{this.state.error}</Text>
+          <TouchableOpacity style={eb.retryBtn} onPress={() => this.setState({ error: null })}>
+            <Text style={eb.retryText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={eb.reportBtn} onPress={() => this.report()}>
+            <Ionicons name="mail-outline" size={16} color="#64748b" style={{ marginRight: 6 }} />
+            <Text style={eb.reportText}>Report to developer</Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      )
+    }
+    return this.props.children
+  }
+}
+
+const eb = StyleSheet.create({
+  container: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32, backgroundColor: "#0f1117" },
+  title: { fontSize: 20, fontWeight: "700", color: "#f1f5f9" },
+  msg: { fontSize: 13, color: "#94a3b8", textAlign: "center" },
+  retryBtn: { backgroundColor: "#f97316", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 4 },
+  retryText: { color: "#fff", fontWeight: "700" },
+  reportBtn: { flexDirection: "row", alignItems: "center", marginTop: 4 },
+  reportText: { fontSize: 13, color: "#64748b", textDecorationLine: "underline" },
+})
 
 import { AuthProvider, useAuth } from "./src/context/AuthContext"
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
@@ -88,12 +128,14 @@ function AppContent() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   )
 }

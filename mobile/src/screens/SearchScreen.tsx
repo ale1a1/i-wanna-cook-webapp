@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal, Linking } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
@@ -20,6 +20,51 @@ const BUDGET_LABELS: Record<string, string> = { any: "Any budget", cheap: "Budge
 const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
 const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
 
+function buildSearchParams(f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[] }): URLSearchParams {
+  const params = new URLSearchParams()
+
+  switch (f.prepTime) {
+    case "under15": params.set("maxReadyTime", "15"); break
+    case "under30": params.set("maxReadyTime", "30"); break
+    case "under60": params.set("maxReadyTime", "60"); break
+    case "over60": params.set("minReadyTime", "60"); break
+  }
+
+  const dietMap: Record<string, string> = { vegetarian: "vegetarian", vegan: "vegan", glutenFree: "gluten free", keto: "ketogenic", paleo: "paleo" }
+  if (f.diet !== "any" && dietMap[f.diet]) params.set("diet", dietMap[f.diet])
+
+  if (f.cuisine !== "any") params.set("cuisine", f.cuisine)
+
+  switch (f.budget) {
+    case "cheap": params.set("maxPricePerServing", "150"); break
+    case "moderate": params.set("minPricePerServing", "150"); params.set("maxPricePerServing", "300"); break
+    case "expensive": params.set("minPricePerServing", "300"); break
+  }
+
+  switch (f.healthiness) {
+    case "healthy": params.set("minHealthScore", "60"); break
+    case "veryHealthy": params.set("minHealthScore", "80"); break
+    case "indulgent": params.set("maxHealthScore", "30"); break
+  }
+
+  switch (f.taste) {
+    case "sweet": params.set("minSweetness", "60"); break
+    case "salty": params.set("minSaltiness", "60"); break
+    case "spicy": params.set("minSpiciness", "40"); break
+    case "savory": params.set("minSavoriness", "60"); break
+  }
+
+  if (f.ingredients.length) params.set("includeIngredients", f.ingredients.join(","))
+
+  return params
+}
+
+function reportError(error: string) {
+  const subject = encodeURIComponent("App Error Report")
+  const body = encodeURIComponent(`Hi,\n\nI encountered an error in the What Should I Cook app:\n\n${error}\n\nPlease fix it!`)
+  Linking.openURL(`mailto:alessandro.dev.ladu@gmail.com?subject=${subject}&body=${body}`)
+}
+
 export default function SearchScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
@@ -29,26 +74,30 @@ export default function SearchScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [error, setError] = useState("")
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[] }
   const [filters, setFilters] = useState(defaultFilters)
 
   const fetchRecipes = useCallback(async (f = filters) => {
-    setLoading(true); setSearched(true)
+    setLoading(true); setSearched(true); setError("")
     try {
-      const params = new URLSearchParams()
-      if (f.prepTime !== "any") params.set("prepTime", f.prepTime)
-      if (f.budget !== "any") params.set("budget", f.budget)
-      if (f.diet !== "any") params.set("diet", f.diet)
-      if (f.taste !== "any") params.set("taste", f.taste)
-      if (f.healthiness !== "any") params.set("healthiness", f.healthiness)
-      if (f.cuisine !== "any") params.set("cuisine", f.cuisine)
-      if (f.ingredients.length) params.set("ingredients", f.ingredients.join(","))
+      const params = buildSearchParams(f)
       const res = await apiFetch(`/api/recipes/search?${params.toString()}`)
       const data = await res.json()
+      if (!res.ok) {
+        const msg = data.error || `Server error ${res.status}`
+        setError(msg)
+        setRecipes([])
+        return
+      }
       setRecipes(data.results || [])
-    } catch { setRecipes([]) }
+    } catch (e: any) {
+      const msg = e?.message || "Network error — check your connection"
+      setError(msg)
+      setRecipes([])
+    }
     finally { setLoading(false) }
   }, [filters])
 
@@ -122,7 +171,7 @@ export default function SearchScreen() {
             </View>
           </ScrollView>
           <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false) }} disabled={!hasActiveFilters && !searched}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false); setError("") }} disabled={!hasActiveFilters && !searched}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
@@ -135,6 +184,20 @@ export default function SearchScreen() {
 
       {loading ? (
         <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+      ) : error ? (
+        <View style={s.center}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.destructive} />
+          <Text style={s.errorTitle}>Something went wrong</Text>
+          <Text style={s.errorMsg}>{error}</Text>
+          <TouchableOpacity style={s.retryBtn} onPress={() => fetchRecipes()}>
+            <Ionicons name="refresh" size={16} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={s.retryBtnText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.reportBtn} onPress={() => reportError(error)}>
+            <Ionicons name="mail-outline" size={16} color={colors.mutedForeground} style={{ marginRight: 6 }} />
+            <Text style={s.reportBtnText}>Report to developer</Text>
+          </TouchableOpacity>
+        </View>
       ) : !searched ? (
         <View style={s.center}><Ionicons name="search" size={48} color={colors.muted} /><Text style={s.emptyText}>Set filters and tap Search</Text></View>
       ) : recipes.length === 0 ? (
@@ -173,9 +236,15 @@ const makeStyles = (colors: any) => StyleSheet.create({
   filterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginLeft: "auto" },
   applyBtn: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: radius.md },
   applyBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
   emptyText: { fontSize: 18, fontWeight: "600", color: colors.text },
   emptySubText: { fontSize: 14, color: colors.mutedForeground },
+  errorTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+  errorMsg: { fontSize: 13, color: colors.mutedForeground, textAlign: "center" },
+  retryBtn: { flexDirection: "row", alignItems: "center", backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: radius.md, marginTop: 4 },
+  retryBtnText: { color: "#fff", fontWeight: "700" },
+  reportBtn: { flexDirection: "row", alignItems: "center", marginTop: 4 },
+  reportBtnText: { fontSize: 13, color: colors.mutedForeground, textDecorationLine: "underline" },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, overflow: "hidden", borderWidth: 1.5, borderColor: colors.border },
   cardImage: { width: "100%", height: 180 },
   cardBody: { padding: spacing.md },

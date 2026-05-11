@@ -1,8 +1,8 @@
-import React from "react"
+import React, { useRef, useCallback } from "react"
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { useTheme } from "../context/ThemeContext"
 import { spacing, radius } from "../lib/theme"
 
@@ -23,10 +23,15 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>()
   const { colors } = useTheme()
   const s = makeStyles(colors)
+  const scrollRef = useRef<ScrollView>(null)
+
+  useFocusEffect(useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
+  }, []))
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
-      <ScrollView contentContainerStyle={s.content}>
+      <ScrollView ref={scrollRef} contentContainerStyle={s.content}>
         <View style={s.hero}>
           <View style={s.iconCircle}>
             <Ionicons name="restaurant" size={48} color={colors.primary} />
