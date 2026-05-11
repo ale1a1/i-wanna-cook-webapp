@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
+import { clearReported, getErrorFingerprint } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
 import { spacing, radius } from "../lib/theme"
 import ErrorCard from "../components/ErrorCard"
@@ -80,6 +81,7 @@ export default function SearchScreen() {
   const triggerMockError = () => {
     const msg = MOCK_ERRORS[mockErrorType % MOCK_ERRORS.length]
     setMockErrorType(n => n + 1)
+    clearReported(getErrorFingerprint(msg, "Search"))
     setError(msg); setSearched(true); setRecipes([])
   }
   const [filtersOpen, setFiltersOpen] = useState(false)

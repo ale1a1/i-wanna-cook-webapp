@@ -13,6 +13,10 @@ export function wasReported(fingerprint: string): boolean {
   return reportedFingerprints.has(fingerprint)
 }
 
+export function clearReported(fingerprint: string): void {
+  reportedFingerprints.delete(fingerprint)
+}
+
 export async function reportError(
   error: string,
   screen: string,
