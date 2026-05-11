@@ -1,18 +1,32 @@
 import { Platform } from "react-native"
 import { apiFetch } from "./api"
 
-let lastReportTime = 0
-const COOLDOWN_MS = 5 * 60 * 1000
+// Track reported errors by fingerprint (screen + message) so each unique error
+// can be reported once, but a different error on the same screen is reportable again
+const reportedFingerprints = new Set<string>()
 
-export async function reportError(error: string, screen?: string): Promise<"sent" | "cooldown" | "failed"> {
-  const now = Date.now()
-  if (now - lastReportTime < COOLDOWN_MS) return "cooldown"
-  lastReportTime = now
+export function getErrorFingerprint(error: string, screen: string): string {
+  return `${screen}::${error.slice(0, 120)}`
+}
+
+export function wasReported(fingerprint: string): boolean {
+  return reportedFingerprints.has(fingerprint)
+}
+
+export async function reportError(
+  error: string,
+  screen: string,
+  fingerprint: string
+): Promise<"sent" | "already_reported" | "failed"> {
+  if (reportedFingerprints.has(fingerprint)) return "already_reported"
   try {
-    await apiFetch("/api/report-error", {
+    const res = await apiFetch("/api/report-error", {
       method: "POST",
       body: JSON.stringify({ error, screen, platform: Platform.OS }),
     })
+    // Mark as reported regardless of server rate-limit response —
+    // the server got it (or it was a duplicate on the server side)
+    reportedFingerprints.add(fingerprint)
     return "sent"
   } catch {
     return "failed"

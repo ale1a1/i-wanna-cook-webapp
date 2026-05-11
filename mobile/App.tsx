@@ -1,56 +1,35 @@
 import "react-native-gesture-handler"
 import React, { Component } from "react"
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native"
+import { View } from "react-native"
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context"
+import { SafeAreaProvider } from "react-native-safe-area-context"
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null }
   static getDerivedStateFromError(e: Error) { return { error: e.message || String(e) } }
-  async report() {
-    const result = await reportError(this.state.error ?? "Unknown crash", "App crash")
-    if (result === "sent") Alert.alert("Reported", "The developer has been notified.")
-    else if (result === "cooldown") Alert.alert("Already reported", "You've already sent a report recently.")
-    else Alert.alert("Failed", "Could not send report.")
-  }
   render() {
     if (this.state.error) {
       return (
-        <SafeAreaView style={eb.container}>
-          <Ionicons name="alert-circle-outline" size={56} color="#ef4444" />
-          <Text style={eb.title}>Something went wrong</Text>
-          <Text style={eb.msg}>{this.state.error}</Text>
-          <TouchableOpacity style={eb.retryBtn} onPress={() => this.setState({ error: null })}>
-            <Text style={eb.retryText}>Try Again</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={eb.reportBtn} onPress={() => this.report()}>
-            <Ionicons name="mail-outline" size={16} color="#64748b" style={{ marginRight: 6 }} />
-            <Text style={eb.reportText}>Report to developer</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
+        <View style={{ flex: 1, backgroundColor: "#0f1117" }}>
+          <ErrorCard
+            error={this.state.error}
+            screen="App crash"
+            onRetry={() => this.setState({ error: null })}
+          />
+        </View>
       )
     }
     return this.props.children
   }
 }
 
-const eb = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32, backgroundColor: "#0f1117" },
-  title: { fontSize: 20, fontWeight: "700", color: "#f1f5f9" },
-  msg: { fontSize: 13, color: "#94a3b8", textAlign: "center" },
-  retryBtn: { backgroundColor: "#f97316", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8, marginTop: 4 },
-  retryText: { color: "#fff", fontWeight: "700" },
-  reportBtn: { flexDirection: "row", alignItems: "center", marginTop: 4 },
-  reportText: { fontSize: 13, color: "#64748b", textDecorationLine: "underline" },
-})
-
 import { AuthProvider, useAuth } from "./src/context/AuthContext"
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
-import { reportError } from "./src/lib/reportError"
+import ErrorCard from "./src/components/ErrorCard"
 import HomeScreen from "./src/screens/HomeScreen"
 import SearchScreen from "./src/screens/SearchScreen"
 import RecipeDetailScreen from "./src/screens/RecipeDetailScreen"
