@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
-import { clearReported, getErrorFingerprint } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
@@ -71,19 +70,6 @@ export default function SearchScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const [mockErrorType, setMockErrorType] = useState(0)
-  const MOCK_ERRORS = [
-    "[402] Daily quota exceeded",
-    "[500] Internal server error",
-    "Network request failed",
-    "[429] Too many requests",
-  ]
-  const triggerMockError = () => {
-    const msg = MOCK_ERRORS[mockErrorType % MOCK_ERRORS.length]
-    setMockErrorType(n => n + 1)
-    clearReported(getErrorFingerprint(msg, "Search"))
-    showError(msg, "Search", () => {})
-  }
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[] }
@@ -144,11 +130,6 @@ export default function SearchScreen() {
         <TouchableOpacity style={[s.applyBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => fetchRecipes()} disabled={!hasActiveFilters}>
           <Text style={s.applyBtnText}>Search</Text>
         </TouchableOpacity>
-        {__DEV__ && (
-          <TouchableOpacity style={s.devBtn} onPress={triggerMockError}>
-            <Text style={s.devBtnText}>ERR</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet">
@@ -269,6 +250,4 @@ const makeStyles = (colors: any) => StyleSheet.create({
   resetBtnText: { color: colors.text, fontWeight: "500" },
   applyBtnLarge: { flex: 1, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: radius.md, alignItems: "center" },
   btnDisabled: { opacity: 0.4 },
-  devBtn: { backgroundColor: "#7c3aed", paddingHorizontal: 10, paddingVertical: 10, borderRadius: radius.md },
-  devBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
 })
