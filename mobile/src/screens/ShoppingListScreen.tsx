@@ -1,29 +1,21 @@
 import React, { useEffect, useState, useCallback } from "react"
-import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Alert
-} from "react-native"
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
-import { colors, spacing, radius } from "../lib/theme"
+import { useTheme } from "../context/ThemeContext"
+import { spacing, radius } from "../lib/theme"
 
-type ShoppingItem = {
-  id: string
-  recipe_id: string
-  recipe_title: string
-  ingredient_name: string
-  ingredient_amount: string
-  checked: boolean
-}
-
+type ShoppingItem = { id: string; recipe_id: string; recipe_title: string; ingredient_name: string; ingredient_amount: string; checked: boolean }
 type Group = { recipeId: string; title: string; items: ShoppingItem[]; collapsed: boolean }
 
 export default function ShoppingListScreen() {
   const { user } = useAuth()
   const navigation = useNavigation<any>()
+  const { colors } = useTheme()
+  const s = makeStyles(colors)
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -36,14 +28,11 @@ export default function ShoppingListScreen() {
       const items: ShoppingItem[] = data.items || []
       const map = new Map<string, Group>()
       items.forEach(item => {
-        if (!map.has(item.recipe_id)) {
-          map.set(item.recipe_id, { recipeId: item.recipe_id, title: item.recipe_title, items: [], collapsed: false })
-        }
+        if (!map.has(item.recipe_id)) map.set(item.recipe_id, { recipeId: item.recipe_id, title: item.recipe_title, items: [], collapsed: false })
         map.get(item.recipe_id)!.items.push(item)
       })
       setGroups(Array.from(map.values()))
-    } catch {}
-    finally { setLoading(false) }
+    } catch {} finally { setLoading(false) }
   }, [user])
 
   useFocusEffect(useCallback(() => {
@@ -52,89 +41,57 @@ export default function ShoppingListScreen() {
   }, [user, fetchList]))
 
   const toggleCheck = async (item: ShoppingItem) => {
-    setGroups(prev => prev.map(g => ({
-      ...g,
-      items: g.items.map(i => i.id === item.id ? { ...i, checked: !i.checked } : i)
-    })))
-    await apiFetch("/api/shopping-list/check", {
-      method: "PATCH",
-      body: JSON.stringify({ userId: user!.id, itemId: item.id, checked: !item.checked }),
-    })
+    setGroups(prev => prev.map(g => ({ ...g, items: g.items.map(i => i.id === item.id ? { ...i, checked: !i.checked } : i) })))
+    await apiFetch("/api/shopping-list/check", { method: "PATCH", body: JSON.stringify({ userId: user!.id, itemId: item.id, checked: !item.checked }) })
   }
 
   const deleteItem = async (itemId: string, recipeId: string) => {
-    setGroups(prev => prev.map(g => g.recipeId === recipeId
-      ? { ...g, items: g.items.filter(i => i.id !== itemId) }
-      : g
-    ).filter(g => g.items.length > 0))
-    await apiFetch("/api/shopping-list", {
-      method: "DELETE",
-      body: JSON.stringify({ userId: user!.id, itemId }),
-    })
+    setGroups(prev => prev.map(g => g.recipeId === recipeId ? { ...g, items: g.items.filter(i => i.id !== itemId) } : g).filter(g => g.items.length > 0))
+    await apiFetch("/api/shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id, itemId }) })
   }
 
   const deleteByRecipe = async (recipeId: string) => {
     setGroups(prev => prev.filter(g => g.recipeId !== recipeId))
-    await apiFetch("/api/shopping-list", {
-      method: "DELETE",
-      body: JSON.stringify({ userId: user!.id, recipeId }),
-    })
+    await apiFetch("/api/shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id, recipeId }) })
   }
 
   const clearAll = () => {
     Alert.alert("Clear all?", "Remove everything from your shopping list?", [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Clear all", style: "destructive", onPress: async () => {
-          setGroups([])
-          await apiFetch("/api/shopping-list", {
-            method: "DELETE",
-            body: JSON.stringify({ userId: user!.id }),
-          })
-        }
-      }
+      { text: "Clear all", style: "destructive", onPress: async () => { setGroups([]); await apiFetch("/api/shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id }) }) } }
     ])
   }
 
-  const toggleCollapse = (recipeId: string) => {
-    setGroups(prev => prev.map(g => g.recipeId === recipeId ? { ...g, collapsed: !g.collapsed } : g))
-  }
+  const toggleCollapse = (recipeId: string) => setGroups(prev => prev.map(g => g.recipeId === recipeId ? { ...g, collapsed: !g.collapsed } : g))
 
   if (!user) return null
-
-  if (loading) return (
-    <View style={styles.center}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>
-  )
+  if (loading) return <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
 
   const totalItems = groups.reduce((acc, g) => acc + g.items.length, 0)
   const checkedItems = groups.reduce((acc, g) => acc + g.items.filter(i => i.checked).length, 0)
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
+    <SafeAreaView style={s.container} edges={["top"]}>
+      <View style={s.header}>
+        <View style={s.headerLeft}>
           <Ionicons name="cart" size={22} color={colors.primary} />
-          <Text style={styles.headerTitle}>Shopping List</Text>
-          {totalItems > 0 && <Text style={styles.headerCount}>{checkedItems}/{totalItems}</Text>}
+          <Text style={s.headerTitle}>Shopping List</Text>
+          {totalItems > 0 && <Text style={s.headerCount}>{checkedItems}/{totalItems}</Text>}
         </View>
         {totalItems > 0 && (
-          <TouchableOpacity style={styles.clearBtn} onPress={clearAll}>
+          <TouchableOpacity style={s.clearBtn} onPress={clearAll}>
             <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-            <Text style={styles.clearBtnText}>Clear All</Text>
+            <Text style={s.clearBtnText}>Clear All</Text>
           </TouchableOpacity>
         )}
       </View>
-
       {groups.length === 0 ? (
-        <View style={styles.empty}>
+        <View style={s.empty}>
           <Ionicons name="cart-outline" size={56} color={colors.muted} />
-          <Text style={styles.emptyTitle}>Your shopping list is empty</Text>
-          <Text style={styles.emptySubText}>Open any recipe and add ingredients from the Ingredients tab.</Text>
-          <TouchableOpacity style={styles.browseBtn} onPress={() => navigation.navigate("Search")}>
-            <Text style={styles.browseBtnText}>Browse Recipes</Text>
+          <Text style={s.emptyTitle}>Your shopping list is empty</Text>
+          <Text style={s.emptySubText}>Open any recipe and add ingredients from the Ingredients tab.</Text>
+          <TouchableOpacity style={s.browseBtn} onPress={() => navigation.navigate("Search")}>
+            <Text style={s.browseBtnText}>Browse Recipes</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -145,36 +102,25 @@ export default function ShoppingListScreen() {
           renderItem={({ item: group }) => {
             const allChecked = group.items.every(i => i.checked)
             return (
-              <View style={[styles.card, allChecked && styles.cardDimmed]}>
-                {/* Recipe header */}
-                <View style={styles.cardHeader}>
-                  <TouchableOpacity style={styles.cardTitleRow} onPress={() => toggleCollapse(group.recipeId)}>
-                    <Ionicons
-                      name={group.collapsed ? "chevron-down" : "chevron-up"}
-                      size={16} color={colors.mutedForeground}
-                    />
-                    <Text style={styles.cardTitle} numberOfLines={2}>{group.title}</Text>
-                    <Text style={styles.cardCount}>({group.items.length})</Text>
+              <View style={[s.card, allChecked && s.cardDimmed]}>
+                <View style={s.cardHeader}>
+                  <TouchableOpacity style={s.cardTitleRow} onPress={() => toggleCollapse(group.recipeId)}>
+                    <Ionicons name={group.collapsed ? "chevron-down" : "chevron-up"} size={16} color={colors.mutedForeground} />
+                    <Text style={s.cardTitle} numberOfLines={2}>{group.title}</Text>
+                    <Text style={s.cardCount}>({group.items.length})</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => deleteByRecipe(group.recipeId)} style={styles.deleteRecipeBtn}>
+                  <TouchableOpacity onPress={() => deleteByRecipe(group.recipeId)} style={s.deleteRecipeBtn}>
                     <Ionicons name="trash-outline" size={17} color={colors.destructive} />
                   </TouchableOpacity>
                 </View>
-
-                {/* Items */}
                 {!group.collapsed && group.items.map(item => (
-                  <View key={item.id} style={styles.itemRow}>
-                    <TouchableOpacity onPress={() => toggleCheck(item)} style={styles.checkbox}>
-                      <Ionicons
-                        name={item.checked ? "checkbox" : "square-outline"}
-                        size={22} color={item.checked ? colors.primary : colors.muted}
-                      />
+                  <View key={item.id} style={s.itemRow}>
+                    <TouchableOpacity onPress={() => toggleCheck(item)} style={s.checkbox}>
+                      <Ionicons name={item.checked ? "checkbox" : "square-outline"} size={22} color={item.checked ? colors.primary : colors.muted} />
                     </TouchableOpacity>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.itemName, item.checked && styles.itemChecked]}>{item.ingredient_name}</Text>
-                      {item.ingredient_amount ? (
-                        <Text style={styles.itemAmount}>{item.ingredient_amount}</Text>
-                      ) : null}
+                      <Text style={[s.itemName, item.checked && s.itemChecked]}>{item.ingredient_name}</Text>
+                      {item.ingredient_amount ? <Text style={s.itemAmount}>{item.ingredient_amount}</Text> : null}
                     </View>
                     <TouchableOpacity onPress={() => deleteItem(item.id, group.recipeId)}>
                       <Ionicons name="trash-outline" size={16} color={colors.destructive} />
@@ -190,7 +136,7 @@ export default function ShoppingListScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },

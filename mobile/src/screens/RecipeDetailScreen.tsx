@@ -7,7 +7,8 @@ import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
-import { colors, spacing, radius } from "../lib/theme"
+import { useTheme } from "../context/ThemeContext"
+import { spacing, radius } from "../lib/theme"
 
 type Tab = "overview" | "ingredients" | "steps"
 
@@ -16,6 +17,8 @@ export default function RecipeDetailScreen() {
   const route = useRoute<any>()
   const { id } = route.params
   const { user } = useAuth()
+  const { colors } = useTheme()
+  const s = makeStyles(colors)
 
   const [recipe, setRecipe] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -114,13 +117,13 @@ export default function RecipeDetailScreen() {
   }
 
   if (loading) return (
-    <View style={[styles.center, { flex: 1 }]}>
+    <View style={[s.center, { flex: 1 }]}>
       <ActivityIndicator size="large" color={colors.primary} />
     </View>
   )
 
   if (error || !recipe) return (
-    <View style={[styles.center, { flex: 1 }]}>
+    <View style={[s.center, { flex: 1 }]}>
       <Text style={{ color: colors.text }}>{error || "Recipe not found"}</Text>
     </View>
   )
@@ -128,74 +131,69 @@ export default function RecipeDetailScreen() {
   const allAdded = recipe.extendedIngredients?.every((i: any) => addedIngredients.has(i.name))
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Image */}
-      <Image source={{ uri: recipe.image }} style={styles.heroImage} resizeMode="cover" />
+    <ScrollView style={s.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      <Image source={{ uri: recipe.image }} style={s.heroImage} resizeMode="cover" />
 
-      {/* Action bar */}
-      <View style={styles.actionBar}>
-        <TouchableOpacity style={[styles.actionBtn, favourited && styles.actionBtnActive]} onPress={toggleFavourite}>
+      <View style={s.actionBar}>
+        <TouchableOpacity style={[s.actionBtn, favourited && s.actionBtnActive]} onPress={toggleFavourite}>
           <Ionicons name={favourited ? "heart" : "heart-outline"} size={20} color={favourited ? colors.primary : colors.text} />
-          <Text style={[styles.actionBtnText, favourited && { color: colors.primary }]}>
+          <Text style={[s.actionBtnText, favourited && { color: colors.primary }]}>
             {favourited ? "Saved" : "Save"}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionBtn, isTried && styles.actionBtnActive]} onPress={markTried}>
+        <TouchableOpacity style={[s.actionBtn, isTried && s.actionBtnActive]} onPress={markTried}>
           <Ionicons name={isTried ? "checkmark-circle" : "checkmark-circle-outline"} size={20} color={isTried ? colors.green : colors.text} />
-          <Text style={[styles.actionBtnText, isTried && { color: colors.green }]}>
+          <Text style={[s.actionBtnText, isTried && { color: colors.green }]}>
             {isTried ? "Tried" : "Mark tried"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Title & meta */}
-      <View style={styles.header}>
-        <Text style={styles.title}>{recipe.title}</Text>
-        <View style={styles.metaRow}>
+      <View style={s.header}>
+        <Text style={s.title}>{recipe.title}</Text>
+        <View style={s.metaRow}>
           {recipe.readyInMinutes > 0 && (
-            <View style={styles.metaChip}>
+            <View style={s.metaChip}>
               <Ionicons name="time-outline" size={14} color={colors.mutedForeground} />
-              <Text style={styles.metaText}>{recipe.readyInMinutes} min</Text>
+              <Text style={s.metaText}>{recipe.readyInMinutes} min</Text>
             </View>
           )}
           {recipe.servings > 0 && (
-            <View style={styles.metaChip}>
+            <View style={s.metaChip}>
               <Ionicons name="people-outline" size={14} color={colors.mutedForeground} />
-              <Text style={styles.metaText}>{recipe.servings} servings</Text>
+              <Text style={s.metaText}>{recipe.servings} servings</Text>
             </View>
           )}
-          {recipe.vegan && <View style={styles.badge}><Text style={styles.badgeText}>Vegan</Text></View>}
-          {recipe.vegetarian && !recipe.vegan && <View style={styles.badge}><Text style={styles.badgeText}>Vegetarian</Text></View>}
-          {recipe.glutenFree && <View style={styles.badge}><Text style={styles.badgeText}>Gluten-Free</Text></View>}
+          {recipe.vegan && <View style={s.badge}><Text style={s.badgeText}>Vegan</Text></View>}
+          {recipe.vegetarian && !recipe.vegan && <View style={s.badge}><Text style={s.badgeText}>Vegetarian</Text></View>}
+          {recipe.glutenFree && <View style={s.badge}><Text style={s.badgeText}>Gluten-Free</Text></View>}
         </View>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabs}>
+      <View style={s.tabs}>
         {(["overview", "ingredients", "steps"] as Tab[]).map(t => (
-          <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
+          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
+            <Text style={[s.tabText, tab === t && s.tabTextActive]}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Tab content */}
-      <View style={styles.tabContent}>
+      <View style={s.tabContent}>
         {tab === "overview" && (
           <View style={{ gap: 16 }}>
             {recipe.summary ? (
-              <Text style={styles.summary}>
+              <Text style={s.summary}>
                 {recipe.summary.replace(/<[^>]+>/g, "").slice(0, 400)}...
               </Text>
             ) : null}
             {recipe.nutrition?.nutrients && (
-              <View style={styles.nutritionGrid}>
+              <View style={s.nutritionGrid}>
                 {recipe.nutrition.nutrients.slice(0, 6).map((n: any) => (
-                  <View key={n.name} style={styles.nutritionCard}>
-                    <Text style={styles.nutritionValue}>{Math.round(n.amount)}{n.unit}</Text>
-                    <Text style={styles.nutritionLabel}>{n.name}</Text>
+                  <View key={n.name} style={s.nutritionCard}>
+                    <Text style={s.nutritionValue}>{Math.round(n.amount)}{n.unit}</Text>
+                    <Text style={s.nutritionLabel}>{n.name}</Text>
                   </View>
                 ))}
               </View>
@@ -206,7 +204,7 @@ export default function RecipeDetailScreen() {
         {tab === "ingredients" && (
           <View>
             <TouchableOpacity
-              style={[styles.addAllBtn, allAdded && styles.addAllBtnDone]}
+              style={[s.addAllBtn, allAdded && s.addAllBtnDone]}
               onPress={addAllIngredients}
               disabled={addingAll || allAdded}
             >
@@ -215,19 +213,19 @@ export default function RecipeDetailScreen() {
               ) : (
                 <Ionicons name="cart" size={18} color="#fff" style={{ marginRight: 8 }} />
               )}
-              <Text style={styles.addAllBtnText}>{allAdded ? "All Added" : "Add All to Shopping List"}</Text>
+              <Text style={s.addAllBtnText}>{allAdded ? "All Added" : "Add All to Shopping List"}</Text>
             </TouchableOpacity>
 
             {recipe.extendedIngredients?.map((ing: any) => {
               const added = addedIngredients.has(ing.name)
               return (
-                <View key={ing.id} style={styles.ingredientRow}>
+                <View key={ing.id} style={s.ingredientRow}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.ingredientName}>{ing.name}</Text>
-                    <Text style={styles.ingredientAmount}>{ing.original}</Text>
+                    <Text style={s.ingredientName}>{ing.name}</Text>
+                    <Text style={s.ingredientAmount}>{ing.original}</Text>
                   </View>
                   <TouchableOpacity
-                    style={[styles.cartBtn, added && styles.cartBtnAdded]}
+                    style={[s.cartBtn, added && s.cartBtnAdded]}
                     onPress={() => toggleIngredient(ing.name, ing.original)}
                   >
                     <Ionicons name={added ? "remove" : "cart-outline"} size={16} color={added ? colors.destructive : colors.primary} />
@@ -241,11 +239,11 @@ export default function RecipeDetailScreen() {
         {tab === "steps" && (
           <View style={{ gap: 16 }}>
             {recipe.analyzedInstructions?.[0]?.steps?.map((step: any) => (
-              <View key={step.number} style={styles.step}>
-                <View style={styles.stepNum}>
-                  <Text style={styles.stepNumText}>{step.number}</Text>
+              <View key={step.number} style={s.step}>
+                <View style={s.stepNum}>
+                  <Text style={s.stepNumText}>{step.number}</Text>
                 </View>
-                <Text style={styles.stepText}>{step.step}</Text>
+                <Text style={s.stepText}>{step.step}</Text>
               </View>
             )) ?? <Text style={{ color: colors.mutedForeground }}>No instructions available.</Text>}
           </View>
@@ -255,7 +253,7 @@ export default function RecipeDetailScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
   heroImage: { width: "100%", height: 240 },

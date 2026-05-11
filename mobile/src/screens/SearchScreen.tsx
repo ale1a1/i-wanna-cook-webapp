@@ -1,25 +1,13 @@
 import React, { useEffect, useState, useCallback } from "react"
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Image, FlatList, Modal, Pressable
-} from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
-import { colors, spacing, radius } from "../lib/theme"
+import { useTheme } from "../context/ThemeContext"
+import { spacing, radius } from "../lib/theme"
 
-type Recipe = {
-  id: number
-  title: string
-  image: string
-  readyInMinutes: number
-  servings: number
-  pricePerServing: number
-  vegan: boolean
-  vegetarian: boolean
-  glutenFree: boolean
-}
+type Recipe = { id: number; title: string; image: string; readyInMinutes: number; servings: number; pricePerServing: number; vegan: boolean; vegetarian: boolean; glutenFree: boolean }
 
 const DIETS = ["any", "vegetarian", "vegan", "glutenFree", "keto", "paleo"]
 const CUISINES = ["any", "italian", "mexican", "thai", "indian", "chinese", "french", "japanese", "mediterranean", "american", "greek"]
@@ -27,7 +15,6 @@ const PREP_TIMES = ["any", "under15", "under30", "under60", "over60"]
 const BUDGETS = ["any", "cheap", "moderate", "expensive"]
 const HEALTHINESS = ["any", "healthy", "veryHealthy", "indulgent"]
 const TASTES = ["any", "sweet", "salty", "spicy", "savory"]
-
 const PREP_LABELS: Record<string, string> = { any: "Any time", under15: "< 15 min", under30: "< 30 min", under60: "< 1 hour", over60: "> 1 hour" }
 const BUDGET_LABELS: Record<string, string> = { any: "Any budget", cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium" }
 const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
@@ -36,23 +23,19 @@ const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet",
 export default function SearchScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
+  const { colors } = useTheme()
+  const s = makeStyles(colors)
+
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
-
-  const defaultFilters = {
-    prepTime: "any", budget: "any", diet: "any",
-    taste: "any", healthiness: "any", cuisine: "any",
-    ingredients: [] as string[],
-  }
-
+  const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[] }
   const [filters, setFilters] = useState(defaultFilters)
 
   const fetchRecipes = useCallback(async (f = filters) => {
-    setLoading(true)
-    setSearched(true)
+    setLoading(true); setSearched(true)
     try {
       const params = new URLSearchParams()
       if (f.prepTime !== "any") params.set("prepTime", f.prepTime)
@@ -65,52 +48,27 @@ export default function SearchScreen() {
       const res = await apiFetch(`/api/recipes/search?${params.toString()}`)
       const data = await res.json()
       setRecipes(data.results || [])
-    } catch {
-      setRecipes([])
-    } finally {
-      setLoading(false)
-    }
+    } catch { setRecipes([]) }
+    finally { setLoading(false) }
   }, [filters])
 
   useEffect(() => {
-    if (route.params?.surprise) {
-      fetchRecipes({ prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] })
-    }
+    if (route.params?.surprise) fetchRecipes(defaultFilters)
   }, [route.params?.surprise])
 
-  const hasActiveFilters =
-    filters.prepTime !== "any" ||
-    filters.budget !== "any" ||
-    filters.diet !== "any" ||
-    filters.taste !== "any" ||
-    filters.healthiness !== "any" ||
-    filters.cuisine !== "any" ||
-    filters.ingredients.length > 0
+  const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.ingredients.length > 0
 
   const addIngredient = () => {
-    if (ingredientInput.trim()) {
-      setFilters(f => ({ ...f, ingredients: [...f.ingredients, ingredientInput.trim()] }))
-      setIngredientInput("")
-    }
-  }
-
-  const removeIngredient = (ing: string) => {
-    setFilters(f => ({ ...f, ingredients: f.ingredients.filter(i => i !== ing) }))
+    if (ingredientInput.trim()) { setFilters(f => ({ ...f, ingredients: [...f.ingredients, ingredientInput.trim()] })); setIngredientInput("") }
   }
 
   const FilterPicker = ({ label, values, labelMap, field }: { label: string; values: string[]; labelMap: Record<string, string>; field: keyof typeof filters }) => (
-    <View style={styles.filterGroup}>
-      <Text style={styles.filterLabel}>{label}</Text>
+    <View style={s.filterGroup}>
+      <Text style={s.filterLabel}>{label}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {values.map(v => (
-          <TouchableOpacity
-            key={v}
-            style={[styles.pill, filters[field] === v && styles.pillActive]}
-            onPress={() => setFilters(f => ({ ...f, [field]: v }))}
-          >
-            <Text style={[styles.pillText, filters[field] === v && styles.pillTextActive]}>
-              {labelMap[v] ?? v.charAt(0).toUpperCase() + v.slice(1)}
-            </Text>
+          <TouchableOpacity key={v} style={[s.pill, filters[field] === v && s.pillActive]} onPress={() => setFilters(f => ({ ...f, [field]: v }))}>
+            <Text style={[s.pillText, filters[field] === v && s.pillTextActive]}>{labelMap[v] ?? v.charAt(0).toUpperCase() + v.slice(1)}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -118,66 +76,44 @@ export default function SearchScreen() {
   )
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      {/* Filter toggle */}
-      <View style={styles.topBar}>
-        <TouchableOpacity style={styles.filterToggle} onPress={() => setFiltersOpen(true)}>
+    <SafeAreaView style={s.container} edges={["top"]}>
+      <View style={s.topBar}>
+        <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
           <Ionicons name="options-outline" size={20} color={colors.primary} />
-          <Text style={styles.filterToggleText}>Filters</Text>
-          {hasActiveFilters && <View style={styles.filterDot} />}
+          <Text style={s.filterToggleText}>Filters</Text>
+          {hasActiveFilters && <View style={s.filterDot} />}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.applyBtn, !hasActiveFilters && styles.btnDisabled]}
-          onPress={() => fetchRecipes()}
-          disabled={!hasActiveFilters}
-        >
-          <Text style={styles.applyBtnText}>Search</Text>
+        <TouchableOpacity style={[s.applyBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => fetchRecipes()} disabled={!hasActiveFilters}>
+          <Text style={s.applyBtnText}>Search</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Filters modal */}
       <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Filter Recipes</Text>
-            <TouchableOpacity onPress={() => setFiltersOpen(false)}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
+        <View style={s.modalContainer}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Filter Recipes</Text>
+            <TouchableOpacity onPress={() => setFiltersOpen(false)}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
           </View>
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
             <FilterPicker label="Prep Time" values={PREP_TIMES} labelMap={PREP_LABELS} field="prepTime" />
             <FilterPicker label="Budget" values={BUDGETS} labelMap={BUDGET_LABELS} field="budget" />
-            <FilterPicker label="Diet" values={DIETS} labelMap={{any:"Any diet",vegetarian:"Vegetarian",vegan:"Vegan",glutenFree:"Gluten-free",keto:"Keto",paleo:"Paleo"}} field="diet" />
-            <FilterPicker label="Cuisine" values={CUISINES} labelMap={{any:"Any cuisine",italian:"Italian",mexican:"Mexican",thai:"Thai",indian:"Indian",chinese:"Chinese",french:"French",japanese:"Japanese",mediterranean:"Mediterranean",american:"American",greek:"Greek"}} field="cuisine" />
+            <FilterPicker label="Diet" values={DIETS} labelMap={{ any: "Any diet", vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }} field="diet" />
+            <FilterPicker label="Cuisine" values={CUISINES} labelMap={{ any: "Any cuisine", italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese", french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek" }} field="cuisine" />
             <FilterPicker label="Healthiness" values={HEALTHINESS} labelMap={HEALTH_LABELS} field="healthiness" />
             <FilterPicker label="Taste" values={TASTES} labelMap={TASTE_LABELS} field="taste" />
-
-            {/* Ingredients */}
-            <View style={styles.filterGroup}>
-              <Text style={styles.filterLabel}>Ingredients</Text>
-              <View style={styles.ingredientRow}>
-                <TextInput
-                  style={styles.ingredientInput}
-                  value={ingredientInput}
-                  onChangeText={setIngredientInput}
-                  placeholder="e.g. chicken, garlic..."
-                  placeholderTextColor={colors.muted}
-                  onSubmitEditing={addIngredient}
-                  returnKeyType="done"
-                />
-                <TouchableOpacity
-                  style={[styles.addBtn, !ingredientInput.trim() && styles.btnDisabled]}
-                  onPress={addIngredient}
-                  disabled={!ingredientInput.trim()}
-                >
-                  <Text style={styles.addBtnText}>Add</Text>
+            <View style={s.filterGroup}>
+              <Text style={s.filterLabel}>Ingredients</Text>
+              <View style={s.ingredientRow}>
+                <TextInput style={s.ingredientInput} value={ingredientInput} onChangeText={setIngredientInput} placeholder="e.g. chicken, garlic..." placeholderTextColor={colors.muted} onSubmitEditing={addIngredient} returnKeyType="done" />
+                <TouchableOpacity style={[s.addBtn, !ingredientInput.trim() && s.btnDisabled]} onPress={addIngredient} disabled={!ingredientInput.trim()}>
+                  <Text style={s.addBtnText}>Add</Text>
                 </TouchableOpacity>
               </View>
               {filters.ingredients.length > 0 && (
-                <View style={styles.tagsRow}>
+                <View style={s.tagsRow}>
                   {filters.ingredients.map(ing => (
-                    <TouchableOpacity key={ing} style={styles.tag} onPress={() => removeIngredient(ing)}>
-                      <Text style={styles.tagText}>{ing}</Text>
+                    <TouchableOpacity key={ing} style={s.tag} onPress={() => setFilters(f => ({ ...f, ingredients: f.ingredients.filter(i => i !== ing) }))}>
+                      <Text style={s.tagText}>{ing}</Text>
                       <Ionicons name="close" size={12} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
                     </TouchableOpacity>
                   ))}
@@ -185,69 +121,40 @@ export default function SearchScreen() {
               )}
             </View>
           </ScrollView>
-
-          <View style={styles.modalFooter}>
-            <TouchableOpacity
-              style={[styles.resetBtn, !hasActiveFilters && !searched && styles.btnDisabled]}
-              onPress={() => { setFilters(defaultFilters); setSearched(false) }}
-              disabled={!hasActiveFilters && !searched}
-            >
+          <View style={s.modalFooter}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false) }} disabled={!hasActiveFilters && !searched}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
-              <Text style={styles.resetBtnText}>Reset</Text>
+              <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.applyBtnLarge, !hasActiveFilters && styles.btnDisabled]}
-              onPress={() => { setFiltersOpen(false); fetchRecipes() }}
-              disabled={!hasActiveFilters}
-            >
-              <Text style={styles.applyBtnText}>Apply Filters</Text>
+            <TouchableOpacity style={[s.applyBtnLarge, !hasActiveFilters && s.btnDisabled]} onPress={() => { setFiltersOpen(false); fetchRecipes() }} disabled={!hasActiveFilters}>
+              <Text style={s.applyBtnText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Results */}
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
       ) : !searched ? (
-        <View style={styles.center}>
-          <Ionicons name="search" size={48} color={colors.muted} />
-          <Text style={styles.emptyText}>Set filters and tap Search</Text>
-        </View>
+        <View style={s.center}><Ionicons name="search" size={48} color={colors.muted} /><Text style={s.emptyText}>Set filters and tap Search</Text></View>
       ) : recipes.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="restaurant-outline" size={48} color={colors.muted} />
-          <Text style={styles.emptyText}>No recipes found</Text>
-          <Text style={styles.emptySubText}>Try adjusting your filters</Text>
-        </View>
+        <View style={s.center}><Ionicons name="restaurant-outline" size={48} color={colors.muted} /><Text style={s.emptyText}>No recipes found</Text><Text style={s.emptySubText}>Try adjusting your filters</Text></View>
       ) : (
         <FlatList
           data={recipes}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={{ padding: spacing.md, gap: 12 }}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.id, title: item.title })}>
-              <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-                <View style={styles.cardMeta}>
-                  {item.readyInMinutes > 0 && (
-                    <View style={styles.metaChip}>
-                      <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
-                      <Text style={styles.metaText}>{item.readyInMinutes} min</Text>
-                    </View>
-                  )}
-                  {item.servings > 0 && (
-                    <View style={styles.metaChip}>
-                      <Ionicons name="people-outline" size={13} color={colors.mutedForeground} />
-                      <Text style={styles.metaText}>{item.servings} servings</Text>
-                    </View>
-                  )}
-                  {item.vegan && <View style={styles.badge}><Text style={styles.badgeText}>Vegan</Text></View>}
-                  {item.vegetarian && !item.vegan && <View style={styles.badge}><Text style={styles.badgeText}>Vegetarian</Text></View>}
-                  {item.glutenFree && <View style={styles.badge}><Text style={styles.badgeText}>GF</Text></View>}
+            <TouchableOpacity style={s.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.id, title: item.title })}>
+              <Image source={{ uri: item.image }} style={s.cardImage} resizeMode="cover" />
+              <View style={s.cardBody}>
+                <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
+                <View style={s.cardMeta}>
+                  {item.readyInMinutes > 0 && <View style={s.metaChip}><Ionicons name="time-outline" size={13} color={colors.mutedForeground} /><Text style={s.metaText}>{item.readyInMinutes} min</Text></View>}
+                  {item.servings > 0 && <View style={s.metaChip}><Ionicons name="people-outline" size={13} color={colors.mutedForeground} /><Text style={s.metaText}>{item.servings} servings</Text></View>}
+                  {item.vegan && <View style={s.badge}><Text style={s.badgeText}>Vegan</Text></View>}
+                  {item.vegetarian && !item.vegan && <View style={s.badge}><Text style={s.badgeText}>Vegetarian</Text></View>}
+                  {item.glutenFree && <View style={s.badge}><Text style={s.badgeText}>GF</Text></View>}
                 </View>
               </View>
             </TouchableOpacity>
@@ -258,7 +165,7 @@ export default function SearchScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   filterToggle: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, backgroundColor: colors.card, padding: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },

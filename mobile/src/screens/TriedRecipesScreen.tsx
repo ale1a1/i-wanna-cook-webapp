@@ -8,7 +8,8 @@ import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
-import { colors, spacing, radius } from "../lib/theme"
+import { useTheme } from "../context/ThemeContext"
+import { spacing, radius } from "../lib/theme"
 
 type TriedRecipe = {
   id: string
@@ -22,7 +23,7 @@ type TriedRecipe = {
 
 const DIFFICULTIES = ["Very Easy", "Easy", "Moderate", "Difficult", "Very Difficult"]
 
-function Stars({ rating, onPress }: { rating: number; onPress?: (v: number) => void }) {
+function Stars({ rating, onPress, colors }: { rating: number; onPress?: (v: number) => void; colors: any }) {
   return (
     <View style={{ flexDirection: "row", gap: 2 }}>
       {[1, 2, 3, 4, 5].map(star => (
@@ -41,6 +42,8 @@ function Stars({ rating, onPress }: { rating: number; onPress?: (v: number) => v
 export default function TriedRecipesScreen() {
   const { user } = useAuth()
   const navigation = useNavigation<any>()
+  const { colors } = useTheme()
+  const s = makeStyles(colors)
   const [recipes, setRecipes] = useState<TriedRecipe[]>([])
   const [loading, setLoading] = useState(true)
   const [ratingModal, setRatingModal] = useState(false)
@@ -112,26 +115,26 @@ export default function TriedRecipesScreen() {
   if (!user) return null
 
   if (loading) return (
-    <View style={styles.center}>
+    <View style={s.center}>
       <ActivityIndicator size="large" color={colors.primary} />
     </View>
   )
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
+    <SafeAreaView style={s.container} edges={["top"]}>
+      <View style={s.header}>
         <Ionicons name="clipboard" size={22} color={colors.primary} />
-        <Text style={styles.headerTitle}>Recipe History</Text>
-        {recipes.length > 0 && <Text style={styles.headerCount}>{recipes.length} tried</Text>}
+        <Text style={s.headerTitle}>Recipe History</Text>
+        {recipes.length > 0 && <Text style={s.headerCount}>{recipes.length} tried</Text>}
       </View>
 
       {recipes.length === 0 ? (
-        <View style={styles.empty}>
+        <View style={s.empty}>
           <Ionicons name="time-outline" size={56} color={colors.muted} />
-          <Text style={styles.emptyTitle}>No tried recipes yet</Text>
-          <Text style={styles.emptySubText}>Recipes you've cooked will appear here.</Text>
-          <TouchableOpacity style={styles.browseBtn} onPress={() => navigation.navigate("Search")}>
-            <Text style={styles.browseBtnText}>Discover Recipes</Text>
+          <Text style={s.emptyTitle}>No tried recipes yet</Text>
+          <Text style={s.emptySubText}>Recipes you've cooked will appear here.</Text>
+          <TouchableOpacity style={s.browseBtn} onPress={() => navigation.navigate("Search")}>
+            <Text style={s.browseBtnText}>Discover Recipes</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -141,14 +144,14 @@ export default function TriedRecipesScreen() {
           contentContainerStyle={{ padding: spacing.md, gap: 12 }}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.card}
+              style={s.card}
               onPress={() => navigation.navigate("RecipeDetail", { id: item.id, title: item.title })}
             >
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-                <View style={styles.cardActions}>
-                  <TouchableOpacity style={styles.rateBtn} onPress={() => openRating(item)}>
-                    <Text style={styles.rateBtnText}>{item.satisfaction ? "Edit Rating" : "Rate"}</Text>
+              <View style={s.cardHeader}>
+                <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
+                <View style={s.cardActions}>
+                  <TouchableOpacity style={s.rateBtn} onPress={() => openRating(item)}>
+                    <Text style={s.rateBtnText}>{item.satisfaction ? "Edit Rating" : "Rate"}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeRecipe(item)}>
                     <Ionicons name="trash-outline" size={18} color={colors.destructive} />
@@ -156,28 +159,28 @@ export default function TriedRecipesScreen() {
                 </View>
               </View>
 
-              <View style={styles.metaRow}>
+              <View style={s.metaRow}>
                 <Ionicons name="calendar-outline" size={13} color={colors.mutedForeground} />
-                <Text style={styles.metaText}>Tried: {item.triedOn}</Text>
+                <Text style={s.metaText}>Tried: {item.triedOn}</Text>
               </View>
 
               {item.satisfaction ? (
-                <View style={styles.ratings}>
-                  <View style={styles.ratingRow}>
-                    <Text style={styles.ratingLabel}>Satisfaction</Text>
-                    <Stars rating={item.satisfaction} />
+                <View style={s.ratings}>
+                  <View style={s.ratingRow}>
+                    <Text style={s.ratingLabel}>Satisfaction</Text>
+                    <Stars rating={item.satisfaction} colors={colors} />
                   </View>
-                  <View style={styles.ratingRow}>
-                    <Text style={styles.ratingLabel}>Time Accuracy</Text>
-                    <Stars rating={item.timeAccuracy} />
+                  <View style={s.ratingRow}>
+                    <Text style={s.ratingLabel}>Time Accuracy</Text>
+                    <Stars rating={item.timeAccuracy} colors={colors} />
                   </View>
-                  <View style={styles.ratingRow}>
-                    <Text style={styles.ratingLabel}>Difficulty</Text>
-                    <Text style={styles.difficultyText}>{item.difficulty}</Text>
+                  <View style={s.ratingRow}>
+                    <Text style={s.ratingLabel}>Difficulty</Text>
+                    <Text style={s.difficultyText}>{item.difficulty}</Text>
                   </View>
                 </View>
               ) : (
-                <Text style={styles.noRating}>Not rated yet</Text>
+                <Text style={s.noRating}>Not rated yet</Text>
               )}
             </TouchableOpacity>
           )}
@@ -185,37 +188,37 @@ export default function TriedRecipesScreen() {
       )}
 
       <Modal visible={ratingModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setRatingModal(false)}>
-        <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Rate Your Experience</Text>
+        <SafeAreaView style={s.modal}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Rate Your Experience</Text>
             <TouchableOpacity onPress={() => setRatingModal(false)}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
           <ScrollView style={{ padding: spacing.md }}>
-            {selected && <Text style={styles.modalRecipeName}>{selected.title}</Text>}
+            {selected && <Text style={s.modalRecipeName}>{selected.title}</Text>}
 
-            <Text style={styles.sectionLabel}>Overall Satisfaction</Text>
-            <Stars rating={ratingValues.satisfaction} onPress={v => setRatingValues(p => ({ ...p, satisfaction: v }))} />
+            <Text style={s.sectionLabel}>Overall Satisfaction</Text>
+            <Stars rating={ratingValues.satisfaction} onPress={v => setRatingValues(p => ({ ...p, satisfaction: v }))} colors={colors} />
 
-            <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>Time Accuracy</Text>
-            <Stars rating={ratingValues.timeAccuracy} onPress={v => setRatingValues(p => ({ ...p, timeAccuracy: v }))} />
+            <Text style={[s.sectionLabel, { marginTop: spacing.lg }]}>Time Accuracy</Text>
+            <Stars rating={ratingValues.timeAccuracy} onPress={v => setRatingValues(p => ({ ...p, timeAccuracy: v }))} colors={colors} />
 
-            <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>Difficulty</Text>
+            <Text style={[s.sectionLabel, { marginTop: spacing.lg }]}>Difficulty</Text>
             {DIFFICULTIES.map(d => (
-              <TouchableOpacity key={d} style={styles.difficultyOption} onPress={() => setRatingValues(p => ({ ...p, difficulty: d }))}>
-                <View style={[styles.radio, ratingValues.difficulty === d && styles.radioSelected]} />
-                <Text style={styles.difficultyOptionText}>{d}</Text>
+              <TouchableOpacity key={d} style={s.difficultyOption} onPress={() => setRatingValues(p => ({ ...p, difficulty: d }))}>
+                <View style={[s.radio, ratingValues.difficulty === d && s.radioSelected]} />
+                <Text style={s.difficultyOptionText}>{d}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <View style={styles.modalFooter}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setRatingModal(false)}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+          <View style={s.modalFooter}>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => setRatingModal(false)}>
+              <Text style={s.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.submitBtn} onPress={submitRating}>
-              <Text style={styles.submitBtnText}>Submit Rating</Text>
+            <TouchableOpacity style={s.submitBtn} onPress={submitRating}>
+              <Text style={s.submitBtnText}>Submit Rating</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -224,7 +227,7 @@ export default function TriedRecipesScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
   header: { flexDirection: "row", alignItems: "center", gap: 8, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },

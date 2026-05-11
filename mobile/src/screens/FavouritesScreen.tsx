@@ -5,20 +5,16 @@ import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
-import { colors, spacing, radius } from "../lib/theme"
+import { useTheme } from "../context/ThemeContext"
+import { spacing, radius } from "../lib/theme"
 
-type Favourite = {
-  id: string
-  recipe_id: string
-  recipe_title: string
-  recipe_image: string
-  ready_in_minutes: number
-  servings: number
-}
+type Favourite = { id: string; recipe_id: string; recipe_title: string; recipe_image: string; ready_in_minutes: number; servings: number }
 
 export default function FavouritesScreen() {
   const { user } = useAuth()
   const navigation = useNavigation<any>()
+  const { colors } = useTheme()
+  const s = makeStyles(colors)
   const [favs, setFavs] = useState<Favourite[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -33,35 +29,26 @@ export default function FavouritesScreen() {
 
   const removeFav = async (recipeId: string) => {
     setFavs(prev => prev.filter(f => f.recipe_id !== recipeId))
-    await apiFetch("/api/favourites", {
-      method: "DELETE",
-      body: JSON.stringify({ userId: user!.id, recipeId }),
-    })
+    await apiFetch("/api/favourites", { method: "DELETE", body: JSON.stringify({ userId: user!.id, recipeId }) })
   }
 
   if (!user) return null
-
-  if (loading) return (
-    <View style={styles.center}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>
-  )
+  if (loading) return <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
+    <SafeAreaView style={s.container} edges={["top"]}>
+      <View style={s.header}>
         <Ionicons name="heart" size={22} color={colors.primary} />
-        <Text style={styles.headerTitle}>Favourites</Text>
-        {favs.length > 0 && <Text style={styles.headerCount}>{favs.length} saved</Text>}
+        <Text style={s.headerTitle}>Favourites</Text>
+        {favs.length > 0 && <Text style={s.headerCount}>{favs.length} saved</Text>}
       </View>
-
       {favs.length === 0 ? (
-        <View style={styles.empty}>
+        <View style={s.empty}>
           <Ionicons name="heart-outline" size={56} color={colors.muted} />
-          <Text style={styles.emptyTitle}>No favourites yet</Text>
-          <Text style={styles.emptySubText}>Save recipes you love to find them easily later.</Text>
-          <TouchableOpacity style={styles.browseBtn} onPress={() => navigation.navigate("Search")}>
-            <Text style={styles.browseBtnText}>Browse Recipes</Text>
+          <Text style={s.emptyTitle}>No favourites yet</Text>
+          <Text style={s.emptySubText}>Save recipes you love to find them easily later.</Text>
+          <TouchableOpacity style={s.browseBtn} onPress={() => navigation.navigate("Search")}>
+            <Text style={s.browseBtnText}>Browse Recipes</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -70,26 +57,16 @@ export default function FavouritesScreen() {
           keyExtractor={f => f.id}
           contentContainerStyle={{ padding: spacing.md, gap: 12 }}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.recipe_id, title: item.recipe_title })}>
-              <Image source={{ uri: item.recipe_image }} style={styles.cardImage} resizeMode="cover" />
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle} numberOfLines={2}>{item.recipe_title}</Text>
-                <View style={styles.metaRow}>
-                  {item.ready_in_minutes > 0 && (
-                    <View style={styles.metaChip}>
-                      <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
-                      <Text style={styles.metaText}>{item.ready_in_minutes} min</Text>
-                    </View>
-                  )}
-                  {item.servings > 0 && (
-                    <View style={styles.metaChip}>
-                      <Ionicons name="people-outline" size={13} color={colors.mutedForeground} />
-                      <Text style={styles.metaText}>{item.servings} servings</Text>
-                    </View>
-                  )}
+            <TouchableOpacity style={s.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.recipe_id, title: item.recipe_title })}>
+              <Image source={{ uri: item.recipe_image }} style={s.cardImage} resizeMode="cover" />
+              <View style={s.cardBody}>
+                <Text style={s.cardTitle} numberOfLines={2}>{item.recipe_title}</Text>
+                <View style={s.metaRow}>
+                  {item.ready_in_minutes > 0 && <View style={s.metaChip}><Ionicons name="time-outline" size={13} color={colors.mutedForeground} /><Text style={s.metaText}>{item.ready_in_minutes} min</Text></View>}
+                  {item.servings > 0 && <View style={s.metaChip}><Ionicons name="people-outline" size={13} color={colors.mutedForeground} /><Text style={s.metaText}>{item.servings} servings</Text></View>}
                 </View>
               </View>
-              <TouchableOpacity style={styles.removeBtn} onPress={() => removeFav(item.recipe_id)}>
+              <TouchableOpacity style={s.removeBtn} onPress={() => removeFav(item.recipe_id)}>
                 <Ionicons name="heart" size={20} color={colors.primary} />
               </TouchableOpacity>
             </TouchableOpacity>
@@ -100,7 +77,7 @@ export default function FavouritesScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
   header: { flexDirection: "row", alignItems: "center", gap: 8, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },

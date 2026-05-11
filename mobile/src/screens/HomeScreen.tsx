@@ -1,9 +1,10 @@
 import React from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
-import { colors, spacing, radius } from "../lib/theme"
+import { useTheme } from "../context/ThemeContext"
+import { spacing, radius } from "../lib/theme"
 
 const FEATURES = [
   { icon: "time-outline", title: "Filter by Time", desc: "Find recipes that fit your schedule." },
@@ -20,80 +21,72 @@ const HOW_IT_WORKS = [
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>()
+  const { colors } = useTheme()
+  const s = makeStyles(colors)
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-    <ScrollView contentContainerStyle={styles.content}>
-      {/* Hero */}
-      <View style={styles.hero}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="restaurant" size={48} color={colors.primary} />
-        </View>
-        <Text style={styles.heroTitle}>What Should I Cook?</Text>
-        <Text style={styles.heroSub}>
-          Discover your next favourite meal. Filter by ingredients, diet, cuisine, budget and more.
-        </Text>
-        <View style={styles.heroButtons}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate("Search")}>
-            <Ionicons name="search" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBtnText}>Find Recipes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.outlineBtn} onPress={() => navigation.navigate("Search", { surprise: true })}>
-            <Ionicons name="shuffle" size={18} color={colors.primary} style={{ marginRight: 8 }} />
-            <Text style={styles.outlineBtnText}>Surprise Me</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Features */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Everything you need to decide</Text>
-        {FEATURES.map((f) => (
-          <View key={f.title} style={styles.featureRow}>
-            <View style={styles.featureIcon}>
-              <Ionicons name={f.icon as any} size={24} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.featureTitle}>{f.title}</Text>
-              <Text style={styles.featureDesc}>{f.desc}</Text>
-            </View>
+    <SafeAreaView style={s.container} edges={["top"]}>
+      <ScrollView contentContainerStyle={s.content}>
+        <View style={s.hero}>
+          <View style={s.iconCircle}>
+            <Ionicons name="restaurant" size={48} color={colors.primary} />
           </View>
-        ))}
-      </View>
+          <Text style={s.heroTitle}>What Should I Cook?</Text>
+          <Text style={s.heroSub}>Discover your next favourite meal. Filter by ingredients, diet, cuisine, budget and more.</Text>
+          <View style={s.heroButtons}>
+            <TouchableOpacity style={s.primaryBtn} onPress={() => navigation.navigate("Search")}>
+              <Ionicons name="search" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={s.primaryBtnText}>Find Recipes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.outlineBtn} onPress={() => navigation.navigate("Search", { surprise: true })}>
+              <Ionicons name="shuffle" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+              <Text style={s.outlineBtnText}>Surprise Me</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-      {/* How it works */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>How it works</Text>
-        {HOW_IT_WORKS.map((s, i) => (
-          <View key={s.title} style={styles.stepRow}>
-            <View style={styles.stepBadge}>
-              <Ionicons name={s.icon as any} size={20} color={colors.primary} />
-              <View style={styles.stepNum}>
-                <Text style={styles.stepNumText}>{i + 1}</Text>
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Everything you need to decide</Text>
+          {FEATURES.map(f => (
+            <View key={f.title} style={s.featureRow}>
+              <View style={s.featureIcon}><Ionicons name={f.icon as any} size={24} color={colors.primary} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.featureTitle}>{f.title}</Text>
+                <Text style={s.featureDesc}>{f.desc}</Text>
               </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.featureTitle}>{s.title}</Text>
-              <Text style={styles.featureDesc}>{s.desc}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
 
-      {/* CTA */}
-      <View style={styles.cta}>
-        <Text style={styles.ctaTitle}>Ready to cook something great?</Text>
-        <Text style={styles.ctaSub}>No sign-up needed to start searching.</Text>
-        <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.navigate("Search")}>
-          <Text style={styles.primaryBtnText}>Get Started</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>How it works</Text>
+          {HOW_IT_WORKS.map((step, i) => (
+            <View key={step.title} style={s.stepRow}>
+              <View style={s.stepBadge}>
+                <Ionicons name={step.icon as any} size={20} color={colors.primary} />
+                <View style={s.stepNum}><Text style={s.stepNumText}>{i + 1}</Text></View>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.featureTitle}>{step.title}</Text>
+                <Text style={s.featureDesc}>{step.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={s.cta}>
+          <Text style={s.ctaTitle}>Ready to cook something great?</Text>
+          <Text style={s.ctaSub}>No sign-up needed to start searching.</Text>
+          <TouchableOpacity style={s.primaryBtn} onPress={() => navigation.navigate("Search")}>
+            <Text style={s.primaryBtnText}>Get Started</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: 40 },
   hero: { alignItems: "center", paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: 40, backgroundColor: colors.background },

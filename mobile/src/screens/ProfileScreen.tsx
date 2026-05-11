@@ -8,7 +8,8 @@ import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
-import { colors, spacing, radius } from "../lib/theme"
+import { useTheme } from "../context/ThemeContext"
+import { spacing, radius } from "../lib/theme"
 
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -21,10 +22,11 @@ const PASSWORD_RULES = [
 export default function ProfileScreen() {
   const { user, logout } = useAuth()
   const navigation = useNavigation<any>()
+  const { colors, theme, setTheme } = useTheme()
+  const s = makeStyles(colors)
 
   const [triedCount, setTriedCount] = useState(0)
   const [avgRating, setAvgRating] = useState("0.0")
-  const [selectedTheme, setSelectedTheme] = useState<"light" | "dark" | "system">("dark")
 
   const [editingUsername, setEditingUsername] = useState(false)
   const [newUsername, setNewUsername] = useState("")
@@ -102,19 +104,19 @@ export default function ProfileScreen() {
   const newPasswordValid = PASSWORD_RULES.every(r => r.test(passwordForm.new))
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={s.container} edges={["top"]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* Header card */}
-        <View style={styles.card}>
-          <View style={styles.profileRow}>
-            <View style={styles.avatar}>
+        <View style={s.card}>
+          <View style={s.profileRow}>
+            <View style={s.avatar}>
               <Ionicons name="person" size={32} color={colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
               {editingUsername ? (
-                <View style={styles.editRow}>
-                  <TextInput style={styles.usernameInput} value={newUsername} onChangeText={setNewUsername} autoFocus autoCapitalize="none" />
+                <View style={s.editRow}>
+                  <TextInput style={s.usernameInput} value={newUsername} onChangeText={setNewUsername} autoFocus autoCapitalize="none" />
                   <TouchableOpacity onPress={handleSaveUsername} disabled={usernameLoading}>
                     {usernameLoading ? <ActivityIndicator color={colors.green} /> : <Ionicons name="checkmark" size={20} color={colors.green} />}
                   </TouchableOpacity>
@@ -123,39 +125,39 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={styles.editRow}>
-                  <Text style={styles.username}>{user.username}</Text>
+                <View style={s.editRow}>
+                  <Text style={s.username}>{user.username}</Text>
                   <TouchableOpacity onPress={() => { setNewUsername(user.username); setEditingUsername(true) }}>
                     <Ionicons name="pencil-outline" size={15} color={colors.mutedForeground} />
                   </TouchableOpacity>
                 </View>
               )}
-              {usernameError ? <Text style={styles.errorText}>{usernameError}</Text> : null}
-              <Text style={styles.email}>{user.email}</Text>
+              {usernameError ? <Text style={s.errorText}>{usernameError}</Text> : null}
+              <Text style={s.email}>{user.email}</Text>
             </View>
           </View>
         </View>
 
         {/* Stats */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Stats</Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{triedCount}</Text>
-              <Text style={styles.statLabel}>Recipes Tried</Text>
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>Stats</Text>
+          <View style={s.statsRow}>
+            <View style={s.statBox}>
+              <Text style={s.statValue}>{triedCount}</Text>
+              <Text style={s.statLabel}>Recipes Tried</Text>
             </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{avgRating}</Text>
-              <Text style={styles.statLabel}>Avg. Rating</Text>
+            <View style={s.statBox}>
+              <Text style={s.statValue}>{avgRating}</Text>
+              <Text style={s.statLabel}>Avg. Rating</Text>
             </View>
           </View>
         </View>
 
         {/* Preferences */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          <Text style={styles.prefLabel}>Theme</Text>
-          <View style={styles.themeRow}>
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>Preferences</Text>
+          <Text style={s.prefLabel}>Theme</Text>
+          <View style={s.themeRow}>
             {[
               { value: "light" as const, label: "Light", icon: "sunny-outline" as const },
               { value: "dark" as const, label: "Dark", icon: "moon-outline" as const },
@@ -163,34 +165,34 @@ export default function ProfileScreen() {
             ].map(opt => (
               <TouchableOpacity
                 key={opt.value}
-                style={[styles.themeBtn, selectedTheme === opt.value && styles.themeBtnActive]}
-                onPress={() => setSelectedTheme(opt.value)}
+                style={[s.themeBtn, theme === opt.value && s.themeBtnActive]}
+                onPress={() => setTheme(opt.value)}
               >
-                <Ionicons name={opt.icon} size={14} color={selectedTheme === opt.value ? colors.primary : colors.mutedForeground} />
-                <Text style={[styles.themeBtnText, selectedTheme === opt.value && styles.themeBtnTextActive]}>{opt.label}</Text>
+                <Ionicons name={opt.icon} size={14} color={theme === opt.value ? colors.primary : colors.mutedForeground} />
+                <Text style={[s.themeBtnText, theme === opt.value && s.themeBtnTextActive]}>{opt.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
         {/* Security */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Security</Text>
-          <TouchableOpacity style={styles.securityRow} onPress={() => setShowPasswordModal(true)}>
-            <Text style={styles.securityLabel}>Password</Text>
-            <Text style={styles.securityAction}>Change Password</Text>
+        <View style={s.card}>
+          <Text style={s.sectionTitle}>Security</Text>
+          <TouchableOpacity style={s.securityRow} onPress={() => setShowPasswordModal(true)}>
+            <Text style={s.securityLabel}>Password</Text>
+            <Text style={s.securityAction}>Change Password</Text>
           </TouchableOpacity>
         </View>
 
         {/* Account actions */}
-        <View style={styles.card}>
-          <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Text style={styles.logoutBtnText}>Logout</Text>
+        <View style={s.card}>
+          <View style={s.actionsRow}>
+            <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
+              <Text style={s.logoutBtnText}>Logout</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => setShowDeleteModal(true)}>
+            <TouchableOpacity style={s.deleteBtn} onPress={() => setShowDeleteModal(true)}>
               <Ionicons name="trash-outline" size={15} color="#fff" />
-              <Text style={styles.deleteBtnText}>Delete Account</Text>
+              <Text style={s.deleteBtnText}>Delete Account</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -199,9 +201,9 @@ export default function ProfileScreen() {
 
       {/* Change Password Modal */}
       <Modal visible={showPasswordModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer} edges={["top"]}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Change Password</Text>
+        <SafeAreaView style={s.modalContainer} edges={["top"]}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Change Password</Text>
             <TouchableOpacity onPress={() => { setShowPasswordModal(false); setPasswordError(""); setPasswordForm({ current: "", new: "", confirm: "" }) }}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -209,12 +211,12 @@ export default function ProfileScreen() {
           <ScrollView style={{ padding: spacing.md }} keyboardShouldPersistTaps="handled">
             {(["current", "new", "confirm"] as const).map(field => (
               <View key={field} style={{ marginBottom: spacing.md }}>
-                <Text style={styles.inputLabel}>
+                <Text style={s.inputLabel}>
                   {field === "current" ? "Current password" : field === "new" ? "New password" : "Confirm new password"}
                 </Text>
-                <View style={styles.inputWrapper}>
+                <View style={s.inputWrapper}>
                   <TextInput
-                    style={[styles.input, { flex: 1, borderWidth: 0 }]}
+                    style={[s.input, { flex: 1, borderWidth: 0 }]}
                     value={passwordForm[field]}
                     onChangeText={v => setPasswordForm(f => ({ ...f, [field]: v }))}
                     secureTextEntry={!showPasswords[field]}
@@ -229,19 +231,19 @@ export default function ProfileScreen() {
                 {field === "new" && passwordForm.new.length > 0 && (
                   <View style={{ marginTop: 6 }}>
                     {PASSWORD_RULES.map(rule => (
-                      <View key={rule.label} style={styles.ruleRow}>
+                      <View key={rule.label} style={s.ruleRow}>
                         <Ionicons name={rule.test(passwordForm.new) ? "checkmark-circle" : "close-circle"} size={13} color={rule.test(passwordForm.new) ? colors.green : colors.muted} />
-                        <Text style={[styles.ruleText, rule.test(passwordForm.new) && { color: colors.green }]}>{rule.label}</Text>
+                        <Text style={[s.ruleText, rule.test(passwordForm.new) && { color: colors.green }]}>{rule.label}</Text>
                       </View>
                     ))}
                   </View>
                 )}
               </View>
             ))}
-            {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+            {passwordError ? <Text style={s.errorText}>{passwordError}</Text> : null}
             {passwordSuccess ? <Text style={{ color: colors.green, marginBottom: 12 }}>Password changed!</Text> : null}
-            <TouchableOpacity style={[styles.submitBtn, (!newPasswordValid || passwordLoading) && styles.disabledBtn]} onPress={handleChangePassword} disabled={!newPasswordValid || passwordLoading}>
-              {passwordLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Password</Text>}
+            <TouchableOpacity style={[s.submitBtn, (!newPasswordValid || passwordLoading) && s.disabledBtn]} onPress={handleChangePassword} disabled={!newPasswordValid || passwordLoading}>
+              {passwordLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Save Password</Text>}
             </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
@@ -249,9 +251,9 @@ export default function ProfileScreen() {
 
       {/* Delete Account Modal */}
       <Modal visible={showDeleteModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer} edges={["top"]}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Delete Account</Text>
+        <SafeAreaView style={s.modalContainer} edges={["top"]}>
+          <View style={s.modalHeader}>
+            <Text style={s.modalTitle}>Delete Account</Text>
             <TouchableOpacity onPress={() => { setShowDeleteModal(false); setDeleteConfirm(""); setDeleteError("") }}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -260,11 +262,11 @@ export default function ProfileScreen() {
             <Text style={{ color: colors.mutedForeground, marginBottom: 16, lineHeight: 22 }}>
               This will permanently delete your account and all your data. This cannot be undone.
             </Text>
-            <Text style={styles.inputLabel}>Type <Text style={{ color: colors.primary }}>{user.username}</Text> to confirm</Text>
-            <TextInput style={[styles.input, { marginTop: 6, marginBottom: 16 }]} value={deleteConfirm} onChangeText={setDeleteConfirm} placeholder={user.username} placeholderTextColor={colors.muted} autoCapitalize="none" />
-            {deleteError ? <Text style={styles.errorText}>{deleteError}</Text> : null}
-            <TouchableOpacity style={[styles.deleteConfirmBtn, (deleteConfirm !== user.username || deleteLoading) && styles.disabledBtn]} onPress={handleDeleteAccount} disabled={deleteConfirm !== user.username || deleteLoading}>
-              {deleteLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Delete Account</Text>}
+            <Text style={s.inputLabel}>Type <Text style={{ color: colors.primary }}>{user.username}</Text> to confirm</Text>
+            <TextInput style={[s.input, { marginTop: 6, marginBottom: 16 }]} value={deleteConfirm} onChangeText={setDeleteConfirm} placeholder={user.username} placeholderTextColor={colors.muted} autoCapitalize="none" />
+            {deleteError ? <Text style={s.errorText}>{deleteError}</Text> : null}
+            <TouchableOpacity style={[s.deleteConfirmBtn, (deleteConfirm !== user.username || deleteLoading) && s.disabledBtn]} onPress={handleDeleteAccount} disabled={deleteConfirm !== user.username || deleteLoading}>
+              {deleteLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Delete Account</Text>}
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -273,7 +275,7 @@ export default function ProfileScreen() {
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, margin: spacing.md, marginBottom: 0, padding: spacing.md },
   profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },

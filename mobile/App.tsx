@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
 import { AuthProvider, useAuth } from "./src/context/AuthContext"
+import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
 import HomeScreen from "./src/screens/HomeScreen"
 import SearchScreen from "./src/screens/SearchScreen"
 import RecipeDetailScreen from "./src/screens/RecipeDetailScreen"
@@ -16,13 +17,13 @@ import FavouritesScreen from "./src/screens/FavouritesScreen"
 import TriedRecipesScreen from "./src/screens/TriedRecipesScreen"
 import ProfileScreen from "./src/screens/ProfileScreen"
 import LoginScreen from "./src/screens/LoginScreen"
-import { colors } from "./src/lib/theme"
 
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
 function HomeTabs() {
   const { user } = useAuth()
+  const { colors, theme } = useTheme()
   return (
     <Tab.Navigator
       screenOptions={{
@@ -59,6 +60,7 @@ function HomeTabs() {
 }
 
 function AppNavigator() {
+  const { colors, theme } = useTheme()
   return (
     <Stack.Navigator
       screenOptions={{
@@ -74,15 +76,24 @@ function AppNavigator() {
   )
 }
 
+function AppContent() {
+  const { theme } = useTheme()
+  return (
+    <NavigationContainer>
+      <StatusBar style={theme === "light" ? "dark" : "light"} />
+      <AppNavigator />
+    </NavigationContainer>
+  )
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <NavigationContainer>
-          <StatusBar style="light" />
-          <AppNavigator />
-        </NavigationContainer>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   )
 }
