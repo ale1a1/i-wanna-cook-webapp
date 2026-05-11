@@ -28,8 +28,7 @@ export async function reportError(
       method: "POST",
       body: JSON.stringify({ error, screen, platform: Platform.OS }),
     })
-    // Mark as reported regardless of server rate-limit response —
-    // the server got it (or it was a duplicate on the server side)
+    if (!res.ok) return "failed"
     reportedFingerprints.add(fingerprint)
     return "sent"
   } catch {
