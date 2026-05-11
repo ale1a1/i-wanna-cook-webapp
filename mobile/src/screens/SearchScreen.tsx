@@ -6,8 +6,8 @@ import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { clearReported, getErrorFingerprint } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
+import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
-import ErrorCard from "../components/ErrorCard"
 
 type Recipe = { id: number; title: string; image: string; readyInMinutes: number; servings: number; pricePerServing: number; vegan: boolean; vegetarian: boolean; glutenFree: boolean }
 
@@ -66,11 +66,11 @@ export default function SearchScreen() {
   const route = useRoute<any>()
   const { colors } = useTheme()
   const s = makeStyles(colors)
+  const { showError } = useGlobalError()
 
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const [error, setError] = useState("")
   const [mockErrorType, setMockErrorType] = useState(0)
   const MOCK_ERRORS = [
     "[402] Daily quota exceeded",
@@ -82,7 +82,7 @@ export default function SearchScreen() {
     const msg = MOCK_ERRORS[mockErrorType % MOCK_ERRORS.length]
     setMockErrorType(n => n + 1)
     clearReported(getErrorFingerprint(msg, "Search"))
-    setError(msg); setSearched(true); setRecipes([])
+    showError(msg, "Search", () => {})
   }
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
@@ -90,21 +90,21 @@ export default function SearchScreen() {
   const [filters, setFilters] = useState(defaultFilters)
 
   const fetchRecipes = useCallback(async (f = filters) => {
-    setLoading(true); setSearched(true); setError("")
+    setLoading(true); setSearched(true)
     try {
       const params = buildSearchParams(f)
       const res = await apiFetch(`/api/recipes/search?${params.toString()}`)
       const data = await res.json()
       if (!res.ok) {
         const msg = `[${res.status}] ${data.error || "Server error"}`
-        setError(msg)
+        showError(msg, "Search", () => fetchRecipes(f))
         setRecipes([])
         return
       }
       setRecipes(data.results || [])
     } catch (e: any) {
       const msg = e?.message || "Network error — check your connection"
-      setError(msg)
+      showError(msg, "Search", () => fetchRecipes(f))
       setRecipes([])
     }
     finally { setLoading(false) }
@@ -198,8 +198,6 @@ export default function SearchScreen() {
 
       {loading ? (
         <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
-      ) : error ? (
-        <ErrorCard key={error} error={error} screen="Search" onRetry={() => fetchRecipes()} retrying={loading} />
       ) : !searched ? (
         <View style={s.center}><Ionicons name="search" size={48} color={colors.muted} /><Text style={s.emptyText}>Set filters and tap Search</Text></View>
       ) : recipes.length === 0 ? (

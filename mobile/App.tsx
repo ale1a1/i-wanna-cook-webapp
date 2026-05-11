@@ -8,6 +8,19 @@ import { StatusBar } from "expo-status-bar"
 import { Ionicons } from "@expo/vector-icons"
 import { SafeAreaProvider } from "react-native-safe-area-context"
 
+import { AuthProvider, useAuth } from "./src/context/AuthContext"
+import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
+import { GlobalErrorProvider } from "./src/context/GlobalErrorContext"
+import ErrorCard from "./src/components/ErrorCard"
+import HomeScreen from "./src/screens/HomeScreen"
+import SearchScreen from "./src/screens/SearchScreen"
+import RecipeDetailScreen from "./src/screens/RecipeDetailScreen"
+import ShoppingListScreen from "./src/screens/ShoppingListScreen"
+import FavouritesScreen from "./src/screens/FavouritesScreen"
+import TriedRecipesScreen from "./src/screens/TriedRecipesScreen"
+import ProfileScreen from "./src/screens/ProfileScreen"
+import LoginScreen from "./src/screens/LoginScreen"
+
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null }
   static getDerivedStateFromError(e: Error) { return { error: e.message || String(e) } }
@@ -27,24 +40,12 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: st
   }
 }
 
-import { AuthProvider, useAuth } from "./src/context/AuthContext"
-import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
-import ErrorCard from "./src/components/ErrorCard"
-import HomeScreen from "./src/screens/HomeScreen"
-import SearchScreen from "./src/screens/SearchScreen"
-import RecipeDetailScreen from "./src/screens/RecipeDetailScreen"
-import ShoppingListScreen from "./src/screens/ShoppingListScreen"
-import FavouritesScreen from "./src/screens/FavouritesScreen"
-import TriedRecipesScreen from "./src/screens/TriedRecipesScreen"
-import ProfileScreen from "./src/screens/ProfileScreen"
-import LoginScreen from "./src/screens/LoginScreen"
-
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
 function HomeTabs() {
   const { user } = useAuth()
-  const { colors, theme } = useTheme()
+  const { colors } = useTheme()
   return (
     <Tab.Navigator
       screenOptions={{
@@ -81,7 +82,7 @@ function HomeTabs() {
 }
 
 function AppNavigator() {
-  const { colors, theme } = useTheme()
+  const { colors } = useTheme()
   return (
     <Stack.Navigator
       screenOptions={{
@@ -113,7 +114,9 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <AppContent />
+            <GlobalErrorProvider>
+              <AppContent />
+            </GlobalErrorProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
