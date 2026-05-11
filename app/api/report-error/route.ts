@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 
 const rateLimitMap = new Map<string, number>()
-const RATE_LIMIT_MS = 30 * 1000
+const RATE_LIMIT_MS = 5 * 60 * 1000
 
 export async function POST(request: NextRequest) {
   const apiKey = process.env.RESEND_API_KEY
