@@ -13,6 +13,7 @@ import SearchScreen from "./src/screens/SearchScreen"
 import RecipeDetailScreen from "./src/screens/RecipeDetailScreen"
 import ShoppingListScreen from "./src/screens/ShoppingListScreen"
 import FavouritesScreen from "./src/screens/FavouritesScreen"
+import TriedRecipesScreen from "./src/screens/TriedRecipesScreen"
 import ProfileScreen from "./src/screens/ProfileScreen"
 import LoginScreen from "./src/screens/LoginScreen"
 import { colors } from "./src/lib/theme"
@@ -26,7 +27,8 @@ function HomeTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
+        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.muted, borderTopWidth: 1, height: 70 },
+        tabBarItemStyle: { marginTop: 0, paddingBottom: 16 },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
       }}
@@ -39,6 +41,10 @@ function HomeTabs() {
       }} />
       <Tab.Screen name="Favourites" component={FavouritesScreen} options={{
         tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" size={size} color={color} />,
+      }} />
+      <Tab.Screen name="Tried" component={TriedRecipesScreen} options={{
+        tabBarLabel: "Tried",
+        tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline" size={size} color={color} />,
       }} />
       <Tab.Screen name="Shopping" component={ShoppingListScreen} options={{
         tabBarLabel: "Shopping",

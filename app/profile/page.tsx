@@ -231,7 +231,7 @@ export default function ProfilePage() {
       <Card>
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Settings className="h-5 w-5" /> Preferences
+            Preferences
           </h3>
           <div>
             <Label className="text-sm text-muted-foreground mb-2 block">Theme</Label>
