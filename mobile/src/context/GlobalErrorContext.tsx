@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react"
+import React, { createContext, useContext, useState, useCallback, useRef } from "react"
 import { View, StyleSheet, TouchableOpacity } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import ErrorCard from "../components/ErrorCard"
@@ -19,26 +19,30 @@ export function GlobalErrorProvider({ children }: { children: React.ReactNode })
   const insets = useSafeAreaInsets()
   const [errorState, setErrorState] = useState<{ error: string; screen: string; onRetry?: () => void } | null>(null)
   const [retried, setRetried] = useState(false)
-  const [retrying, setRetrying] = useState(false)
+  const isRetrying = useRef(false)
 
   const showError = useCallback((error: string, screen: string, onRetry?: () => void) => {
     setErrorState({ error, screen, onRetry })
-    setRetried(false)
-    setRetrying(false)
+    // Only reset retried if this is a fresh error, not coming back from a retry
+    if (!isRetrying.current) {
+      setRetried(false)
+    }
+    isRetrying.current = false
   }, [])
 
   const clearError = useCallback(() => {
     setErrorState(null)
     setRetried(false)
-    setRetrying(false)
+    isRetrying.current = false
   }, [])
 
-  const handleRetry = async () => {
+  const handleRetry = () => {
     if (!errorState?.onRetry) { clearError(); return }
-    setRetrying(true)
+    const retry = errorState.onRetry
+    isRetrying.current = true
     setRetried(true)
-    clearError()
-    errorState.onRetry()
+    setErrorState(null)
+    retry()
   }
 
   return (
@@ -51,7 +55,6 @@ export function GlobalErrorProvider({ children }: { children: React.ReactNode })
             error={errorState.error}
             screen={errorState.screen}
             onRetry={handleRetry}
-            retrying={retrying}
             retried={retried}
           />
           <TouchableOpacity style={styles.dismissBtn} onPress={clearError} />

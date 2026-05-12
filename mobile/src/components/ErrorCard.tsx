@@ -1,5 +1,5 @@
 import React from "react"
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native"
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "../context/ThemeContext"
 import { spacing, radius } from "../lib/theme"
@@ -8,7 +8,6 @@ type Props = {
   error: string
   screen: string
   onRetry: () => void
-  retrying?: boolean
   retried?: boolean
 }
 
@@ -43,7 +42,7 @@ function getErrorDisplay(error: string): { title: string; message: string; icon:
   }
 }
 
-export default function ErrorCard({ error, screen, onRetry, retrying, retried }: Props) {
+export default function ErrorCard({ error, screen, onRetry, retried }: Props) {
   const { colors } = useTheme()
   const s = makeStyles(colors)
   const { title, message, icon } = getErrorDisplay(error)
@@ -54,11 +53,9 @@ export default function ErrorCard({ error, screen, onRetry, retrying, retried }:
       <Text style={s.title}>{title}</Text>
       <Text style={s.message}>{message}</Text>
 
-      <TouchableOpacity style={s.retryBtn} onPress={onRetry} disabled={retrying}>
-        {retrying
-          ? <ActivityIndicator size="small" color="#fff" />
-          : <><Ionicons name="refresh" size={16} color="#fff" style={{ marginRight: 6 }} /><Text style={s.retryText}>Try Again</Text></>
-        }
+      <TouchableOpacity style={s.retryBtn} onPress={onRetry}>
+        <Ionicons name="refresh" size={16} color="#fff" style={{ marginRight: 6 }} />
+        <Text style={s.retryText}>Try Again</Text>
       </TouchableOpacity>
 
       {retried && (
