@@ -52,9 +52,12 @@ export default function ProfileScreen() {
       .then(data => {
         const recipes = data.triedRecipes || []
         setTriedCount(recipes.length)
-        if (recipes.length > 0) {
-          const avg = recipes.reduce((sum: number, r: any) => sum + (r.satisfaction || 0), 0) / recipes.length
+        const rated = recipes.filter((r: any) => r.satisfaction)
+        if (rated.length > 0) {
+          const avg = rated.reduce((sum: number, r: any) => sum + r.satisfaction, 0) / rated.length
           setAvgRating(avg.toFixed(1))
+        } else {
+          setAvgRating("0.0")
         }
       })
       .catch(() => {})

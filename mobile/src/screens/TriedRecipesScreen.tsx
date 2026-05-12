@@ -83,18 +83,24 @@ export default function TriedRecipesScreen() {
 
   const submitRating = async () => {
     if (!selected) return
-    await apiFetch("/api/tried-recipes", {
-      method: "PATCH",
-      body: JSON.stringify({
-        userId: user!.id,
-        recipeId: selected.id,
-        satisfaction: ratingValues.satisfaction,
-        timeAccuracy: ratingValues.timeAccuracy,
-        difficulty: ratingValues.difficulty,
-      }),
-    })
-    setRecipes(prev => prev.map(r => r.id === selected.id ? { ...r, ...ratingValues } : r))
-    setRatingModal(false)
+    try {
+      const res = await apiFetch("/api/tried-recipes", {
+        method: "PATCH",
+        body: JSON.stringify({
+          userId: user!.id,
+          recipeId: selected.id,
+          satisfaction: ratingValues.satisfaction,
+          timeAccuracy: ratingValues.timeAccuracy,
+          difficulty: ratingValues.difficulty,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(JSON.stringify(data))
+      setRecipes(prev => prev.map(r => r.id === selected.id ? { ...r, ...ratingValues } : r))
+      setRatingModal(false)
+    } catch (e: any) {
+      Alert.alert("Error", e?.message ?? "Could not save rating.")
+    }
   }
 
   const removeRecipe = (recipe: TriedRecipe) => {
