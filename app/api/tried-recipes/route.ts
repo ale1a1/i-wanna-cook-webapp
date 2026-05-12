@@ -43,9 +43,9 @@ export async function PATCH(request: NextRequest) {
       [userId, String(recipeId), satisfaction, timeAccuracy, difficulty]
     )
     return NextResponse.json({ ok: true })
-  } catch (err) {
+  } catch (err: any) {
     console.error(err)
-    return NextResponse.json({ error: "Failed to update tried recipe" }, { status: 500 })
+    return NextResponse.json({ error: err?.message ?? "Failed to update tried recipe" }, { status: 500 })
   }
 }
 
