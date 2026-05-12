@@ -144,16 +144,6 @@ export default function TriedRecipesScreen() {
         <Ionicons name="clipboard" size={22} color={colors.primary} />
         <Text style={s.headerTitle}>Recipe History</Text>
         {recipes.length > 0 && <Text style={s.headerCount}>{recipes.length} tried</Text>}
-        <TouchableOpacity onPress={async () => {
-          const triggerTestError = async () => {
-            const res = await apiFetch("/api/test-error", { method: "POST", screen: "Tried Recipes" })
-            const data = await res.json().catch(() => ({}))
-            showError(data?.error ?? `Error ${res.status}`, "Tried Recipes", triggerTestError)
-          }
-          triggerTestError()
-        }}>
-          <Text style={{ fontSize: 11, color: colors.mutedForeground, borderWidth: 1, borderColor: colors.border, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>Test Error</Text>
-        </TouchableOpacity>
       </View>
 
       {recipes.length === 0 ? (
