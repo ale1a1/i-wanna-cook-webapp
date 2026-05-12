@@ -145,13 +145,12 @@ export default function TriedRecipesScreen() {
         <Text style={s.headerTitle}>Recipe History</Text>
         {recipes.length > 0 && <Text style={s.headerCount}>{recipes.length} tried</Text>}
         <TouchableOpacity onPress={async () => {
-          const res = await apiFetch("/api/test-error", { method: "POST", screen: "Tried Recipes" })
-          const data = await res.json().catch(() => ({}))
-          showError(data?.error ?? `Error ${res.status}`, "Tried Recipes", async () => {
-            const res2 = await apiFetch("/api/test-error", { method: "POST", screen: "Tried Recipes" })
-            const data2 = await res2.json().catch(() => ({}))
-            showError(data2?.error ?? `Error ${res2.status}`, "Tried Recipes")
-          })
+          const triggerTestError = async () => {
+            const res = await apiFetch("/api/test-error", { method: "POST", screen: "Tried Recipes" })
+            const data = await res.json().catch(() => ({}))
+            showError(data?.error ?? `Error ${res.status}`, "Tried Recipes", triggerTestError)
+          }
+          triggerTestError()
         }}>
           <Text style={{ fontSize: 11, color: colors.mutedForeground, borderWidth: 1, borderColor: colors.border, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>Test Error</Text>
         </TouchableOpacity>
