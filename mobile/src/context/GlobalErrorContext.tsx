@@ -17,32 +17,33 @@ const GlobalErrorContext = createContext<GlobalErrorContextType>({
 export function GlobalErrorProvider({ children }: { children: React.ReactNode }) {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
-  const [errorState, setErrorState] = useState<{ error: string; screen: string; onRetry?: () => void } | null>(null)
+  const [errorState, setErrorState] = useState<{
+    error: string; screen: string; onRetry?: () => void
+  } | null>(null)
   const [retried, setRetried] = useState(false)
-  const isRetrying = useRef(false)
+  // Written synchronously before retry fires, read synchronously inside showError
+  const retriedRef = useRef(false)
 
   const showError = useCallback((error: string, screen: string, onRetry?: () => void) => {
+    // Inherit retried=true if this showError is coming from inside a retry callback
+    const isRetry = retriedRef.current
+    retriedRef.current = false
+    setRetried(isRetry)
     setErrorState({ error, screen, onRetry })
-    // Only reset retried if this is a fresh error, not coming back from a retry
-    if (!isRetrying.current) {
-      setRetried(false)
-    }
-    isRetrying.current = false
   }, [])
 
   const clearError = useCallback(() => {
-    setErrorState(null)
+    retriedRef.current = false
     setRetried(false)
-    isRetrying.current = false
+    setErrorState(null)
   }, [])
 
   const handleRetry = () => {
     if (!errorState?.onRetry) { clearError(); return }
     const retry = errorState.onRetry
-    isRetrying.current = true
-    setRetried(true)
-    setErrorState(null)
-    retry()
+    retriedRef.current = true   // set synchronously before retry fires
+    setErrorState(null)          // hide overlay
+    retry()                      // retry calls showError → reads retriedRef.current = true
   }
 
   return (
@@ -51,7 +52,6 @@ export function GlobalErrorProvider({ children }: { children: React.ReactNode })
       {errorState && (
         <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: colors.background }]}>
           <ErrorCard
-            key={errorState.error}
             error={errorState.error}
             screen={errorState.screen}
             onRetry={handleRetry}
