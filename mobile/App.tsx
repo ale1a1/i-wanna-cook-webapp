@@ -20,6 +20,7 @@ import FavouritesScreen from "./src/screens/FavouritesScreen"
 import TriedRecipesScreen from "./src/screens/TriedRecipesScreen"
 import ProfileScreen from "./src/screens/ProfileScreen"
 import LoginScreen from "./src/screens/LoginScreen"
+import CookingModeScreen from "./src/screens/CookingModeScreen"
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null }
@@ -93,16 +94,17 @@ function AppNavigator() {
     >
       <Stack.Screen name="Tabs" component={HomeTabs} options={{ headerShown: false }} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={({ route }: any) => ({ title: route.params?.title ?? "Recipe", headerBackTitle: "Back" })} />
+      <Stack.Screen name="CookingMode" component={CookingModeScreen} options={{ headerShown: false, presentation: "fullScreenModal" }} />
       <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Sign in", presentation: "modal" }} />
     </Stack.Navigator>
   )
 }
 
 function AppContent() {
-  const { theme } = useTheme()
+  const { theme, colors } = useTheme()
   return (
     <NavigationContainer>
-      <StatusBar style={theme === "light" ? "dark" : "light"} />
+      <StatusBar style={theme === "light" ? "dark" : "light"} translucent={false} backgroundColor={colors.background} />
       <AppNavigator />
     </NavigationContainer>
   )

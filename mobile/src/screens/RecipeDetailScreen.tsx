@@ -238,6 +238,18 @@ export default function RecipeDetailScreen() {
 
         {tab === "steps" && (
           <View style={{ gap: 16 }}>
+            {recipe.analyzedInstructions?.[0]?.steps?.length > 0 && (
+              <TouchableOpacity
+                style={s.cookingModeBtn}
+                onPress={() => navigation.navigate("CookingMode", {
+                  steps: recipe.analyzedInstructions[0].steps,
+                  recipeTitle: recipe.title,
+                })}
+              >
+                <Ionicons name="mic" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={s.cookingModeBtnText}>Start Cooking Mode</Text>
+              </TouchableOpacity>
+            )}
             {recipe.analyzedInstructions?.[0]?.steps?.map((step: any) => (
               <View key={step.number} style={s.step}>
                 <View style={s.stepNum}>
@@ -287,6 +299,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   ingredientAmount: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
   cartBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.primary, alignItems: "center", justifyContent: "center" },
   cartBtnAdded: { borderColor: colors.destructive },
+  cookingModeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, marginBottom: 4 },
+  cookingModeBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   step: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
   stepNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   stepNumText: { color: "#fff", fontWeight: "700", fontSize: 13 },
