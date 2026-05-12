@@ -6,6 +6,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
+import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
 
 type ShoppingItem = { id: string; recipe_id: string; recipe_title: string; ingredient_name: string; ingredient_amount: string; checked: boolean }
@@ -15,6 +16,7 @@ export default function ShoppingListScreen() {
   const { user } = useAuth()
   const navigation = useNavigation<any>()
   const { colors } = useTheme()
+  const { showError } = useGlobalError()
   const s = makeStyles(colors)
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,8 +25,9 @@ export default function ShoppingListScreen() {
     if (!user) return
     setLoading(true)
     try {
-      const res = await apiFetch(`/api/shopping-list?userId=${user.id}`)
+      const res = await apiFetch(`/api/shopping-list?userId=${user.id}`, { screen: "Shopping List" })
       const data = await res.json()
+      if (!res.ok) { showError(data?.error ?? `Error ${res.status}`, "Shopping List", fetchList); return }
       const items: ShoppingItem[] = data.items || []
       const map = new Map<string, Group>()
       items.forEach(item => {
@@ -32,7 +35,9 @@ export default function ShoppingListScreen() {
         map.get(item.recipe_id)!.items.push(item)
       })
       setGroups(Array.from(map.values()))
-    } catch {} finally { setLoading(false) }
+    } catch (e: any) {
+      showError(e?.message ?? "Failed to load shopping list", "Shopping List", fetchList)
+    } finally { setLoading(false) }
   }, [user])
 
   useFocusEffect(useCallback(() => {

@@ -2,6 +2,7 @@ import React, { useCallback, useState } from "react"
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, Modal, ScrollView, Alert,
+  // Alert kept for the remove-recipe confirmation
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -9,6 +10,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
+import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
 
 type TriedRecipe = {
@@ -43,6 +45,7 @@ export default function TriedRecipesScreen() {
   const { user } = useAuth()
   const navigation = useNavigation<any>()
   const { colors } = useTheme()
+  const { showError } = useGlobalError()
   const s = makeStyles(colors)
   const [recipes, setRecipes] = useState<TriedRecipe[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,7 +71,10 @@ export default function TriedRecipesScreen() {
         setRecipes(mapped)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch((e: any) => {
+        setLoading(false)
+        showError(e?.message ?? "Failed to load history", "Tried Recipes")
+      })
   }, [user]))
 
   const openRating = (recipe: TriedRecipe) => {
@@ -86,6 +92,7 @@ export default function TriedRecipesScreen() {
     try {
       const res = await apiFetch("/api/tried-recipes", {
         method: "PATCH",
+        screen: "Tried Recipes",
         body: JSON.stringify({
           userId: user!.id,
           recipeId: selected.id,
@@ -94,12 +101,17 @@ export default function TriedRecipesScreen() {
           difficulty: ratingValues.difficulty,
         }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(JSON.stringify(data))
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setRatingModal(false)
+        showError(data?.error ?? `Server error ${res.status}`, "Tried Recipes", submitRating)
+        return
+      }
       setRecipes(prev => prev.map(r => r.id === selected.id ? { ...r, ...ratingValues } : r))
       setRatingModal(false)
     } catch (e: any) {
-      Alert.alert("Error", e?.message ?? "Could not save rating.")
+      setRatingModal(false)
+      showError(e?.message ?? "Network error", "Tried Recipes", submitRating)
     }
   }
 

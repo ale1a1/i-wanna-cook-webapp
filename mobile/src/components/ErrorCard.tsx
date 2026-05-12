@@ -1,18 +1,18 @@
-import React, { useState } from "react"
+import React from "react"
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "../context/ThemeContext"
 import { spacing, radius } from "../lib/theme"
-import { reportError, getErrorFingerprint, wasReported } from "../lib/reportError"
 
 type Props = {
   error: string
   screen: string
   onRetry: () => void
   retrying?: boolean
+  retried?: boolean
 }
 
-function getErrorDisplay(error: string): { title: string; message: string; icon: string; isQuota: boolean } {
+function getErrorDisplay(error: string): { title: string; message: string; icon: string } {
   const lower = error.toLowerCase()
 
   if (lower.includes("402") || lower.includes("quota") || lower.includes("limit") || lower.includes("payment")) {
@@ -20,7 +20,6 @@ function getErrorDisplay(error: string): { title: string; message: string; icon:
       title: "Service Temporarily Unavailable",
       message: "We've hit our recipe search limit for today. Please try again tomorrow.",
       icon: "cloud-offline-outline",
-      isQuota: true,
     }
   }
   if (lower.includes("network") || lower.includes("fetch") || lower.includes("connection")) {
@@ -28,7 +27,6 @@ function getErrorDisplay(error: string): { title: string; message: string; icon:
       title: "No Connection",
       message: "Check your internet connection and try again.",
       icon: "wifi-outline",
-      isQuota: false,
     }
   }
   if (lower.includes("500") || lower.includes("server")) {
@@ -36,32 +34,19 @@ function getErrorDisplay(error: string): { title: string; message: string; icon:
       title: "Server Error",
       message: "Something went wrong on our end. Please try again in a moment.",
       icon: "server-outline",
-      isQuota: false,
     }
   }
   return {
     title: "Something Went Wrong",
     message: "An unexpected error occurred. Please try again.",
     icon: "alert-circle-outline",
-    isQuota: false,
   }
 }
 
-export default function ErrorCard({ error, screen, onRetry, retrying }: Props) {
+export default function ErrorCard({ error, screen, onRetry, retrying, retried }: Props) {
   const { colors } = useTheme()
   const s = makeStyles(colors)
-  const fingerprint = getErrorFingerprint(error, screen)
-  const [reported, setReported] = useState(wasReported(fingerprint))
-  const [reporting, setReporting] = useState(false)
-
-  const { title, message, icon, isQuota } = getErrorDisplay(error)
-
-  const handleReport = async () => {
-    setReporting(true)
-    await reportError(error, screen, fingerprint)
-    setReported(true)
-    setReporting(false)
-  }
+  const { title, message, icon } = getErrorDisplay(error)
 
   return (
     <View style={s.container}>
@@ -76,18 +61,11 @@ export default function ErrorCard({ error, screen, onRetry, retrying }: Props) {
         }
       </TouchableOpacity>
 
-      {reported ? (
+      {retried && (
         <View style={s.reportedRow}>
-          <Ionicons name="checkmark-circle" size={15} color={colors.green} />
-          <Text style={s.reportedText}>Issue reported to developer</Text>
+          <Ionicons name="checkmark-circle" size={15} color={colors.mutedForeground} />
+          <Text style={s.reportedText}>Error reported to developer</Text>
         </View>
-      ) : (
-        <TouchableOpacity style={s.reportBtn} onPress={handleReport} disabled={reporting}>
-          {reporting
-            ? <ActivityIndicator size="small" color={colors.mutedForeground} />
-            : <><Ionicons name="mail-outline" size={15} color={colors.mutedForeground} style={{ marginRight: 5 }} /><Text style={s.reportText}>Report this issue</Text></>
-          }
-        </TouchableOpacity>
       )}
     </View>
   )
@@ -99,8 +77,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   message: { fontSize: 14, color: colors.mutedForeground, textAlign: "center", lineHeight: 20 },
   retryBtn: { flexDirection: "row", alignItems: "center", backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 11, borderRadius: radius.md, marginTop: 4, minWidth: 130, justifyContent: "center" },
   retryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  reportBtn: { flexDirection: "row", alignItems: "center", paddingVertical: 6, marginTop: 2 },
-  reportText: { fontSize: 13, color: colors.mutedForeground, textDecorationLine: "underline" },
   reportedRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
-  reportedText: { fontSize: 13, color: colors.green },
+  reportedText: { fontSize: 13, color: colors.mutedForeground },
 })

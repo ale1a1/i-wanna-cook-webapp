@@ -79,7 +79,7 @@ export default function SearchScreen() {
     setLoading(true); setSearched(true)
     try {
       const params = buildSearchParams(f)
-      const res = await apiFetch(`/api/recipes/search?${params.toString()}`)
+      const res = await apiFetch(`/api/recipes/search?${params.toString()}`, { screen: "Search" })
       const data = await res.json()
       if (!res.ok) {
         const msg = `[${res.status}] ${data.error || "Server error"}`

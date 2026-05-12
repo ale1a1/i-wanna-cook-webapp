@@ -8,6 +8,7 @@ import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
+import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
 
 type Tab = "overview" | "ingredients" | "steps"
@@ -18,23 +19,30 @@ export default function RecipeDetailScreen() {
   const { id } = route.params
   const { user } = useAuth()
   const { colors } = useTheme()
+  const { showError } = useGlobalError()
   const s = makeStyles(colors)
 
   const [recipe, setRecipe] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
   const [tab, setTab] = useState<Tab>("overview")
   const [favourited, setFavourited] = useState(false)
   const [isTried, setIsTried] = useState(false)
   const [addedIngredients, setAddedIngredients] = useState<Set<string>>(new Set())
   const [addingAll, setAddingAll] = useState(false)
 
-  useEffect(() => {
-    apiFetch(`/api/recipes/${id}`)
-      .then(r => r.json())
-      .then(data => { setRecipe(data); setLoading(false) })
-      .catch(() => { setError("Failed to load recipe"); setLoading(false) })
-  }, [id])
+  const fetchRecipe = async () => {
+    setLoading(true)
+    try {
+      const res = await apiFetch(`/api/recipes/${id}`, { screen: "Recipe Detail" })
+      const data = await res.json()
+      if (!res.ok) { showError(data?.error ?? `Error ${res.status}`, "Recipe Detail", fetchRecipe); return }
+      setRecipe(data)
+    } catch (e: any) {
+      showError(e?.message ?? "Failed to load recipe", "Recipe Detail", fetchRecipe)
+    } finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchRecipe() }, [id])
 
   useEffect(() => {
     if (!user || !recipe) return
@@ -122,11 +130,7 @@ export default function RecipeDetailScreen() {
     </View>
   )
 
-  if (error || !recipe) return (
-    <View style={[s.center, { flex: 1 }]}>
-      <Text style={{ color: colors.text }}>{error || "Recipe not found"}</Text>
-    </View>
-  )
+  if (!recipe) return null
 
   const allAdded = recipe.extendedIngredients?.every((i: any) => addedIngredients.has(i.name))
 

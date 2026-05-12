@@ -6,6 +6,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
+import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
 
 type Favourite = { id: string; recipe_id: string; recipe_title: string; recipe_image: string; ready_in_minutes: number; servings: number }
@@ -14,18 +15,28 @@ export default function FavouritesScreen() {
   const { user } = useAuth()
   const navigation = useNavigation<any>()
   const { colors } = useTheme()
+  const { showError } = useGlobalError()
   const s = makeStyles(colors)
   const [favs, setFavs] = useState<Favourite[]>([])
   const [loading, setLoading] = useState(true)
 
+  const fetchFavs = useCallback(async () => {
+    if (!user) return
+    setLoading(true)
+    try {
+      const res = await apiFetch(`/api/favourites?userId=${user.id}`, { screen: "Favourites" })
+      const data = await res.json()
+      if (!res.ok) { showError(data?.error ?? `Error ${res.status}`, "Favourites", fetchFavs); return }
+      setFavs(data.favourites || [])
+    } catch (e: any) {
+      showError(e?.message ?? "Failed to load favourites", "Favourites", fetchFavs)
+    } finally { setLoading(false) }
+  }, [user])
+
   useFocusEffect(useCallback(() => {
     if (!user) { navigation.navigate("Login"); return }
-    setLoading(true)
-    apiFetch(`/api/favourites?userId=${user.id}`)
-      .then(r => r.json())
-      .then(data => { setFavs(data.favourites || []); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [user]))
+    fetchFavs()
+  }, [user, fetchFavs]))
 
   const removeFav = async (recipeId: string) => {
     setFavs(prev => prev.filter(f => f.recipe_id !== recipeId))
