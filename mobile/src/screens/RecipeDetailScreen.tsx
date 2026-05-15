@@ -119,10 +119,16 @@ export default function RecipeDetailScreen() {
 
   const markTried = async () => {
     if (!user) { navigation.navigate("Login"); return }
-    await apiFetch("/api/tried-recipes", {
+    const res = await apiFetch("/api/tried-recipes", {
       method: "POST",
-      body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, recipeImage: recipe.image }),
+      screen: "Recipe Detail",
+      body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title }),
     })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      showError(data?.error ?? `Error ${res.status}`, "Recipe Detail", markTried)
+      return
+    }
     setIsTried(true)
     Alert.alert("Marked as tried!")
   }
