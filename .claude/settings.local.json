@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(aws rds *)"
+      "Bash(aws rds *)",
+      "Bash(aws amplify *)"
     ]
   }
 }
