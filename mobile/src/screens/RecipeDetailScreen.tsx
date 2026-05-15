@@ -94,7 +94,7 @@ export default function RecipeDetailScreen() {
     } else {
       await apiFetch("/api/shopping-list", {
         method: "POST",
-        body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, ingredientName: name, ingredientAmount: amount }),
+        body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, ingredients: [{ name, amount }] }),
       })
       setAddedIngredients(prev => new Set([...prev, name]))
     }
@@ -104,12 +104,15 @@ export default function RecipeDetailScreen() {
     if (!user) { navigation.navigate("Login"); return }
     setAddingAll(true)
     const toAdd = recipe.extendedIngredients.filter((ing: any) => !addedIngredients.has(ing.name))
-    await Promise.all(toAdd.map((ing: any) =>
-      apiFetch("/api/shopping-list", {
-        method: "POST",
-        body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, ingredientName: ing.name, ingredientAmount: ing.original }),
-      })
-    ))
+    await apiFetch("/api/shopping-list", {
+      method: "POST",
+      body: JSON.stringify({
+        userId: user.id,
+        recipeId: String(recipe.id),
+        recipeTitle: recipe.title,
+        ingredients: toAdd.map((ing: any) => ({ name: ing.name, amount: ing.original })),
+      }),
+    })
     setAddedIngredients(new Set(recipe.extendedIngredients.map((i: any) => i.name)))
     setAddingAll(false)
   }
