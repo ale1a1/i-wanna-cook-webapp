@@ -111,29 +111,33 @@ export default function SearchScreen() {
   const [cameraCount, setCameraCount] = useState(0)
 
   const analyzeAssets = useCallback(async (assets: ImagePicker.ImagePickerAsset[]) => {
+    setFiltersOpen(false)
     setAnalyzingImages(true)
     const detected: string[] = []
 
-    await Promise.all(
-      assets.map(async (asset) => {
-        if (!asset.base64) return
-        try {
+    try {
+      await Promise.all(
+        assets.map(async (asset) => {
+          if (!asset.base64) return
           const res = await fetch(`${API_BASE_URL}/api/recipes/analyze-image`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }),
           })
           const data = await res.json()
-          console.log("[analyze-image] response:", JSON.stringify(data))
           if (data.ingredient) detected.push(data.ingredient)
-        } catch {}
-      })
-    )
+        })
+      )
+    } catch {
+      setAnalyzingImages(false)
+      showError("Network error — couldn't reach the server. Check your connection.", "Scan Ingredients")
+      return
+    }
 
     setAnalyzingImages(false)
 
     if (detected.length === 0) {
-      Alert.alert("No ingredients found", "Couldn't identify any ingredients in those photos. Try clearer images.")
+      showError("Couldn't identify any ingredients in those photos. Try clearer images.", "Scan Ingredients")
       return
     }
 
@@ -142,11 +146,12 @@ export default function SearchScreen() {
       const newOnes = detected.filter(d => !existing.has(d.toLowerCase()))
       return { ...f, ingredients: [...f.ingredients, ...newOnes] }
     })
-  }, [])
+    setFiltersOpen(true)
+  }, [showError])
 
   const openCamera = useCallback(async (currentCount: number) => {
     if (currentCount >= 5) {
-      Alert.alert("Limit reached", "You can scan up to 5 ingredients photos.")
+      showError("You can scan up to 5 ingredient photos at a time.", "Scan Ingredients")
       return
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
@@ -221,17 +226,40 @@ export default function SearchScreen() {
     </View>
   )
 
+  const filterSummary = (() => {
+    const parts: string[] = []
+    if (filters.ingredients.length) parts.push(filters.ingredients.join(", "))
+    if (filters.diet !== "any") parts.push({ vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }[filters.diet] ?? filters.diet)
+    if (filters.cuisine !== "any") parts.push(filters.cuisine.charAt(0).toUpperCase() + filters.cuisine.slice(1))
+    if (filters.prepTime !== "any") parts.push(PREP_LABELS[filters.prepTime])
+    if (filters.budget !== "any") parts.push(BUDGET_LABELS[filters.budget])
+    if (filters.healthiness !== "any") parts.push(HEALTH_LABELS[filters.healthiness])
+    if (filters.taste !== "any") parts.push(TASTE_LABELS[filters.taste])
+    return parts.join(" · ") || "All recipes"
+  })()
+
   return (
+    <>
     <SafeAreaView style={s.container} edges={["top"]}>
       <View style={s.topBar}>
-        <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
-          <Ionicons name="options-outline" size={20} color={colors.primary} />
-          <Text style={s.filterToggleText}>Filters</Text>
-          {hasActiveFilters && <View style={s.filterDot} />}
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.applyBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => fetchRecipes()} disabled={!hasActiveFilters}>
-          <Text style={s.applyBtnText}>Search</Text>
-        </TouchableOpacity>
+        {searched ? (
+          <TouchableOpacity style={s.refinePill} onPress={() => setFiltersOpen(true)}>
+            <Ionicons name="options-outline" size={16} color={colors.mutedForeground} />
+            <Text style={s.refineSummary} numberOfLines={1}>{filterSummary}</Text>
+            <Text style={s.refineBtn}>Refine</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
+              <Ionicons name="options-outline" size={20} color={colors.primary} />
+              <Text style={s.filterToggleText}>Filters</Text>
+              {hasActiveFilters && <View style={s.filterDot} />}
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.applyBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => fetchRecipes()} disabled={!hasActiveFilters}>
+              <Text style={s.applyBtnText}>Search</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
       <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet">
@@ -312,13 +340,28 @@ export default function SearchScreen() {
           )}
         />
       )}
+
     </SafeAreaView>
+    {analyzingImages && (
+      <View style={s.aiOverlay}>
+        <Text style={s.aiEmoji}>🤖</Text>
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 16 }} />
+        <Text style={s.aiText}>AI reading pictures…</Text>
+      </View>
+    )}
+    </>
   )
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  aiOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background + "F0", alignItems: "center", justifyContent: "center", zIndex: 999 },
+  aiEmoji: { fontSize: 56 },
+  aiText: { marginTop: 12, fontSize: 16, fontWeight: "600", color: colors.text },
   topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  refinePill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  refineSummary: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "500" },
+  refineBtn: { color: colors.primary, fontSize: 14, fontWeight: "700" },
   filterToggle: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, backgroundColor: colors.card, padding: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   filterToggleText: { color: colors.text, fontSize: 15, fontWeight: "500" },
   filterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginLeft: "auto" },
