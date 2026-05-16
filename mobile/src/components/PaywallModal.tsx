@@ -1,8 +1,7 @@
-import React, { useState } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from "react-native"
+import React from "react"
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useTheme } from "../context/ThemeContext"
-import { useSubscription } from "../context/SubscriptionContext"
 import { spacing, radius } from "../lib/theme"
 
 const FEATURES = [
@@ -21,24 +20,7 @@ type Props = {
 
 export default function PaywallModal({ visible, onClose, featureName }: Props) {
   const { colors } = useTheme()
-  const { purchasePremium, restorePurchases } = useSubscription()
-  const [loading, setLoading] = useState(false)
-  const [restoring, setRestoring] = useState(false)
   const s = makeStyles(colors)
-
-  const handlePurchase = async () => {
-    setLoading(true)
-    const success = await purchasePremium()
-    setLoading(false)
-    if (success) onClose()
-  }
-
-  const handleRestore = async () => {
-    setRestoring(true)
-    await restorePurchases()
-    setRestoring(false)
-    onClose()
-  }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -70,18 +52,10 @@ export default function PaywallModal({ visible, onClose, featureName }: Props) {
         </View>
 
         <View style={s.footer}>
-          <TouchableOpacity style={s.purchaseBtn} onPress={handlePurchase} disabled={loading}>
-            {loading
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={s.purchaseBtnText}>Start Premium — £4.99/month</Text>
-            }
+          <TouchableOpacity style={s.purchaseBtn} onPress={onClose}>
+            <Text style={s.purchaseBtnText}>Start Premium — £4.99/month</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity style={s.restoreBtn} onPress={handleRestore} disabled={restoring}>
-            <Text style={s.restoreBtnText}>{restoring ? "Restoring…" : "Restore purchases"}</Text>
-          </TouchableOpacity>
-
-          <Text style={s.legal}>Cancel anytime. Billed monthly via Google Play.</Text>
+          <Text style={s.legal}>Coming soon. Contact us to get early access.</Text>
         </View>
       </View>
     </Modal>
