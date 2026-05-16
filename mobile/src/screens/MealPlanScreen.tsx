@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
@@ -60,6 +60,35 @@ export default function MealPlanScreen() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user.id, weekStart: weekStart.toISOString().split("T")[0], planData: data }),
         }).catch(() => {})
+
+        Alert.alert(
+          "Add to Shopping List?",
+          "Do you want to add all this week's meal ingredients to your shopping list?",
+          [
+            { text: "I'll do it myself later", style: "cancel" },
+            {
+              text: "Yes, add them all",
+              onPress: async () => {
+                const allMeals: { id: number; title: string }[] = Object.values(data.week as Record<string, any>)
+                  .flatMap((day: any) => day.meals ?? [])
+                await Promise.all(
+                  allMeals.map((meal: any) =>
+                    apiFetch("/api/shopping-list", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        userId: user!.id,
+                        recipeId: String(meal.id),
+                        recipeTitle: meal.title,
+                        ingredients: [{ name: meal.title, amount: "see recipe" }],
+                      }),
+                    }).catch(() => {})
+                  )
+                )
+                Alert.alert("Done!", "All meals added to your shopping list.")
+              },
+            },
+          ]
+        )
       }
     } catch (e: any) {
       showError(e?.message ?? "Network error", "Meal Plan")
