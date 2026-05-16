@@ -352,22 +352,22 @@ export default function SearchScreen() {
       )}
 
     </SafeAreaView>
-    {analyzingImages && (
+    <Modal visible={analyzingImages} transparent animationType="fade" statusBarTranslucent>
       <View style={s.aiOverlay}>
         <Text style={s.aiEmoji}>🤖</Text>
         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 16 }} />
         <Text style={s.aiText}>AI reading pictures…</Text>
       </View>
-    )}
+    </Modal>
     </>
   )
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  aiOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background, alignItems: "center", justifyContent: "center", zIndex: 9999, elevation: 9999 },
+  aiOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", alignItems: "center", justifyContent: "center", zIndex: 9999, elevation: 9999 },
   aiEmoji: { fontSize: 72 },
-  aiText: { marginTop: 20, fontSize: 18, fontWeight: "700", color: colors.text },
+  aiText: { marginTop: 20, fontSize: 18, fontWeight: "700", color: "#ffffff" },
   topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   refinePill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   refineSummary: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "500" },
