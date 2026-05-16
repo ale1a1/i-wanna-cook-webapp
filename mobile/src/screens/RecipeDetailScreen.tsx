@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator, Alert
+  Image, ActivityIndicator, Alert, Modal
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
@@ -9,9 +9,11 @@ import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
+import { useSubscription } from "../context/SubscriptionContext"
+import PaywallModal from "../components/PaywallModal"
 import { spacing, radius } from "../lib/theme"
 
-type Tab = "overview" | "ingredients" | "steps"
+type Tab = "overview" | "ingredients" | "steps" | "wine"
 
 export default function RecipeDetailScreen() {
   const navigation = useNavigation<any>()
@@ -20,6 +22,7 @@ export default function RecipeDetailScreen() {
   const { user } = useAuth()
   const { colors } = useTheme()
   const { showError } = useGlobalError()
+  const { isPremium } = useSubscription()
   const s = makeStyles(colors)
 
   const [recipe, setRecipe] = useState<any>(null)
@@ -29,6 +32,15 @@ export default function RecipeDetailScreen() {
   const [isTried, setIsTried] = useState(false)
   const [addedIngredients, setAddedIngredients] = useState<Set<string>>(new Set())
   const [addingAll, setAddingAll] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
+
+  // Wine pairing
+  const [winePairing, setWinePairing] = useState<any>(null)
+  const [wineLoading, setWineLoading] = useState(false)
+
+  // Ingredient substitutes
+  const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({})
+  const [substituteLoading, setSubstituteLoading] = useState<string | null>(null)
 
   const fetchRecipe = async () => {
     setLoading(true)
@@ -133,6 +145,34 @@ export default function RecipeDetailScreen() {
     Alert.alert("Marked as tried!")
   }
 
+  const fetchWinePairing = useCallback(async () => {
+    if (!recipe) return
+    if (!isPremium) { setShowPaywall(true); return }
+    setTab("wine")
+    if (winePairing) return
+    setWineLoading(true)
+    try {
+      const food = recipe.cuisines?.[0] ?? recipe.title.split(" ")[0]
+      const res = await apiFetch(`/api/recipes/wine-pairing?food=${encodeURIComponent(food)}`, { screen: "Wine Pairing" })
+      const data = await res.json()
+      setWinePairing(res.ok ? data : null)
+    } catch {}
+    finally { setWineLoading(false) }
+  }, [recipe, isPremium, winePairing])
+
+  const fetchSubstitute = useCallback(async (ingredient: string) => {
+    if (!isPremium) { setShowPaywall(true); return }
+    if (substitutes[ingredient]) return
+    setSubstituteLoading(ingredient)
+    try {
+      const res = await apiFetch(`/api/recipes/substitute?ingredient=${encodeURIComponent(ingredient)}`, { screen: "Recipe Detail" })
+      const data = await res.json()
+      setSubstitutes(prev => ({ ...prev, [ingredient]: res.ok ? (data.substitutes ?? []) : ["No substitutes found"] }))
+    } catch {
+      setSubstitutes(prev => ({ ...prev, [ingredient]: ["No substitutes found"] }))
+    } finally { setSubstituteLoading(null) }
+  }, [isPremium, substitutes])
+
   if (loading) return (
     <View style={[s.center, { flex: 1 }]}>
       <ActivityIndicator size="large" color={colors.primary} />
@@ -191,6 +231,9 @@ export default function RecipeDetailScreen() {
             </Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity style={[s.tab, tab === "wine" && s.tabActive]} onPress={fetchWinePairing}>
+          <Text style={[s.tabText, tab === "wine" && s.tabTextActive]}>🍷 Wine</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={s.tabContent}>
@@ -231,18 +274,38 @@ export default function RecipeDetailScreen() {
 
             {recipe.extendedIngredients?.map((ing: any) => {
               const added = addedIngredients.has(ing.name)
+              const subs = substitutes[ing.name]
+              const loadingSub = substituteLoading === ing.name
               return (
                 <View key={ing.id} style={s.ingredientRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.ingredientName}>{ing.name}</Text>
                     <Text style={s.ingredientAmount}>{ing.original}</Text>
+                    {subs && (
+                      <View style={s.subsBox}>
+                        <Text style={s.subsLabel}>Substitutes:</Text>
+                        {subs.map((sub, i) => <Text key={i} style={s.subItem}>• {sub}</Text>)}
+                      </View>
+                    )}
                   </View>
-                  <TouchableOpacity
-                    style={[s.cartBtn, added && s.cartBtnAdded]}
-                    onPress={() => toggleIngredient(ing.name, ing.original)}
-                  >
-                    <Ionicons name={added ? "remove" : "cart-outline"} size={16} color={added ? colors.destructive : colors.primary} />
-                  </TouchableOpacity>
+                  <View style={s.ingActions}>
+                    <TouchableOpacity
+                      style={s.subBtn}
+                      onPress={() => fetchSubstitute(ing.name)}
+                      disabled={loadingSub}
+                    >
+                      {loadingSub
+                        ? <ActivityIndicator size="small" color={colors.primary} />
+                        : <Ionicons name="swap-horizontal-outline" size={16} color={colors.primary} />
+                      }
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.cartBtn, added && s.cartBtnAdded]}
+                      onPress={() => toggleIngredient(ing.name, ing.original)}
+                    >
+                      <Ionicons name={added ? "remove" : "cart-outline"} size={16} color={added ? colors.destructive : colors.primary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )
             })}
@@ -273,7 +336,49 @@ export default function RecipeDetailScreen() {
             )) ?? <Text style={{ color: colors.mutedForeground }}>No instructions available.</Text>}
           </View>
         )}
+        {tab === "wine" && (
+          <View style={{ gap: 16 }}>
+            {wineLoading && <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 32 }} />}
+            {!wineLoading && winePairing && (
+              <>
+                <Text style={s.wineIntro}>{winePairing.pairingText}</Text>
+                {winePairing.productMatches?.slice(0, 4).map((wine: any) => (
+                  <View key={wine.id} style={s.wineCard}>
+                    <View style={s.wineCardLeft}>
+                      <Text style={s.wineName}>{wine.title}</Text>
+                      <Text style={s.wineDesc} numberOfLines={2}>{wine.description}</Text>
+                      <View style={s.wineRow}>
+                        <Text style={s.winePrice}>{wine.price}</Text>
+                        <View style={s.wineRating}>
+                          <Ionicons name="star" size={12} color="#f59e0b" />
+                          <Text style={s.wineRatingText}>{wine.averageRating?.toFixed(1)}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+                {winePairing.pairedWines?.length > 0 && (
+                  <View>
+                    <Text style={s.winesLabel}>Recommended wine types</Text>
+                    <View style={s.winesRow}>
+                      {winePairing.pairedWines.map((w: string) => (
+                        <View key={w} style={s.winePill}>
+                          <Text style={s.winePillText}>{w.replace(/_/g, " ")}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </>
+            )}
+            {!wineLoading && !winePairing && (
+              <Text style={s.wineEmpty}>No wine pairing found for this recipe.</Text>
+            )}
+          </View>
+        )}
       </View>
+
+      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Wine Pairing & Substitutes" />
     </ScrollView>
   )
 }
@@ -318,4 +423,23 @@ const makeStyles = (colors: any) => StyleSheet.create({
   stepNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   stepNumText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 22 },
+  ingActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  subBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.primary + "66", alignItems: "center", justifyContent: "center" },
+  subsBox: { marginTop: 8, backgroundColor: colors.card, borderRadius: radius.sm, padding: 10, borderWidth: 1, borderColor: colors.border },
+  subsLabel: { fontSize: 11, fontWeight: "700", color: colors.primary, textTransform: "uppercase", marginBottom: 4 },
+  subItem: { fontSize: 13, color: colors.text, lineHeight: 20 },
+  wineIntro: { fontSize: 14, color: colors.mutedForeground, lineHeight: 22, fontStyle: "italic" },
+  wineCard: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  wineCardLeft: { gap: 6 },
+  wineName: { fontSize: 15, fontWeight: "700", color: colors.text },
+  wineDesc: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18 },
+  wineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  winePrice: { fontSize: 14, fontWeight: "700", color: colors.primary },
+  wineRating: { flexDirection: "row", alignItems: "center", gap: 4 },
+  wineRatingText: { fontSize: 13, color: colors.mutedForeground },
+  winesLabel: { fontSize: 13, fontWeight: "700", color: colors.text, marginBottom: 10 },
+  winesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  winePill: { backgroundColor: colors.primary + "22", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99 },
+  winePillText: { fontSize: 13, color: colors.primary, fontWeight: "600", textTransform: "capitalize" },
+  wineEmpty: { fontSize: 14, color: colors.mutedForeground, textAlign: "center", marginTop: 32 },
 })

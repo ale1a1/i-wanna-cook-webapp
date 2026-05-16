@@ -8,6 +8,8 @@ import { apiFetch, API_BASE_URL } from "../lib/api"
 import { reportError } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
+import { useSubscription } from "../context/SubscriptionContext"
+import PaywallModal from "../components/PaywallModal"
 import { spacing, radius } from "../lib/theme"
 
 type Recipe = { id: number; title: string; image: string; readyInMinutes: number; servings: number; pricePerServing: number; vegan: boolean; vegetarian: boolean; glutenFree: boolean }
@@ -18,12 +20,16 @@ const PREP_TIMES = ["any", "under15", "under30", "under60", "over60"]
 const BUDGETS = ["any", "cheap", "moderate", "expensive"]
 const HEALTHINESS = ["any", "healthy", "veryHealthy", "indulgent"]
 const TASTES = ["any", "sweet", "salty", "spicy", "savory"]
+const CALORIE_GOALS = ["any", "under400", "under600", "under800", "over800"]
+const PROTEIN_GOALS = ["any", "over20", "over40", "over60"]
 const PREP_LABELS: Record<string, string> = { any: "Any time", under15: "< 15 min", under30: "< 30 min", under60: "< 1 hour", over60: "> 1 hour" }
 const BUDGET_LABELS: Record<string, string> = { any: "Any budget", cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium" }
 const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
 const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
+const CALORIE_LABELS: Record<string, string> = { any: "Any", under400: "< 400 kcal", under600: "< 600 kcal", under800: "< 800 kcal", over800: "> 800 kcal" }
+const PROTEIN_LABELS: Record<string, string> = { any: "Any", over20: "> 20g", over40: "> 40g", over60: "> 60g" }
 
-function buildSearchParams(f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[] }): URLSearchParams {
+function buildSearchParams(f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[]; calories: string; protein: string }): URLSearchParams {
   const params = new URLSearchParams()
 
   switch (f.prepTime) {
@@ -59,6 +65,19 @@ function buildSearchParams(f: { prepTime: string; budget: string; diet: string; 
 
   if (f.ingredients.length) params.set("includeIngredients", f.ingredients.join(","))
 
+  switch (f.calories) {
+    case "under400": params.set("maxCalories", "400"); break
+    case "under600": params.set("maxCalories", "600"); break
+    case "under800": params.set("maxCalories", "800"); break
+    case "over800": params.set("minCalories", "800"); break
+  }
+
+  switch (f.protein) {
+    case "over20": params.set("minProtein", "20"); break
+    case "over40": params.set("minProtein", "40"); break
+    case "over60": params.set("minProtein", "60"); break
+  }
+
   return params
 }
 
@@ -74,7 +93,9 @@ export default function SearchScreen() {
   const [searched, setSearched] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
-  const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[] }
+  const { isPremium } = useSubscription()
+  const [showPaywall, setShowPaywall] = useState(false)
+  const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[], calories: "any", protein: "any" }
   const [filters, setFilters] = useState(defaultFilters)
 
   const fetchRecipes = useCallback(async (f = filters) => {
@@ -102,7 +123,7 @@ export default function SearchScreen() {
     if (route.params?.surprise) fetchRecipes(defaultFilters)
   }, [route.params?.surprise])
 
-  const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.ingredients.length > 0
+  const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.ingredients.length > 0 || filters.calories !== "any" || filters.protein !== "any"
 
   const addIngredient = () => {
     if (ingredientInput.trim()) { setFilters(f => ({ ...f, ingredients: [...f.ingredients, ingredientInput.trim()] })); setIngredientInput("") }
@@ -245,6 +266,8 @@ export default function SearchScreen() {
     if (filters.budget !== "any") parts.push(BUDGET_LABELS[filters.budget])
     if (filters.healthiness !== "any") parts.push(HEALTH_LABELS[filters.healthiness])
     if (filters.taste !== "any") parts.push(TASTE_LABELS[filters.taste])
+    if (filters.calories !== "any") parts.push(CALORIE_LABELS[filters.calories])
+    if (filters.protein !== "any") parts.push(`Protein ${PROTEIN_LABELS[filters.protein]}`)
     return parts.join(" · ") || "All recipes"
   })()
 
@@ -285,6 +308,34 @@ export default function SearchScreen() {
             <FilterPicker label="Cuisine" values={CUISINES} labelMap={{ any: "Any cuisine", italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese", french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek" }} field="cuisine" />
             <FilterPicker label="Healthiness" values={HEALTHINESS} labelMap={HEALTH_LABELS} field="healthiness" />
             <FilterPicker label="Taste" values={TASTES} labelMap={TASTE_LABELS} field="taste" />
+            <View style={s.filterGroup}>
+              <View style={s.premiumLabelRow}>
+                <Text style={s.filterLabel}>Calories per serving</Text>
+                <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {CALORIE_GOALS.map(v => (
+                  <TouchableOpacity key={v} style={[s.pill, filters.calories === v && s.pillActive]}
+                    onPress={() => { if (!isPremium && v !== "any") { setShowPaywall(true); return } setFilters(f => ({ ...f, calories: v })) }}>
+                    <Text style={[s.pillText, filters.calories === v && s.pillTextActive]}>{CALORIE_LABELS[v]}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+            <View style={s.filterGroup}>
+              <View style={s.premiumLabelRow}>
+                <Text style={s.filterLabel}>Protein per serving</Text>
+                <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {PROTEIN_GOALS.map(v => (
+                  <TouchableOpacity key={v} style={[s.pill, filters.protein === v && s.pillActive]}
+                    onPress={() => { if (!isPremium && v !== "any") { setShowPaywall(true); return } setFilters(f => ({ ...f, protein: v })) }}>
+                    <Text style={[s.pillText, filters.protein === v && s.pillTextActive]}>{PROTEIN_LABELS[v]}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
             <View style={s.filterGroup}>
               <Text style={s.filterLabel}>Ingredients</Text>
               <View style={s.ingredientRow}>
@@ -359,6 +410,7 @@ export default function SearchScreen() {
         <Text style={s.aiText}>AI reading pictures…</Text>
       </View>
     </Modal>
+    <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Nutrition Goals" />
     </>
   )
 }
@@ -411,4 +463,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   resetBtnText: { color: colors.text, fontWeight: "500" },
   applyBtnLarge: { flex: 1, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: radius.md, alignItems: "center" },
   btnDisabled: { opacity: 0.4 },
+  premiumLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  premiumBadge: { backgroundColor: "#f59e0b22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
+  premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
 })
