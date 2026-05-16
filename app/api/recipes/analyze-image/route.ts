@@ -30,13 +30,17 @@ export async function POST(request: NextRequest) {
       { method: "POST", body: formData }
     )
 
-    if (!res.ok) {
-      const error = await res.text()
-      return NextResponse.json({ error }, { status: res.status })
+    const data = await res.json()
+
+    if (!res.ok || data?.status === "failure") {
+      const code: number = data?.code ?? res.status
+      let message: string
+      if (code === 402) message = "Daily photo scan limit reached. Try again tomorrow or upgrade your plan."
+      else if (code === 401) message = "API key invalid."
+      else message = data?.message ?? "Spoonacular error"
+      return NextResponse.json({ error: message }, { status: code })
     }
 
-    const data = await res.json()
-    // category.name is e.g. "broccoli_stir_fry" — split into words and use the first as the key ingredient
     const categoryName: string = data?.category?.name ?? ""
     const ingredient = categoryName.split("_")[0]
     return NextResponse.json({ ingredient })

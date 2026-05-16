@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import * as ImagePicker from "expo-image-picker"
 import { apiFetch, API_BASE_URL } from "../lib/api"
+import { reportError } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
@@ -125,12 +126,15 @@ export default function SearchScreen() {
             body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }),
           })
           const data = await res.json()
+          if (data.error) throw new Error(data.error)
           if (data.ingredient) detected.push(data.ingredient)
         })
       )
-    } catch {
+    } catch (e: any) {
       setAnalyzingImages(false)
-      showError("Network error — couldn't reach the server. Check your connection.", "Scan Ingredients")
+      const msg = e?.message ?? "Network error — couldn't reach the server."
+      reportError(msg, "Scan Ingredients")
+      showError(msg, "Scan Ingredients")
       return
     }
 
@@ -355,9 +359,9 @@ export default function SearchScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  aiOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background + "F0", alignItems: "center", justifyContent: "center", zIndex: 999 },
-  aiEmoji: { fontSize: 56 },
-  aiText: { marginTop: 12, fontSize: 16, fontWeight: "600", color: colors.text },
+  aiOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background, alignItems: "center", justifyContent: "center", zIndex: 9999, elevation: 9999 },
+  aiEmoji: { fontSize: 72 },
+  aiText: { marginTop: 20, fontSize: 18, fontWeight: "700", color: colors.text },
   topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   refinePill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   refineSummary: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "500" },
