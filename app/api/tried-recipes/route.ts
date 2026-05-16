@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       `INSERT INTO tried_recipes (user_id, recipe_id, recipe_title, tried_on, estimated_time)
        VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT (user_id, recipe_id) DO NOTHING`,
-      [userId, String(recipeId), recipeTitle, triedOn, estimatedTime]
+      [userId, String(recipeId), recipeTitle, triedOn ?? new Date().toISOString().split("T")[0], estimatedTime ?? null]
     )
     return NextResponse.json({ ok: true })
   } catch (err) {
