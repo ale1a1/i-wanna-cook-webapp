@@ -111,7 +111,7 @@ export default function SearchScreen() {
   const [analyzingImages, setAnalyzingImages] = useState(false)
   const [cameraCount, setCameraCount] = useState(0)
 
-  const analyzeAssets = useCallback(async (assets: ImagePicker.ImagePickerAsset[]) => {
+  const analyzeAssets = useCallback(async (assets: ImagePicker.ImagePickerAsset[]): Promise<boolean> => {
     setFiltersOpen(false)
     setAnalyzingImages(true)
     const detected: string[] = []
@@ -135,14 +135,14 @@ export default function SearchScreen() {
       const msg = e?.message ?? "Network error — couldn't reach the server."
       reportError(msg, "Scan Ingredients")
       showError(msg, "Scan Ingredients")
-      return
+      return false
     }
 
     setAnalyzingImages(false)
 
     if (detected.length === 0) {
       showError("Couldn't identify any ingredients in those photos. Try clearer images.", "Scan Ingredients")
-      return
+      return false
     }
 
     setFilters(f => {
@@ -151,6 +151,7 @@ export default function SearchScreen() {
       return { ...f, ingredients: [...f.ingredients, ...newOnes] }
     })
     setFiltersOpen(true)
+    return true
   }, [showError])
 
   const openCamera = useCallback(async (currentCount: number) => {
@@ -168,21 +169,26 @@ export default function SearchScreen() {
 
     const newCount = currentCount + 1
     setCameraCount(newCount)
-    await analyzeAssets(result.assets)
+    const success = await analyzeAssets(result.assets)
+
+    if (!success) {
+      setCameraCount(0)
+      return
+    }
 
     if (newCount < 5) {
       Alert.alert(
         `Photo ${newCount} of 5 scanned`,
         "Take another photo or stop here?",
         [
-          { text: "Stop", style: "cancel", onPress: () => setCameraCount(0) },
+          { text: "Done", style: "cancel", onPress: () => setCameraCount(0) },
           { text: "Take another", onPress: () => openCamera(newCount) },
         ]
       )
     } else {
       setCameraCount(0)
     }
-  }, [analyzeAssets])
+  }, [analyzeAssets, showError])
 
   const pickAndAnalyzeImages = useCallback(async () => {
     Alert.alert(
