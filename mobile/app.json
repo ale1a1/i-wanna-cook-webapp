@@ -26,7 +26,14 @@
     "plugins": [
       "expo-secure-store",
       "expo-font",
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow What Should I Cook to access your photos to identify ingredients.",
+          "cameraPermission": "Allow What Should I Cook to use your camera to photograph ingredients."
+        }
+      ]
     ]
   }
 }

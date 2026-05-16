@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
-import { apiFetch } from "../lib/api"
+import * as ImagePicker from "expo-image-picker"
+import { apiFetch, API_BASE_URL } from "../lib/api"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
@@ -106,6 +107,107 @@ export default function SearchScreen() {
     if (ingredientInput.trim()) { setFilters(f => ({ ...f, ingredients: [...f.ingredients, ingredientInput.trim()] })); setIngredientInput("") }
   }
 
+  const [analyzingImages, setAnalyzingImages] = useState(false)
+  const [cameraCount, setCameraCount] = useState(0)
+
+  const analyzeAssets = useCallback(async (assets: ImagePicker.ImagePickerAsset[]) => {
+    setAnalyzingImages(true)
+    const detected: string[] = []
+
+    await Promise.all(
+      assets.map(async (asset) => {
+        if (!asset.base64) return
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/recipes/analyze-image`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }),
+          })
+          const data = await res.json()
+          console.log("[analyze-image] response:", JSON.stringify(data))
+          if (data.ingredient) detected.push(data.ingredient)
+        } catch {}
+      })
+    )
+
+    setAnalyzingImages(false)
+
+    if (detected.length === 0) {
+      Alert.alert("No ingredients found", "Couldn't identify any ingredients in those photos. Try clearer images.")
+      return
+    }
+
+    setFilters(f => {
+      const existing = new Set(f.ingredients.map(i => i.toLowerCase()))
+      const newOnes = detected.filter(d => !existing.has(d.toLowerCase()))
+      return { ...f, ingredients: [...f.ingredients, ...newOnes] }
+    })
+  }, [])
+
+  const openCamera = useCallback(async (currentCount: number) => {
+    if (currentCount >= 5) {
+      Alert.alert("Limit reached", "You can scan up to 5 ingredients photos.")
+      return
+    }
+    const { status } = await ImagePicker.requestCameraPermissionsAsync()
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Please allow camera access to take ingredient photos.")
+      return
+    }
+    const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
+    if (result.canceled || result.assets.length === 0) return
+
+    const newCount = currentCount + 1
+    setCameraCount(newCount)
+    await analyzeAssets(result.assets)
+
+    if (newCount < 5) {
+      Alert.alert(
+        `Photo ${newCount} of 5 scanned`,
+        "Take another photo or stop here?",
+        [
+          { text: "Stop", style: "cancel", onPress: () => setCameraCount(0) },
+          { text: "Take another", onPress: () => openCamera(newCount) },
+        ]
+      )
+    } else {
+      setCameraCount(0)
+    }
+  }, [analyzeAssets])
+
+  const pickAndAnalyzeImages = useCallback(async () => {
+    Alert.alert(
+      "Add ingredient photos",
+      "How would you like to add photos?",
+      [
+        {
+          text: "Take photo",
+          onPress: () => openCamera(cameraCount),
+        },
+        {
+          text: "Choose from library",
+          onPress: async () => {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+            if (status !== "granted") {
+              Alert.alert("Permission needed", "Please allow access to your photos to use this feature.")
+              return
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsMultipleSelection: true,
+              selectionLimit: 5,
+              base64: true,
+              quality: 0.6,
+            })
+            if (result.canceled || result.assets.length === 0) return
+            await analyzeAssets(result.assets)
+          },
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    )
+  }, [cameraCount, openCamera, analyzeAssets])
+
   const FilterPicker = ({ label, values, labelMap, field }: { label: string; values: string[]; labelMap: Record<string, string>; field: keyof typeof filters }) => (
     <View style={s.filterGroup}>
       <Text style={s.filterLabel}>{label}</Text>
@@ -133,7 +235,7 @@ export default function SearchScreen() {
       </View>
 
       <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet">
-        <View style={s.modalContainer}>
+        <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
             <Text style={s.modalTitle}>Filter Recipes</Text>
             <TouchableOpacity onPress={() => setFiltersOpen(false)}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
@@ -152,6 +254,11 @@ export default function SearchScreen() {
                 <TouchableOpacity style={[s.addBtn, !ingredientInput.trim() && s.btnDisabled]} onPress={addIngredient} disabled={!ingredientInput.trim()}>
                   <Text style={s.addBtnText}>Add</Text>
                 </TouchableOpacity>
+                <TouchableOpacity style={s.cameraBtn} onPress={pickAndAnalyzeImages} disabled={analyzingImages}>
+                  {analyzingImages
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Ionicons name="camera" size={20} color="#fff" />}
+                </TouchableOpacity>
               </View>
               {filters.ingredients.length > 0 && (
                 <View style={s.tagsRow}>
@@ -166,7 +273,7 @@ export default function SearchScreen() {
             </View>
           </ScrollView>
           <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false); setError("") }} disabled={!hasActiveFilters && !searched}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false) }} disabled={!hasActiveFilters && !searched}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
@@ -174,7 +281,7 @@ export default function SearchScreen() {
               <Text style={s.applyBtnText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {loading ? (
@@ -243,6 +350,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   ingredientInput: { flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontSize: 14 },
   addBtn: { backgroundColor: colors.primary, paddingHorizontal: 16, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   addBtnText: { color: "#fff", fontWeight: "700" },
+  cameraBtn: { backgroundColor: colors.primary, width: 44, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   tag: { flexDirection: "row", alignItems: "center", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99 },
   tagText: { fontSize: 13, color: colors.text },
