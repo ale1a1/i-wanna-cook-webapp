@@ -1,11 +1,58 @@
 import { NextRequest, NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
-  const apiKey = process.env.SPOONACULAR_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ error: "API key not configured" }, { status: 500 })
-  }
+const FOOD_KEYWORDS = new Set([
+  "food", "ingredient", "vegetable", "fruit", "meat", "fish", "seafood", "dairy",
+  "egg", "cheese", "milk", "butter", "cream", "bread", "flour", "rice", "pasta",
+  "chicken", "beef", "pork", "lamb", "turkey", "bacon", "sausage", "ham",
+  "tomato", "onion", "garlic", "potato", "carrot", "broccoli", "spinach", "lettuce",
+  "pepper", "mushroom", "cucumber", "zucchini", "eggplant", "corn", "pea", "bean",
+  "lemon", "lime", "orange", "apple", "banana", "strawberry", "blueberry",
+  "salmon", "tuna", "shrimp", "prawn", "crab", "lobster",
+  "oil", "vinegar", "sauce", "herb", "spice", "salt", "sugar", "honey",
+  "chocolate", "vanilla", "cinnamon", "ginger", "basil", "parsley", "thyme",
+  "avocado", "celery", "leek", "cauliflower", "asparagus", "artichoke",
+  "almond", "walnut", "cashew", "peanut", "hazelnut",
+  "yogurt", "cream cheese", "mozzarella", "parmesan", "cheddar",
+])
 
+function isFoodLabel(label: string): boolean {
+  const lower = label.toLowerCase()
+  for (const keyword of FOOD_KEYWORDS) {
+    if (lower.includes(keyword)) return true
+  }
+  return false
+}
+
+async function getAccessToken(): Promise<string> {
+  const clientEmail = process.env.GOOGLE_VISION_CLIENT_EMAIL!
+  const privateKey = process.env.GOOGLE_VISION_PRIVATE_KEY!.replace(/\\n/g, "\n")
+
+  const now = Math.floor(Date.now() / 1000)
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")
+  const payload = Buffer.from(JSON.stringify({
+    iss: clientEmail,
+    scope: "https://www.googleapis.com/auth/cloud-vision",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now,
+  })).toString("base64url")
+
+  const { createSign } = await import("crypto")
+  const sign = createSign("RSA-SHA256")
+  sign.update(`${header}.${payload}`)
+  const signature = sign.sign(privateKey, "base64url")
+  const jwt = `${header}.${payload}.${signature}`
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
+  })
+  const data = await res.json()
+  return data.access_token
+}
+
+export async function POST(request: NextRequest) {
   let body: { base64: string; mimeType?: string }
   try {
     body = await request.json()
@@ -14,37 +61,41 @@ export async function POST(request: NextRequest) {
   }
 
   const { base64, mimeType = "image/jpeg" } = body
-  if (!base64) {
-    return NextResponse.json({ error: "Missing base64 image data" }, { status: 400 })
-  }
-
-  const buffer = Buffer.from(base64, "base64")
-  const blob = new Blob([buffer], { type: mimeType })
-
-  const formData = new FormData()
-  formData.append("file", blob, "image.jpg")
+  if (!base64) return NextResponse.json({ error: "Missing base64 image data" }, { status: 400 })
 
   try {
-    const res = await fetch(
-      `https://api.spoonacular.com/food/images/analyze?apiKey=${apiKey}`,
-      { method: "POST", body: formData }
-    )
+    const accessToken = await getAccessToken()
+
+    const res = await fetch("https://vision.googleapis.com/v1/images:annotate", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requests: [{
+          image: { content: base64 },
+          features: [
+            { type: "LABEL_DETECTION", maxResults: 20 },
+          ],
+        }],
+      }),
+    })
 
     const data = await res.json()
+    if (!res.ok) return NextResponse.json({ error: data.error?.message ?? "Vision API error" }, { status: res.status })
 
-    if (!res.ok || data?.status === "failure") {
-      const code: number = data?.code ?? res.status
-      let message: string
-      if (code === 402) message = "Daily photo scan limit reached. Try again tomorrow or upgrade your plan."
-      else if (code === 401) message = "API key invalid."
-      else message = data?.message ?? "Spoonacular error"
-      return NextResponse.json({ error: message }, { status: code })
+    const labels: { description: string; score: number }[] = data.responses?.[0]?.labelAnnotations ?? []
+
+    // Filter to food-related labels with decent confidence
+    const foodLabels = labels
+      .filter(l => l.score > 0.7 && isFoodLabel(l.description))
+      .map(l => l.description.toLowerCase())
+
+    if (foodLabels.length === 0) {
+      return NextResponse.json({ error: "No ingredients detected. Try a clearer photo." }, { status: 422 })
     }
 
-    const categoryName: string = data?.category?.name ?? ""
-    const ingredient = categoryName.split("_")[0]
-    return NextResponse.json({ ingredient })
-  } catch {
-    return NextResponse.json({ error: "Failed to analyze image" }, { status: 500 })
+    // Return the best match as the ingredient
+    return NextResponse.json({ ingredient: foodLabels[0], all: foodLabels })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "Failed to analyze image" }, { status: 500 })
   }
 }

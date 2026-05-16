@@ -148,7 +148,8 @@ export default function SearchScreen() {
           })
           const data = await res.json()
           if (data.error) throw new Error(data.error)
-          if (data.ingredient) detected.push(data.ingredient)
+          if (data.all?.length) detected.push(...data.all)
+          else if (data.ingredient) detected.push(data.ingredient)
         })
       )
     } catch (e: any) {
