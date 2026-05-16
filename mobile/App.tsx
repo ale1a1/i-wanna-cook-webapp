@@ -11,6 +11,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context"
 import { AuthProvider, useAuth } from "./src/context/AuthContext"
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
 import { GlobalErrorProvider } from "./src/context/GlobalErrorContext"
+import { SubscriptionProvider } from "./src/context/SubscriptionContext"
 import ErrorCard from "./src/components/ErrorCard"
 import HomeScreen from "./src/screens/HomeScreen"
 import SearchScreen from "./src/screens/SearchScreen"
@@ -21,6 +22,7 @@ import TriedRecipesScreen from "./src/screens/TriedRecipesScreen"
 import ProfileScreen from "./src/screens/ProfileScreen"
 import LoginScreen from "./src/screens/LoginScreen"
 import CookingModeScreen from "./src/screens/CookingModeScreen"
+import MealPlanScreen from "./src/screens/MealPlanScreen"
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null }
@@ -74,6 +76,10 @@ function HomeTabs() {
         tabBarLabel: "Shopping",
         tabBarIcon: ({ color, size }) => <Ionicons name="cart-outline" size={size} color={color} />,
       }} />
+      <Tab.Screen name="MealPlan" component={MealPlanScreen} options={{
+        tabBarLabel: "Meal Plan",
+        tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+      }} />
       <Tab.Screen name="Profile" component={user ? ProfileScreen : LoginScreen} options={{
         tabBarIcon: ({ color, size }) => <Ionicons name={user ? "person-outline" : "log-in-outline"} size={size} color={color} />,
         tabBarLabel: user ? "Profile" : "Sign in",
@@ -116,9 +122,11 @@ export default function App() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <GlobalErrorProvider>
-              <AppContent />
-            </GlobalErrorProvider>
+            <SubscriptionProvider>
+              <GlobalErrorProvider>
+                <AppContent />
+              </GlobalErrorProvider>
+            </SubscriptionProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
