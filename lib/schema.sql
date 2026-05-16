@@ -29,6 +29,20 @@ CREATE TABLE IF NOT EXISTS shopping_list (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS meal_plans (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  week_start DATE NOT NULL,
+  plan_data JSONB NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, week_start)
+);
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS subscription_tier TEXT NOT NULL DEFAULT 'free',
+  ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMP;
+
 CREATE TABLE IF NOT EXISTS ratings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
