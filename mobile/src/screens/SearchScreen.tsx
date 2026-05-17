@@ -130,16 +130,47 @@ export default function SearchScreen() {
   }
 
   const [analyzingImages, setAnalyzingImages] = useState(false)
-  const [cameraCount, setCameraCount] = useState(0)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scannerStep, setScannerStep] = useState<"intro" | "capture">("intro")
+  const [capturedAssets, setCapturedAssets] = useState<ImagePicker.ImagePickerAsset[]>([])
 
-  const analyzeAssets = useCallback(async (assets: ImagePicker.ImagePickerAsset[]): Promise<boolean> => {
-    setFiltersOpen(false)
+  const openCameraForScan = useCallback(async () => {
+    if (capturedAssets.length >= 10) return
+    const { status } = await ImagePicker.requestCameraPermissionsAsync()
+    if (status !== "granted") { Alert.alert("Permission needed", "Please allow camera access."); return }
+    const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
+    if (!result.canceled && result.assets.length > 0) {
+      setCapturedAssets(prev => [...prev, ...result.assets])
+    }
+  }, [capturedAssets.length])
+
+  const openLibraryForScan = useCallback(async () => {
+    const remaining = 10 - capturedAssets.length
+    if (remaining <= 0) return
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== "granted") { Alert.alert("Permission needed", "Please allow photo library access."); return }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      base64: true,
+      quality: 0.6,
+    })
+    if (!result.canceled && result.assets.length > 0) {
+      setCapturedAssets(prev => [...prev, ...result.assets])
+    }
+  }, [capturedAssets.length])
+
+  const analyzeAssets = useCallback(async () => {
+    if (capturedAssets.length === 0) return
+    setScannerOpen(false)
     setAnalyzingImages(true)
+    setFiltersOpen(false)
     const detected: string[] = []
 
     try {
       await Promise.all(
-        assets.map(async (asset) => {
+        capturedAssets.map(async (asset) => {
           if (!asset.base64) return
           const res = await fetch(`${API_BASE_URL}/api/recipes/analyze-image`, {
             method: "POST",
@@ -157,14 +188,16 @@ export default function SearchScreen() {
       const msg = e?.message ?? "Network error — couldn't reach the server."
       reportError(msg, "Scan Ingredients")
       showError(msg, "Scan Ingredients")
-      return false
+      setCapturedAssets([])
+      return
     }
 
     setAnalyzingImages(false)
+    setCapturedAssets([])
 
     if (detected.length === 0) {
-      showError("Couldn't identify any ingredients in those photos. Try clearer images.", "Scan Ingredients")
-      return false
+      showError("Couldn't identify any ingredients. Try closer photos of individual ingredients.", "Scan Ingredients")
+      return
     }
 
     setFilters(f => {
@@ -173,77 +206,13 @@ export default function SearchScreen() {
       return { ...f, ingredients: [...f.ingredients, ...newOnes] }
     })
     setFiltersOpen(true)
-    return true
-  }, [showError])
+  }, [capturedAssets, showError])
 
-  const openCamera = useCallback(async (currentCount: number) => {
-    if (currentCount >= 5) {
-      showError("You can scan up to 5 ingredient photos at a time.", "Scan Ingredients")
-      return
-    }
-    const { status } = await ImagePicker.requestCameraPermissionsAsync()
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow camera access to take ingredient photos.")
-      return
-    }
-    const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
-    if (result.canceled || result.assets.length === 0) return
-
-    const newCount = currentCount + 1
-    setCameraCount(newCount)
-    const success = await analyzeAssets(result.assets)
-
-    if (!success) {
-      setCameraCount(0)
-      return
-    }
-
-    if (newCount < 5) {
-      Alert.alert(
-        `Photo ${newCount} of 5 scanned`,
-        "Take another photo or stop here?",
-        [
-          { text: "Done", style: "cancel", onPress: () => setCameraCount(0) },
-          { text: "Take another", onPress: () => openCamera(newCount) },
-        ]
-      )
-    } else {
-      setCameraCount(0)
-    }
-  }, [analyzeAssets, showError])
-
-  const pickAndAnalyzeImages = useCallback(async () => {
-    Alert.alert(
-      "Add ingredient photos",
-      "How would you like to add photos?",
-      [
-        {
-          text: "Take photo",
-          onPress: () => openCamera(cameraCount),
-        },
-        {
-          text: "Choose from library",
-          onPress: async () => {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-            if (status !== "granted") {
-              Alert.alert("Permission needed", "Please allow access to your photos to use this feature.")
-              return
-            }
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsMultipleSelection: true,
-              selectionLimit: 5,
-              base64: true,
-              quality: 0.6,
-            })
-            if (result.canceled || result.assets.length === 0) return
-            await analyzeAssets(result.assets)
-          },
-        },
-        { text: "Cancel", style: "cancel" },
-      ]
-    )
-  }, [cameraCount, openCamera, analyzeAssets])
+  const pickAndAnalyzeImages = useCallback(() => {
+    setCapturedAssets([])
+    setScannerStep("intro")
+    setScannerOpen(true)
+  }, [])
 
   const FilterPicker = ({ label, values, labelMap, field }: { label: string; values: string[]; labelMap: Record<string, string>; field: keyof typeof filters }) => (
     <View style={s.filterGroup}>
@@ -404,6 +373,78 @@ export default function SearchScreen() {
       )}
 
     </SafeAreaView>
+    {/* AI Scanner Modal */}
+    <Modal visible={scannerOpen} animationType="slide" presentationStyle="pageSheet">
+      <SafeAreaView style={s.scannerContainer} edges={["top"]}>
+        <View style={s.scannerHeader}>
+          <TouchableOpacity onPress={() => setScannerOpen(false)}>
+            <Ionicons name="close" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        {scannerStep === "intro" ? (
+          <View style={s.scannerIntro}>
+            <Text style={s.scannerEmoji}>📸</Text>
+            <Text style={s.scannerTitle}>Scan Ingredients</Text>
+            <Text style={s.scannerDesc}>
+              Use AI to detect ingredients from your photos. For best results, take a separate close-up photo of each ingredient.
+            </Text>
+            <View style={s.scannerTips}>
+              <Text style={s.scannerTip}>✓ One ingredient per photo</Text>
+              <Text style={s.scannerTip}>✓ Good lighting, close up</Text>
+              <Text style={s.scannerTip}>✓ Up to 10 photos at once</Text>
+              <Text style={s.scannerTip}>✗ Avoid full fridge shots</Text>
+            </View>
+            <TouchableOpacity style={s.scannerGoBtn} onPress={() => setScannerStep("capture")}>
+              <Text style={s.scannerGoBtnText}>Got it, let's go</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={s.scannerCapture}>
+            <Text style={s.scannerCaptureTitle}>
+              {capturedAssets.length === 0 ? "Add your first photo" : `${capturedAssets.length} photo${capturedAssets.length > 1 ? "s" : ""} added`}
+            </Text>
+            {capturedAssets.length > 0 && (
+              <Text style={s.scannerCaptureSubtitle}>{10 - capturedAssets.length} more allowed</Text>
+            )}
+
+            <View style={s.scannerBtns}>
+              <TouchableOpacity style={s.scannerActionBtn} onPress={openCameraForScan} disabled={capturedAssets.length >= 10}>
+                <Ionicons name="camera" size={28} color={colors.primary} />
+                <Text style={s.scannerActionBtnText}>Take photo</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.scannerActionBtn} onPress={openLibraryForScan} disabled={capturedAssets.length >= 10}>
+                <Ionicons name="images" size={28} color={colors.primary} />
+                <Text style={s.scannerActionBtnText}>From library</Text>
+              </TouchableOpacity>
+            </View>
+
+            {capturedAssets.length > 0 && (
+              <View style={s.scannerThumbsRow}>
+                {capturedAssets.map((a, i) => (
+                  <View key={i} style={s.scannerThumb}>
+                    <Image source={{ uri: a.uri }} style={s.scannerThumbImg} />
+                    <TouchableOpacity style={s.scannerThumbRemove} onPress={() => setCapturedAssets(prev => prev.filter((_, idx) => idx !== i))}>
+                      <Ionicons name="close-circle" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <View style={s.scannerFooter}>
+              {capturedAssets.length > 0 && (
+                <TouchableOpacity style={s.scanNowBtn} onPress={analyzeAssets}>
+                  <Ionicons name="flash" size={18} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={s.scanNowBtnText}>Scan now ({capturedAssets.length})</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      </SafeAreaView>
+    </Modal>
+
     <Modal visible={analyzingImages} transparent animationType="fade" statusBarTranslucent>
       <View style={s.aiOverlay}>
         <Text style={s.aiEmoji}>🤖</Text>
@@ -467,4 +508,27 @@ const makeStyles = (colors: any) => StyleSheet.create({
   premiumLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   premiumBadge: { backgroundColor: "#f59e0b22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
+  scannerContainer: { flex: 1, backgroundColor: colors.background },
+  scannerHeader: { padding: spacing.md, alignItems: "flex-end" },
+  scannerIntro: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: 16 },
+  scannerEmoji: { fontSize: 64 },
+  scannerTitle: { fontSize: 24, fontWeight: "800", color: colors.text, textAlign: "center" },
+  scannerDesc: { fontSize: 15, color: colors.mutedForeground, textAlign: "center", lineHeight: 22 },
+  scannerTips: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border, gap: 8, width: "100%" },
+  scannerTip: { fontSize: 14, color: colors.text },
+  scannerGoBtn: { backgroundColor: colors.primary, paddingVertical: 16, paddingHorizontal: 40, borderRadius: radius.lg, marginTop: 8 },
+  scannerGoBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  scannerCapture: { flex: 1, padding: spacing.md, gap: 20 },
+  scannerCaptureTitle: { fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center", marginTop: 8 },
+  scannerCaptureSubtitle: { fontSize: 13, color: colors.mutedForeground, textAlign: "center", marginTop: -16 },
+  scannerBtns: { flexDirection: "row", gap: 16, justifyContent: "center" },
+  scannerActionBtn: { flex: 1, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.lg, padding: spacing.lg, alignItems: "center", gap: 10 },
+  scannerActionBtnText: { fontSize: 14, fontWeight: "600", color: colors.text },
+  scannerThumbsRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  scannerThumb: { width: 80, height: 80, borderRadius: radius.md, overflow: "hidden" },
+  scannerThumbImg: { width: "100%", height: "100%" },
+  scannerThumbRemove: { position: "absolute", top: 2, right: 2 },
+  scannerFooter: { marginTop: "auto" },
+  scanNowBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.primary, paddingVertical: 16, borderRadius: radius.lg },
+  scanNowBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 })
