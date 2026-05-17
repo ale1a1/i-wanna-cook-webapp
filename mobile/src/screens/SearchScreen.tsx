@@ -178,7 +178,7 @@ export default function SearchScreen() {
             body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }),
           })
           const data = await res.json()
-          if (data.error) throw new Error(data.error)
+          if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
           if (data.all?.length) detected.push(...data.all)
           else if (data.ingredient) detected.push(data.ingredient)
         })
@@ -186,7 +186,9 @@ export default function SearchScreen() {
     } catch (e: any) {
       setAnalyzingImages(false)
       const msg = e?.message ?? "Network error — couldn't reach the server."
-      reportError(msg, "Scan Ingredients")
+      if (!msg.includes("No ingredients detected")) {
+        reportError(msg, "Scan Ingredients")
+      }
       showError(msg, "Scan Ingredients")
       setCapturedAssets([])
       return
