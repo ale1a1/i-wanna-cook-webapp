@@ -35,9 +35,16 @@ function getErrorDisplay(error: string): { title: string; message: string; icon:
       icon: "server-outline",
     }
   }
+  if (lower.includes("no ingredients detected") || lower.includes("couldn't identify") || lower.includes("clearer photo")) {
+    return {
+      title: "No Ingredients Found",
+      message: "We couldn't identify any ingredients. Try a closer, clearer photo of a single ingredient.",
+      icon: "camera-outline",
+    }
+  }
   return {
     title: "Something Went Wrong",
-    message: "An unexpected error occurred. Please try again.",
+    message: error.length > 10 && error.length < 200 ? error : "An unexpected error occurred. Please try again.",
     icon: "alert-circle-outline",
   }
 }
