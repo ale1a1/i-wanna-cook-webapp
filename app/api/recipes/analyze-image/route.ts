@@ -26,8 +26,9 @@ function isFoodLabel(label: string): boolean {
 async function getAccessToken(): Promise<string> {
   const clientEmail = process.env.GOOGLE_VISION_CLIENT_EMAIL
   const rawKey = process.env.GOOGLE_VISION_PRIVATE_KEY
-  if (!clientEmail || !rawKey) throw new Error("Google Vision credentials not configured")
-  const privateKey = rawKey.replace(/\\n/g, "\n")
+  if (!clientEmail || !rawKey) throw new Error(`Google Vision credentials not configured — email: ${!!clientEmail}, key: ${!!rawKey}`)
+  // Handle both literal \n and actual newlines
+  const privateKey = rawKey.includes("\\n") ? rawKey.replace(/\\n/g, "\n") : rawKey
 
   const now = Math.floor(Date.now() / 1000)
   const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url")
