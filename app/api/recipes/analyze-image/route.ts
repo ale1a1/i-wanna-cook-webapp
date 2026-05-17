@@ -1,24 +1,39 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const FOOD_KEYWORDS = new Set([
-  "food", "ingredient", "vegetable", "fruit", "meat", "fish", "seafood", "dairy",
-  "egg", "cheese", "milk", "butter", "cream", "bread", "flour", "rice", "pasta",
-  "chicken", "beef", "pork", "lamb", "turkey", "bacon", "sausage", "ham",
-  "tomato", "onion", "garlic", "potato", "carrot", "broccoli", "spinach", "lettuce",
-  "pepper", "mushroom", "cucumber", "zucchini", "eggplant", "corn", "pea", "bean",
-  "lemon", "lime", "orange", "apple", "banana", "strawberry", "blueberry",
-  "salmon", "tuna", "shrimp", "prawn", "crab", "lobster",
-  "oil", "vinegar", "sauce", "herb", "spice", "salt", "sugar", "honey",
-  "chocolate", "vanilla", "cinnamon", "ginger", "basil", "parsley", "thyme",
-  "avocado", "celery", "leek", "cauliflower", "asparagus", "artichoke",
-  "almond", "walnut", "cashew", "peanut", "hazelnut",
-  "yogurt", "cream cheese", "mozzarella", "parmesan", "cheddar",
+// Generic labels that Vision returns but are useless as search ingredients
+const GENERIC_LABELS = new Set([
+  "food", "ingredient", "ingredients", "produce", "natural foods", "whole food",
+  "superfood", "food group", "staple food", "vegetable", "fruit", "meat", "fish",
+  "seafood", "dairy", "cuisine", "dish", "meal", "recipe", "cooking", "raw",
+  "organic", "fresh", "frozen", "processed food", "plant", "grass", "leaf",
+  "still life", "photography", "tableware", "cutting board", "bowl", "plate",
+  "kitchen", "wood", "surface", "white", "red", "green", "yellow", "orange",
+  "colour", "color", "pattern", "texture", "macro photography", "close up",
 ])
 
-function isFoodLabel(label: string): boolean {
+// Specific ingredient names Vision commonly returns correctly
+const SPECIFIC_INGREDIENTS = new Set([
+  "egg", "eggs", "chicken", "beef", "pork", "lamb", "turkey", "bacon", "sausage", "ham", "steak",
+  "salmon", "tuna", "shrimp", "prawn", "crab", "lobster", "cod", "tilapia",
+  "tomato", "onion", "garlic", "potato", "carrot", "broccoli", "spinach", "lettuce",
+  "pepper", "mushroom", "cucumber", "zucchini", "eggplant", "corn", "pea", "bean",
+  "lemon", "lime", "orange", "apple", "banana", "strawberry", "blueberry", "avocado",
+  "celery", "leek", "cauliflower", "asparagus", "artichoke", "kale", "arugula",
+  "cheese", "milk", "butter", "cream", "yogurt", "mozzarella", "parmesan", "cheddar",
+  "bread", "flour", "rice", "pasta", "noodle", "tortilla",
+  "oil", "vinegar", "honey", "sugar", "salt",
+  "chocolate", "vanilla", "cinnamon", "ginger", "basil", "parsley", "thyme", "rosemary",
+  "almond", "walnut", "cashew", "peanut", "hazelnut",
+  "tofu", "tempeh", "lentil", "chickpea",
+])
+
+function isUsefulIngredientLabel(label: string): boolean {
   const lower = label.toLowerCase()
-  for (const keyword of FOOD_KEYWORDS) {
-    if (lower.includes(keyword)) return true
+  // Reject if it's a known generic label
+  if (GENERIC_LABELS.has(lower)) return false
+  // Accept if it exactly matches or contains a specific ingredient
+  for (const ing of SPECIFIC_INGREDIENTS) {
+    if (lower === ing || lower.includes(ing)) return true
   }
   return false
 }
@@ -87,9 +102,9 @@ export async function POST(request: NextRequest) {
 
     const labels: { description: string; score: number }[] = data.responses?.[0]?.labelAnnotations ?? []
 
-    // Filter to food-related labels with decent confidence
+    // Only keep specific named ingredients, reject generic category labels
     const foodLabels = labels
-      .filter(l => l.score > 0.7 && isFoodLabel(l.description))
+      .filter(l => l.score > 0.75 && isUsefulIngredientLabel(l.description))
       .map(l => l.description.toLowerCase())
 
     if (foodLabels.length === 0) {
