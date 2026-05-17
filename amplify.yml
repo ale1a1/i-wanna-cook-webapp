@@ -7,7 +7,7 @@ frontend:
         - pnpm install --no-frozen-lockfile --force
     build:
       commands:
-        - env | grep -e DATABASE_URL -e SPOONACULAR_API_KEY -e COGNITO_CLIENT_ID -e COGNITO_USER_POOL_ID -e COGNITO_REGION -e RESEND_API_KEY -e GOOGLE_VISION_CLIENT_EMAIL -e GOOGLE_VISION_PRIVATE_KEY >> .env.production
+        - env | grep -e DATABASE_URL -e SPOONACULAR_API_KEY -e COGNITO_CLIENT_ID -e COGNITO_USER_POOL_ID -e COGNITO_REGION -e RESEND_API_KEY -e GOOGLE_VISION_CLIENT_EMAIL -e GOOGLE_VISION_PRIVATE_KEY -e ANTHROPIC_API_KEY >> .env.production
         - pnpm run build
   artifacts:
     baseDirectory: .next
