@@ -60,6 +60,7 @@ export default function RecipeDetailScreen() {
   const [checkIndex, setCheckIndex] = useState(0)
   const [suggestedSub, setSuggestedSub] = useState<string | null>(null)
   const [loadingSub, setLoadingSub] = useState(false)
+  const [awaitingSub, setAwaitingSub] = useState(false)
   const [pendingSubstitutions, setPendingSubstitutions] = useState<Substitution[]>([])
 
   const fetchRecipe = async () => {
@@ -197,6 +198,16 @@ export default function RecipeDetailScreen() {
   const ingredients = recipe?.extendedIngredients ?? []
   const currentIngredient = ingredients[checkIndex]
 
+  const advanceCheck = (subs: Substitution[]) => {
+    setSuggestedSub(null)
+    setAwaitingSub(false)
+    if (checkIndex + 1 >= ingredients.length) {
+      finishCheck(subs)
+    } else {
+      setCheckIndex(i => i + 1)
+    }
+  }
+
   const fetchSuggestedSub = useCallback(async (ingredient: string) => {
     setLoadingSub(true)
     setSuggestedSub(null)
@@ -213,35 +224,23 @@ export default function RecipeDetailScreen() {
   }, [recipe?.title])
 
   const handleHaveIt = () => {
-    setSuggestedSub(null)
-    if (checkIndex + 1 >= ingredients.length) {
-      finishCheck(pendingSubstitutions)
-    } else {
-      setCheckIndex(i => i + 1)
-    }
+    advanceCheck(pendingSubstitutions)
   }
 
   const handleDontHaveIt = () => {
+    setAwaitingSub(true)
     fetchSuggestedSub(currentIngredient.name)
-    setCheckStep("checking")
   }
 
-  const handleUseSub = async () => {
+  const handleUseSub = () => {
     if (!suggestedSub) return
     const newSubs = [...pendingSubstitutions, { original: currentIngredient.name, substitute: suggestedSub }]
     setPendingSubstitutions(newSubs)
-    setSuggestedSub(null)
-    if (checkIndex + 1 >= ingredients.length) {
-      finishCheck(newSubs)
-    } else {
-      setCheckIndex(i => i + 1)
-      setCheckStep("checking")
-    }
+    advanceCheck(newSubs)
   }
 
   const handleBuyIt = async () => {
     if (!user) return
-    setSuggestedSub(null)
     await apiFetch("/api/quick-shopping-list", {
       method: "POST",
       body: JSON.stringify({
@@ -252,12 +251,7 @@ export default function RecipeDetailScreen() {
       }),
     })
     await refreshQuickListCount()
-    if (checkIndex + 1 >= ingredients.length) {
-      finishCheck(pendingSubstitutions)
-    } else {
-      setCheckIndex(i => i + 1)
-      setCheckStep("checking")
-    }
+    advanceCheck(pendingSubstitutions)
   }
 
   const finishCheck = async (subs: Substitution[]) => {
@@ -331,7 +325,7 @@ export default function RecipeDetailScreen() {
               <Text style={[s.checkAmount, { color: colors.mutedForeground }]}>{currentIngredient.original}</Text>
             </View>
 
-            {!suggestedSub && !loadingSub && (
+            {!awaitingSub && (
               <View style={s.checkBtns}>
                 <TouchableOpacity style={[s.checkBtn, { backgroundColor: colors.primary }]} onPress={handleHaveIt} activeOpacity={0.8}>
                   <Ionicons name="checkmark" size={32} color="#fff" />
@@ -344,14 +338,14 @@ export default function RecipeDetailScreen() {
               </View>
             )}
 
-            {loadingSub && (
+            {awaitingSub && loadingSub && (
               <View style={s.checkSubLoading}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={[s.checkSubLoadingText, { color: colors.mutedForeground }]}>Finding a substitute…</Text>
               </View>
             )}
 
-            {suggestedSub && !loadingSub && (
+            {awaitingSub && !loadingSub && suggestedSub && (
               <View style={s.checkSubBox}>
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>Try this instead:</Text>
                 <Text style={[s.checkSubName, { color: colors.text }]}>{suggestedSub}</Text>
@@ -362,6 +356,21 @@ export default function RecipeDetailScreen() {
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={handleBuyIt} activeOpacity={0.8}>
                     <Ionicons name="flash" size={16} color={colors.primary} style={{ marginRight: 6 }} />
                     <Text style={[s.checkSubBtnText, { color: colors.text }]}>Buy it</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {awaitingSub && !loadingSub && !suggestedSub && (
+              <View style={s.checkSubBox}>
+                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>No substitute found</Text>
+                <View style={s.checkSubBtns}>
+                  <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleBuyIt} activeOpacity={0.8}>
+                    <Ionicons name="flash" size={16} color="#fff" style={{ marginRight: 6 }} />
+                    <Text style={s.checkSubBtnText}>Buy it</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={() => advanceCheck(pendingSubstitutions)} activeOpacity={0.8}>
+                    <Text style={[s.checkSubBtnText, { color: colors.text }]}>Skip</Text>
                   </TouchableOpacity>
                 </View>
               </View>
