@@ -215,7 +215,7 @@ export default function MealPlanScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   title: { fontSize: 20, fontWeight: "800", color: colors.text },
   topActions: { flexDirection: "row", alignItems: "center", gap: 10 },
   iconBtn: { padding: 6 },

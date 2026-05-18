@@ -108,6 +108,9 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
+      <View style={s.header}>
+        <Text style={s.headerTitle}>Profile</Text>
+      </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* Header card */}
@@ -206,10 +209,11 @@ export default function ProfileScreen() {
       <Modal visible={showPasswordModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Change Password</Text>
             <TouchableOpacity onPress={() => { setShowPasswordModal(false); setPasswordError(""); setPasswordForm({ current: "", new: "", confirm: "" }) }}>
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
+            <Text style={s.modalTitle}>Change Password</Text>
+            <View style={{ width: 24 }} />
           </View>
           <ScrollView style={{ padding: spacing.md }} keyboardShouldPersistTaps="handled">
             {(["current", "new", "confirm"] as const).map(field => (
@@ -256,10 +260,11 @@ export default function ProfileScreen() {
       <Modal visible={showDeleteModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
-            <Text style={s.modalTitle}>Delete Account</Text>
             <TouchableOpacity onPress={() => { setShowDeleteModal(false); setDeleteConfirm(""); setDeleteError("") }}>
-              <Ionicons name="close" size={24} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
+            <Text style={s.modalTitle}>Delete Account</Text>
+            <View style={{ width: 24 }} />
           </View>
           <View style={{ padding: spacing.md }}>
             <Text style={{ color: colors.mutedForeground, marginBottom: 16, lineHeight: 22 }}>
@@ -280,6 +285,8 @@ export default function ProfileScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
+  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, margin: spacing.md, marginBottom: 0, padding: spacing.md },
   profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center" },
@@ -308,7 +315,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   deleteBtnText: { fontSize: 14, fontWeight: "600", color: "#fff" },
   errorText: { fontSize: 13, color: colors.destructive, marginBottom: 8 },
   modalContainer: { flex: 1, backgroundColor: colors.background },
-  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   modalTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   inputLabel: { fontSize: 13, fontWeight: "600", color: colors.text, marginBottom: 4 },
   input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 11, color: colors.text, fontSize: 14 },

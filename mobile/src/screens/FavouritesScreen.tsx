@@ -49,7 +49,6 @@ export default function FavouritesScreen() {
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
       <View style={s.header}>
-        <Ionicons name="heart" size={22} color={colors.primary} />
         <Text style={s.headerTitle}>Favourites</Text>
         {favs.length > 0 && <Text style={s.headerCount}>{favs.length} saved</Text>}
       </View>
@@ -91,7 +90,7 @@ export default function FavouritesScreen() {
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  header: { flexDirection: "row", alignItems: "center", gap: 8, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
   headerCount: { fontSize: 13, color: colors.mutedForeground },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },

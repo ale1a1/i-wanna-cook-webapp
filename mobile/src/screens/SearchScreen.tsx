@@ -97,27 +97,43 @@ export default function SearchScreen() {
   const [showPaywall, setShowPaywall] = useState(false)
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[], calories: "any", protein: "any" }
   const [filters, setFilters] = useState(defaultFilters)
+  const [ingredientMode, setIngredientMode] = useState<"all" | "some">("all")
 
-  const fetchRecipes = useCallback(async (f = filters) => {
+  useEffect(() => {
+    if (route.params?.scannedIngredients?.length) {
+      const mode: "all" | "some" = route.params.searchMode === "some" ? "some" : "all"
+      setIngredientMode(mode)
+      const newFilters = { ...defaultFilters, ingredients: route.params.scannedIngredients }
+      setFilters(newFilters)
+      if (route.params?.openFilters) {
+        setFiltersOpen(true)
+      } else {
+        fetchRecipesWithMode(newFilters, mode)
+      }
+    }
+  }, [route.params?.scannedIngredients])
+
+  const fetchRecipesWithMode = useCallback(async (f: typeof filters, mode: "all" | "some") => {
     setLoading(true); setSearched(true)
     try {
-      const params = buildSearchParams(f)
+      const effective = mode === "some" ? { ...f, ingredients: f.ingredients.slice(0, 3) } : f
+      const params = buildSearchParams(effective)
       const res = await apiFetch(`/api/recipes/search?${params.toString()}`, { screen: "Search" })
       const data = await res.json()
       if (!res.ok) {
-        const msg = `[${res.status}] ${data.error || "Server error"}`
-        showError(msg, "Search", () => fetchRecipes(f))
-        setRecipes([])
-        return
+        showError(`[${res.status}] ${data.error || "Server error"}`, "Search", () => fetchRecipesWithMode(f, mode))
+        setRecipes([]); return
       }
       setRecipes(data.results || [])
     } catch (e: any) {
-      const msg = e?.message || "Network error — check your connection"
-      showError(msg, "Search", () => fetchRecipes(f))
+      showError(e?.message || "Network error — check your connection", "Search", () => fetchRecipesWithMode(f, mode))
       setRecipes([])
-    }
-    finally { setLoading(false) }
-  }, [filters])
+    } finally { setLoading(false) }
+  }, [])
+
+  const fetchRecipes = useCallback((f = filters) => {
+    fetchRecipesWithMode(f, ingredientMode)
+  }, [filters, ingredientMode, fetchRecipesWithMode])
 
   useEffect(() => {
     if (route.params?.surprise) fetchRecipes(defaultFilters)
@@ -127,6 +143,11 @@ export default function SearchScreen() {
 
   const addIngredient = () => {
     if (ingredientInput.trim()) { setFilters(f => ({ ...f, ingredients: [...f.ingredients, ingredientInput.trim()] })); setIngredientInput("") }
+  }
+
+  const startSearch = (f = filters) => {
+    setFiltersOpen(false)
+    fetchRecipesWithMode(f, ingredientMode)
   }
 
   const [analyzingImages, setAnalyzingImages] = useState(false)
@@ -258,7 +279,7 @@ export default function SearchScreen() {
               <Text style={s.filterToggleText}>Filters</Text>
               {hasActiveFilters && <View style={s.filterDot} />}
             </TouchableOpacity>
-            <TouchableOpacity style={[s.applyBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => fetchRecipes()} disabled={!hasActiveFilters}>
+            <TouchableOpacity style={[s.applyBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => startSearch()} disabled={!hasActiveFilters}>
               <Text style={s.applyBtnText}>Search</Text>
             </TouchableOpacity>
           </>
@@ -268,8 +289,9 @@ export default function SearchScreen() {
       <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
+            <TouchableOpacity onPress={() => setFiltersOpen(false)}><Ionicons name="arrow-back" size={24} color={colors.text} /></TouchableOpacity>
             <Text style={s.modalTitle}>Filter Recipes</Text>
-            <TouchableOpacity onPress={() => setFiltersOpen(false)}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
+            <View style={{ width: 24 }} />
           </View>
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
             <FilterPicker label="Prep Time" values={PREP_TIMES} labelMap={PREP_LABELS} field="prepTime" />
@@ -329,6 +351,16 @@ export default function SearchScreen() {
                   ))}
                 </View>
               )}
+              {filters.ingredients.length > 1 && (
+                <View style={s.modeToggleRow}>
+                  <TouchableOpacity style={[s.modeToggleBtn, ingredientMode === "all" && s.modeToggleBtnActive]} onPress={() => setIngredientMode("all")}>
+                    <Text style={[s.modeToggleText, ingredientMode === "all" && s.modeToggleTextActive]}>Match all</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.modeToggleBtn, ingredientMode === "some" && s.modeToggleBtnActive]} onPress={() => setIngredientMode("some")}>
+                    <Text style={[s.modeToggleText, ingredientMode === "some" && s.modeToggleTextActive]}>Match some</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </ScrollView>
           <View style={s.modalFooter}>
@@ -336,7 +368,7 @@ export default function SearchScreen() {
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.applyBtnLarge, !hasActiveFilters && s.btnDisabled]} onPress={() => { setFiltersOpen(false); fetchRecipes() }} disabled={!hasActiveFilters}>
+            <TouchableOpacity style={[s.applyBtnLarge, !hasActiveFilters && s.btnDisabled]} onPress={() => startSearch()} disabled={!hasActiveFilters}>
               <Text style={s.applyBtnText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
@@ -443,7 +475,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   aiOverlay: { flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" },
   aiEmoji: { fontSize: 72 },
   aiText: { marginTop: 20, fontSize: 18, fontWeight: "700", color: "#ffffff" },
-  topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.4)" },
   refinePill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   refineSummary: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "500" },
   refineBtn: { color: colors.primary, fontSize: 14, fontWeight: "700" },
@@ -465,9 +497,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   badge: { backgroundColor: colors.primary + "33", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   badgeText: { fontSize: 11, color: colors.primary, fontWeight: "600" },
   modalContainer: { flex: 1, backgroundColor: colors.background },
-  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   modalTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
-  modalFooter: { flexDirection: "row", gap: 12, padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  modalFooter: { flexDirection: "row", gap: 12, padding: spacing.md, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.3)" },
   filterGroup: { marginBottom: spacing.lg },
   filterLabel: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
@@ -504,4 +536,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   scannerFooter: { marginTop: "auto" },
   scanNowBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.primary, paddingVertical: 16, borderRadius: radius.lg },
   scanNowBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  modeToggleRow: { flexDirection: "row", marginTop: 12, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, overflow: "hidden" },
+  modeToggleBtn: { flex: 1, paddingVertical: 8, alignItems: "center", backgroundColor: colors.card },
+  modeToggleBtnActive: { backgroundColor: colors.primary },
+  modeToggleText: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground },
+  modeToggleTextActive: { color: "#fff" },
 })

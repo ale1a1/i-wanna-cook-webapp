@@ -31,7 +31,7 @@ export default function ShoppingListScreen() {
       const items: ShoppingItem[] = data.items || []
       const map = new Map<string, Group>()
       items.forEach(item => {
-        if (!map.has(item.recipe_id)) map.set(item.recipe_id, { recipeId: item.recipe_id, title: item.recipe_title, items: [], collapsed: false })
+        if (!map.has(item.recipe_id)) map.set(item.recipe_id, { recipeId: item.recipe_id, title: item.recipe_title, items: [], collapsed: true })
         map.get(item.recipe_id)!.items.push(item)
       })
       setGroups(Array.from(map.values()))
@@ -144,7 +144,7 @@ export default function ShoppingListScreen() {
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.4)" },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
   headerCount: { fontSize: 13, color: colors.mutedForeground },
