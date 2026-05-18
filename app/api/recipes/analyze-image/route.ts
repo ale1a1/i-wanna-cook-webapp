@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
             },
             {
               type: "text",
-              text: `Look at this image and identify any cooking ingredients you can see. Return ONLY a JSON array of ingredient name strings in lowercase (e.g. ["egg", "tomato", "chicken"]). If you cannot identify any ingredients, return []. No other text.`,
+              text: `Identify the cooking ingredients visible in this image. Reply with ONLY a raw JSON array of lowercase strings, no markdown, no explanation. Example: ["egg","tomato","chicken"]. If no ingredients are visible, reply with exactly: []`,
             },
           ],
         }],
@@ -46,13 +46,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: data.error?.message ?? "AI error" }, { status: res.status })
     }
 
-    const text = data.content?.[0]?.text ?? "[]"
+    const raw = data.content?.[0]?.text ?? "[]"
+    const text = raw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim()
     let ingredients: string[] = []
     try {
       const parsed = JSON.parse(text)
       ingredients = Array.isArray(parsed) ? parsed.map((s: string) => String(s).toLowerCase()) : []
     } catch {
-      ingredients = []
+      const matches = text.match(/"([^"]+)"/g)
+      ingredients = matches ? matches.map((m: string) => m.replace(/"/g, "").toLowerCase()) : []
     }
 
     if (ingredients.length === 0) {
