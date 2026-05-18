@@ -47,7 +47,7 @@ async function extractIngredientsWithClaude(labels: string[]): Promise<string[]>
       max_tokens: 200,
       messages: [{
         role: "user",
-        content: `From this list of image labels, return ONLY the ones that are specific cooking ingredients (e.g. "chicken", "tomato", "egg"). Exclude generic words like "food", "meat", "vegetable", "ingredient", "produce", "natural foods", "dish" etc. Return a JSON array of strings only, nothing else. If none are specific ingredients return [].
+        content: `From this list of image labels, extract all recognisable cooking ingredients. Include specific foods like "egg", "chicken", "tomato", "cheese", "milk", "butter", "bread", "apple", "garlic", "onion", etc. — even if they sound simple. Only exclude purely generic non-food words like "food", "ingredient", "produce", "natural foods", "dish", "cuisine", "photography", "tableware". Return a JSON array of lowercase ingredient name strings only, nothing else. If none qualify return [].
 
 Labels: ${JSON.stringify(labels)}`,
       }],
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (!res.ok) return NextResponse.json({ error: data.error?.message ?? "Vision API error" }, { status: res.status })
 
     const labels: { description: string; score: number }[] = data.responses?.[0]?.labelAnnotations ?? []
-    const rawLabels = labels.filter(l => l.score > 0.7).map(l => l.description)
+    const rawLabels = labels.filter(l => l.score > 0.5).map(l => l.description)
 
     if (rawLabels.length === 0) {
       return NextResponse.json({ error: "No ingredients detected. Try a clearer photo of a single ingredient." }, { status: 422 })
