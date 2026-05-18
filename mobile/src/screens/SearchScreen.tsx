@@ -131,7 +131,6 @@ export default function SearchScreen() {
 
   const [analyzingImages, setAnalyzingImages] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
-  const [scannerStep, setScannerStep] = useState<"intro" | "capture">("intro")
   const [capturedAssets, setCapturedAssets] = useState<ImagePicker.ImagePickerAsset[]>([])
 
   const openCameraForScan = useCallback(async () => {
@@ -212,7 +211,6 @@ export default function SearchScreen() {
 
   const pickAndAnalyzeImages = useCallback(() => {
     setCapturedAssets([])
-    setScannerStep("intro")
     setScannerOpen(true)
   }, [])
 
@@ -384,31 +382,13 @@ export default function SearchScreen() {
           </TouchableOpacity>
         </View>
 
-        {scannerStep === "intro" ? (
-          <View style={s.scannerIntro}>
-            <Text style={s.scannerEmoji}>📸</Text>
-            <Text style={s.scannerTitle}>Scan Ingredients</Text>
-            <Text style={s.scannerDesc}>
-              Use AI to detect ingredients from your photos. For best results, take a separate close-up photo of each ingredient.
-            </Text>
-            <View style={s.scannerTips}>
-              <Text style={s.scannerTip}>✓ One ingredient per photo</Text>
-              <Text style={s.scannerTip}>✓ Good lighting, close up</Text>
-              <Text style={s.scannerTip}>✓ Up to 10 photos at once</Text>
-              <Text style={s.scannerTip}>✗ Avoid full fridge shots</Text>
-            </View>
-            <TouchableOpacity style={s.scannerGoBtn} onPress={() => setScannerStep("capture")}>
-              <Text style={s.scannerGoBtnText}>Got it, let's go</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={s.scannerCapture}>
+        <View style={s.scannerCapture}>
             <Text style={s.scannerCaptureTitle}>
-              {capturedAssets.length === 0 ? "Add your first photo" : `${capturedAssets.length} photo${capturedAssets.length > 1 ? "s" : ""} added`}
+              {capturedAssets.length === 0 ? "Snap or pick your photos" : `${capturedAssets.length} photo${capturedAssets.length > 1 ? "s" : ""} added`}
             </Text>
-            {capturedAssets.length > 0 && (
-              <Text style={s.scannerCaptureSubtitle}>{10 - capturedAssets.length} more allowed</Text>
-            )}
+            <Text style={s.scannerCaptureSubtitle}>
+              {capturedAssets.length === 0 ? "Fridge, counter, anything — AI will find the ingredients" : `${10 - capturedAssets.length} more allowed`}
+            </Text>
 
             <View style={s.scannerBtns}>
               <TouchableOpacity style={s.scannerActionBtn} onPress={openCameraForScan} disabled={capturedAssets.length >= 10}>
@@ -443,14 +423,13 @@ export default function SearchScreen() {
               )}
             </View>
           </View>
-        )}
       </SafeAreaView>
     </Modal>
 
-    <Modal visible={analyzingImages} transparent animationType="fade" statusBarTranslucent>
+    <Modal visible={analyzingImages} transparent={false} animationType="fade" statusBarTranslucent>
       <View style={s.aiOverlay}>
         <Text style={s.aiEmoji}>🤖</Text>
-        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 16 }} />
+        <ActivityIndicator size="large" color="#ffffff" style={{ marginTop: 16 }} />
         <Text style={s.aiText}>AI reading pictures…</Text>
       </View>
     </Modal>
@@ -461,7 +440,7 @@ export default function SearchScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  aiOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.85)", alignItems: "center", justifyContent: "center", zIndex: 9999, elevation: 9999 },
+  aiOverlay: { flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" },
   aiEmoji: { fontSize: 72 },
   aiText: { marginTop: 20, fontSize: 18, fontWeight: "700", color: "#ffffff" },
   topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -512,14 +491,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
   scannerContainer: { flex: 1, backgroundColor: colors.background },
   scannerHeader: { padding: spacing.md, alignItems: "flex-end" },
-  scannerIntro: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: 16 },
-  scannerEmoji: { fontSize: 64 },
-  scannerTitle: { fontSize: 24, fontWeight: "800", color: colors.text, textAlign: "center" },
-  scannerDesc: { fontSize: 15, color: colors.mutedForeground, textAlign: "center", lineHeight: 22 },
-  scannerTips: { backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border, gap: 8, width: "100%" },
-  scannerTip: { fontSize: 14, color: colors.text },
-  scannerGoBtn: { backgroundColor: colors.primary, paddingVertical: 16, paddingHorizontal: 40, borderRadius: radius.lg, marginTop: 8 },
-  scannerGoBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   scannerCapture: { flex: 1, padding: spacing.md, gap: 20 },
   scannerCaptureTitle: { fontSize: 20, fontWeight: "700", color: colors.text, textAlign: "center", marginTop: 8 },
   scannerCaptureSubtitle: { fontSize: 13, color: colors.mutedForeground, textAlign: "center", marginTop: -16 },
