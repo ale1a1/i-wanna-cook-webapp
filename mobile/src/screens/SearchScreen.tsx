@@ -98,11 +98,13 @@ export default function SearchScreen() {
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[], calories: "any", protein: "any" }
   const [filters, setFilters] = useState(defaultFilters)
   const [ingredientMode, setIngredientMode] = useState<"all" | "some">("all")
+  const [fromScan, setFromScan] = useState(false)
 
   useEffect(() => {
     if (route.params?.scannedIngredients?.length) {
       const mode: "all" | "some" = route.params.searchMode === "some" ? "some" : "all"
       setIngredientMode(mode)
+      setFromScan(true)
       const newFilters = { ...defaultFilters, ingredients: route.params.scannedIngredients }
       setFilters(newFilters)
       if (route.params?.openFilters) {
@@ -387,7 +389,7 @@ export default function SearchScreen() {
           keyExtractor={item => String(item.id)}
           contentContainerStyle={{ padding: spacing.md, gap: 12 }}
           renderItem={({ item }) => (
-            <TouchableOpacity style={s.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.id, title: item.title })}>
+            <TouchableOpacity style={s.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.id, title: item.title, fromScan })}>
               <Image source={{ uri: item.image }} style={s.cardImage} resizeMode="cover" />
               <View style={s.cardBody}>
                 <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>

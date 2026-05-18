@@ -54,3 +54,25 @@ CREATE TABLE IF NOT EXISTS ratings (
   updated_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(user_id, recipe_id)
 );
+
+CREATE TABLE IF NOT EXISTS quick_shopping_list (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  recipe_id TEXT NOT NULL,
+  recipe_title TEXT NOT NULL,
+  ingredient_name TEXT NOT NULL,
+  ingredient_amount TEXT,
+  checked BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS active_recipe_session (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+  recipe_id TEXT NOT NULL,
+  recipe_title TEXT NOT NULL,
+  recipe_data JSONB NOT NULL,
+  substitutions JSONB NOT NULL DEFAULT '[]',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);

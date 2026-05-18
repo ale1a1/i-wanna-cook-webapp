@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from "./src/context/AuthContext"
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext"
 import { GlobalErrorProvider } from "./src/context/GlobalErrorContext"
 import { SubscriptionProvider } from "./src/context/SubscriptionContext"
+import { ActiveRecipeSessionProvider, useActiveRecipeSession } from "./src/context/ActiveRecipeSessionContext"
 import ErrorCard from "./src/components/ErrorCard"
 import ExpandableMenu from "./src/components/ExpandableMenu"
 import HomeScreen from "./src/screens/HomeScreen"
@@ -25,6 +26,7 @@ import ProfileScreen from "./src/screens/ProfileScreen"
 import LoginScreen from "./src/screens/LoginScreen"
 import CookingModeScreen from "./src/screens/CookingModeScreen"
 import MealPlanScreen from "./src/screens/MealPlanScreen"
+import QuickShoppingListScreen from "./src/screens/QuickShoppingListScreen"
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null }
@@ -67,6 +69,7 @@ function HomeTabs() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const navigation = useNavigation<any>()
+  const { quickListCount } = useActiveRecipeSession()
   const [overflowOpen, setOverflowOpen] = React.useState(false)
   const animHeight = React.useRef(new Animated.Value(0)).current
   const [currentRoute, setCurrentRoute] = React.useState("")
@@ -122,9 +125,23 @@ function HomeTabs() {
         <Tab.Screen name="Scan" component={ScanScreen} options={{
           tabBarIcon: ({ color, focused }) => <TabIcon name="camera-outline" color={color} active={focused} />,
         }} />
-        <Tab.Screen name="Shopping" component={ShoppingListScreen} options={{
-          tabBarIcon: ({ color, focused }) => <TabIcon name="cart-outline" color={color} active={focused} />,
-        }} />
+        {quickListCount > 0 ? (
+          <Tab.Screen name="QuickShopping" component={QuickShoppingListScreen} options={{
+            tabBarLabel: "Quick List",
+            tabBarIcon: ({ color, focused }) => (
+              <View>
+                <TabIcon name="flash" color={color} active={focused} />
+                <View style={{ position: "absolute", top: -4, right: -8, backgroundColor: colors.primary, borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
+                  <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{quickListCount}</Text>
+                </View>
+              </View>
+            ),
+          }} />
+        ) : (
+          <Tab.Screen name="Shopping" component={ShoppingListScreen} options={{
+            tabBarIcon: ({ color, focused }) => <TabIcon name="cart-outline" color={color} active={focused} />,
+          }} />
+        )}
         <Tab.Screen
           name="More"
           component={HomeScreen}
@@ -202,6 +219,7 @@ function AppNavigator() {
       <Stack.Screen name="Tried" component={TriedRecipesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="MealPlan" component={MealPlanScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="QuickShoppingList" component={QuickShoppingListScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   )
 }
@@ -223,9 +241,11 @@ export default function App() {
         <ThemeProvider>
           <AuthProvider>
             <SubscriptionProvider>
-              <GlobalErrorProvider>
-                <AppContent />
-              </GlobalErrorProvider>
+              <ActiveRecipeSessionProvider>
+                <GlobalErrorProvider>
+                  <AppContent />
+                </GlobalErrorProvider>
+              </ActiveRecipeSessionProvider>
             </SubscriptionProvider>
           </AuthProvider>
         </ThemeProvider>
