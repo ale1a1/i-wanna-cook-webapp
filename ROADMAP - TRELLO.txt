@@ -1,0 +1,266 @@
+================================================================
+WHAT SHOULD I COOK — TRELLO BOARD
+================================================================
+
+
+================================================================
+LIST: ALREADY BUILT
+================================================================
+
+Recipe search with filters
+Prep time, budget, diet, cuisine, taste, healthiness, ingredients
+
+Recipe detail pages
+Basic nutrition panel — calories, protein, carbs, fat. Ingredients list. Step-by-step instructions.
+
+Favourites
+Flat list. Save and remove recipes.
+
+Shopping list
+Check off items per recipe. Delete individual items or clear all.
+
+Tried recipes history
+Log recipes tried with ratings.
+
+User accounts
+Register, login, email verify, forgot password, change password, delete account.
+
+Light / dark theme
+
+Weekly AI meal planner
+Generate, save, delete plans. Meal plan history stored in DB.
+
+Cooking mode (mobile)
+Fullscreen step-by-step view. Swipe navigation.
+
+Voice cooking (mobile)
+Reads steps aloud. Voice commands. Powered by expo-speech.
+
+AI ingredient photo scanner (mobile)
+Camera or photo library. Up to 10 images per session.
+
+Premium tier infrastructure
+DB-based subscription tracking. Paywall modal wired up.
+
+Nutrition goal filters
+Calories and protein sliders in search.
+
+
+================================================================
+LIST: MUST — Before Launch
+================================================================
+
+Auto logout when JWT expires
+Redirect to login cleanly when the session token expires. No crash, no broken state.
+
+Registration disclaimer checkbox
+Show a checkbox the user must tick before creating an account: "Nutrition info is approximate and informational only. Not a substitute for professional dietary or medical advice. Always verify ingredients if you have allergies or intolerances." Cannot proceed without accepting.
+
+Store disclaimer acceptance timestamp in DB
+When the user accepts the disclaimer, save the timestamp to their profile record in the database. Gives legal coverage and lets you track which version of the disclaimer each user accepted if the text ever changes.
+
+Wire up Google Play Billing
+Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
+
+Apple IAP (if doing iOS)
+Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
+
+14-day free trial on registration
+Full premium access from day one. No card required. Automatically expires after 14 days.
+
+Auto-downgrade to free tier when trial expires
+When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt.
+
+Show trial days remaining on profile screen
+Visible countdown so users know how long they have left on their trial.
+
+Enforce 10 searches/week for free users
+After trial ends, free users are limited to 10 recipe searches per week. Show remaining count in the UI.
+
+Rate-limit AI scanner to 3 scans/week for free users
+Cap free users at 3 ingredient photo scans per week. Show paywall when limit is hit. Premium gets unlimited scans.
+
+Lock meal plan history to premium only
+Free users can generate one plan at a time but cannot browse or restore old ones. Premium gets full history.
+
+Custom app icon
+Replace Expo default icon with branded app icon.
+
+Custom splash screen
+Branded splash screen for app launch.
+
+Privacy policy page
+Required by both App Store and Google Play.
+
+Terms of service page
+
+App store screenshots
+Minimum 5 to 8 screenshots showing key features.
+
+App store description and keyword optimisation
+Written description with keywords for discoverability.
+
+Age rating questionnaire
+Complete for both Google Play and App Store submission.
+
+Google Play developer account
+One-time $25 fee.
+
+Welcome email on registration
+Triggered on account creation. Explains the trial, what's included, what happens when it ends.
+
+Trial ending warning email
+Sent 2 days before trial expiry. Prompts user to subscribe.
+
+Fortnightly re-engagement email
+Sent every 2 weeks to inactive users to bring them back.
+
+Account deletion confirmation email
+Sent after successful account deletion.
+
+
+================================================================
+LIST: SHOULD — High Priority After Launch
+================================================================
+
+AI Fridge Scan Flow — Full Redesign (Core Feature)
+The current scan flow dumps all detected ingredients into search and likely fails. Needs a full conversational redesign.
+
+Better flow:
+1. User scans fridge (up to 5 photos)
+2. App shows detected ingredients — user confirms or removes items
+3. App asks: "Want to search with all of these or add filters first?"
+4. If search fails due to too many ingredients: "Try fewer ingredients, or here are some recipes that use some of what you have"
+5. If search succeeds: results shown
+6. On results: "How many people are you cooking for?" — portion scaling applied
+7. "Want to check you have everything first, or go straight to the recipe?"
+8. If checking: show ingredients checklist — user taps anything they are missing
+9. For missing items: "Add to shopping list?" — creates a separate meal-specific shopping list just for this meal
+10. If user replaces an ingredient: AI adjusts the recipe steps to match the substitution
+11. Final verdict: "You're good to go!" or "Might be tricky — here is what you're missing"
+
+This entire flow could be a single Claude API prompt that handles steps 4 through 11 intelligently.
+
+Portion scaling stepper
+Add a stepper to recipe detail so users can scale ingredient quantities for 2, 4, or 6 people. All ingredient amounts recalculate automatically. Premium feature. Also needed inside the fridge scan flow.
+
+Missing ingredient — meal shopping list
+When a user identifies a missing ingredient during the fridge scan flow, offer to create a separate shopping list just for that meal. Separate from the main shopping list.
+
+Claude-powered step adjustment for substitutions
+When a user replaces or is missing an ingredient, use Claude to adjust the recipe steps to reflect the substitution or workaround.
+
+Recipe collections
+Let users organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". Creating more than 1 collection is premium only. First collection is free.
+
+Full nutrition breakdown panel
+Currently only calories, protein, carbs, fat. Add a full panel inside recipe detail showing fibre, sugar, fat breakdown, RDA percentages. Premium feature.
+
+Dietary profile
+Let users set their dietary restrictions once in their profile (gluten-free, vegan, dairy-free, etc.) and have those filters automatically applied every time they search. Premium feature.
+
+AI chat assistant
+A conversational screen where users describe what they have or what they want and get recipe suggestions from Claude. "Something quick with chicken", "high protein after gym", "use my leftovers". More flexible than the scanner. Premium feature.
+
+Smart recommendations
+Suggest recipes based on the user's tried recipes and favourites history. Low API cost, high perceived value.
+
+Pantry tracking
+Manual ingredient inventory. Highlight items approaching expiry. Auto-suggest recipes that use what is about to expire. Big differentiator.
+
+Redis caching
+Reduce Spoonacular API calls. Lower costs at scale.
+
+CloudFront CDN
+Faster image delivery globally.
+
+Analytics
+Track searches, saves, completions, premium conversion, trial retention, meal plan usage, shopping list engagement.
+
+
+================================================================
+LIST: COULD — Later
+================================================================
+
+AI recipe modification
+Make it healthier, increase protein, make it vegetarian, reduce calories. One tap. Claude API. Premium only.
+
+Push notifications
+Dinner reminders, meal plan nudges, trial expiry alerts. Drives retention.
+
+Macro and nutrition tracking
+Daily targets, protein trends, calorie trends. Premium. Pairs well with nutrition goal filters already built.
+
+Sport and fitness meal filters
+Add Bulking, Shredding, Endurance, Kids meals to search filters. Good differentiation, easy to build.
+
+Cooking mode upgrades — individual item timers
+Set a timer for pasta, another for sauce, independently. Real cooking utility.
+
+Voice cooking assistant Phase 2
+Always-on microphone across the whole app. Navigate by voice, search by voice, apply filters by voice. "Go to favourites", "search chicken pasta", "open the first one", "scroll down". Persistent subtle listening indicator.
+
+Language preference
+User selects language, persisted to profile. Flag in navbar.
+
+MFA
+Multi-factor authentication via AWS Cognito. Low priority but good for trust.
+
+Barcode scanner
+Scan groceries to add to pantry instantly.
+
+Cooking companion avatar
+Fun, engaging, distinctive. Revisit when AI assistant is built.
+
+
+================================================================
+LIST: FUTURE — Phase 3
+================================================================
+
+Supermarket shopping list integration
+Once the in-app shopping list is generated from a recipe or meal plan, let the user send it directly to an online supermarket for delivery or click-and-collect. One tap from the app shopping list to a populated supermarket cart. Target UK supermarkets: Tesco, Morrisons, Aldi, Lidl, Sainsbury's. No public cart APIs exist for these retailers today — this requires either a partnership or enterprise deal with the retailer, or an aggregator like Instacart if they expand UK coverage. Track Instacart UK availability. This is Phase 3 and partnership territory, but a genuine differentiator worth pursuing once the core product has traction.
+
+Fridge photo to full pantry state
+Already partially built — ingredient scan exists. Full "what can I cook with this?" flow using full pantry state. Needs Spoonacular Cook plan ($29/mo) at scale.
+
+Collection management
+Recipe boards, folders, custom collections. More of a web feature.
+
+
+================================================================
+LIST: TECHNICAL DEBT
+================================================================
+
+Redis caching
+Reduce Spoonacular API calls. Lower costs at scale.
+
+AWS SQS + Lambda email workers
+Queue workers for welcome, trial warning, re-engagement, and deletion emails.
+
+CloudFront CDN
+Faster image delivery globally.
+
+Stripe subscriptions
+Web subscription flow.
+
+Analytics platform
+Track user behaviour, premium conversion, trial retention.
+
+Push notification infrastructure
+Required before push notifications can be built.
+
+
+================================================================
+PRICING
+================================================================
+
+Free — $0
+10 searches/week, 3 scans/week, flat favourites list, basic features. 14-day trial on signup.
+
+Premium — $2.49/month or $19.99/year
+Full access. Unlimited scans and searches. All premium features.
+
+Future pricing — $4.99/month
+Once AI assistant and personalisation are live.
+
+14-day free trial on every new account. No card required.
