@@ -8,10 +8,13 @@ LIST: ALREADY BUILT
 ================================================================
 
 Recipe search with filters
-Prep time, budget, diet, cuisine, taste, healthiness, ingredients
+Prep time, budget, diet, cuisine, taste, healthiness, calories, protein, ingredients.
+
+Match all / Match some toggle
+When searching with multiple ingredients, toggle between matching all ingredients or some (best-effort). Inline toggle visible above results.
 
 Recipe detail pages
-Basic nutrition panel — calories, protein, carbs, fat. Ingredients list. Step-by-step instructions.
+Nutrition panel, ingredients list, step-by-step instructions. Substitutions banner when active.
 
 Favourites
 Flat list. Save and remove recipes.
@@ -20,15 +23,16 @@ Shopping list
 Check off items per recipe. Delete individual items or clear all.
 
 Tried recipes history
-Log recipes tried with ratings.
+Log recipes tried.
 
 User accounts
 Register, login, email verify, forgot password, change password, delete account.
 
 Light / dark theme
 
-Weekly AI meal planner
+Weekly AI meal planner (v1 — basic)
 Generate, save, delete plans. Meal plan history stored in DB.
+Settings: daily calories target, diet type only.
 
 Cooking mode (mobile)
 Fullscreen step-by-step view. Swipe navigation.
@@ -37,13 +41,35 @@ Voice cooking (mobile)
 Reads steps aloud. Voice commands. Powered by expo-speech.
 
 AI ingredient photo scanner (mobile)
-Camera or photo library. Up to 10 images per session.
+Camera or photo library. Up to 10 images per session. Review and remove detected ingredients before searching. Skip match-mode step when only 1 ingredient detected.
 
 Premium tier infrastructure
 DB-based subscription tracking. Paywall modal wired up.
 
-Nutrition goal filters
-Calories and protein sliders in search.
+AI Fridge Scan → Ingredient Check → Recipe Flow (Core Feature)
+Full end-to-end flow:
+1. Scan fridge (up to 10 photos) → detected ingredients shown as chips
+2. Remove wrong items, add more photos — no manual typing
+3. If 2+ ingredients: choose Match all or Match some
+4. Search results shown
+5. Tap a recipe → "Cook it now?" bottom sheet
+6. Check ingredients one by one — "I have it" / "I don't have it"
+7. Missing ingredient: AI (Claude Haiku) suggests a substitute
+   → "Use it": substitute swapped into recipe steps automatically
+   → "Buy it": added to Quick Shopping List
+8. If AI returns no substitute: "No substitute found" with Buy it / Skip
+9. Done screen shows all substitutions applied
+10. Recipe opens with substituted steps and ingredients highlighted
+11. Session saved server-side — survives app restart
+
+Quick Shopping List
+Separate from main shopping list. Holds ingredients flagged as missing during the scan flow. Lives in the nav bar replacing the Shopping tab (with unchecked count badge) whenever items are present. Check off, delete, clear all. Server-side persisted per user.
+
+Active Recipe Session
+Server-side per-user session storing current recipe + substitutions. Loaded on app start. Cleared when session ends.
+
+AI ingredient substitute suggestion
+Text-only Claude Haiku call. Suggests one practical substitute per missing ingredient in context of the recipe being cooked.
 
 
 ================================================================
@@ -123,32 +149,20 @@ Sent after successful account deletion.
 LIST: SHOULD — High Priority After Launch
 ================================================================
 
-AI Fridge Scan Flow — Full Redesign (Core Feature)
-The current scan flow dumps all detected ingredients into search and likely fails. Needs a full conversational redesign.
+Meal Planner v2 — more filters before generating
+Add more options to the plan settings: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, healthiness. Settings saved so user doesn't have to re-enter them every time. Premium feature.
 
-Better flow:
-1. User scans fridge (up to 5 photos)
-2. App shows detected ingredients — user confirms or removes items
-3. App asks: "Want to search with all of these or add filters first?"
-4. If search fails due to too many ingredients: "Try fewer ingredients, or here are some recipes that use some of what you have"
-5. If search succeeds: results shown
-6. On results: "How many people are you cooking for?" — portion scaling applied
-7. "Want to check you have everything first, or go straight to the recipe?"
-8. If checking: show ingredients checklist — user taps anything they are missing
-9. For missing items: "Add to shopping list?" — creates a separate meal-specific shopping list just for this meal
-10. If user replaces an ingredient: AI adjusts the recipe steps to match the substitution
-11. Final verdict: "You're good to go!" or "Might be tricky — here is what you're missing"
-
-This entire flow could be a single Claude API prompt that handles steps 4 through 11 intelligently.
+Filter by number of people (servings)
+Let users set how many people they are cooking for — both as a search filter and as a pre-set before using the scan flow. When set via scan, carries into the search automatically. Portion amounts on the recipe scale accordingly. Also useful standalone in the search filter panel. Premium feature.
 
 Portion scaling stepper
-Add a stepper to recipe detail so users can scale ingredient quantities for 2, 4, or 6 people. All ingredient amounts recalculate automatically. Premium feature. Also needed inside the fridge scan flow.
+Stepper inside recipe detail to scale ingredient quantities for 2, 4, or 6 people. All ingredient amounts recalculate automatically. Premium feature. Complements the "filter by people" feature above.
 
-Missing ingredient — meal shopping list
-When a user identifies a missing ingredient during the fridge scan flow, offer to create a separate shopping list just for that meal. Separate from the main shopping list.
+Chef avatar narrator for cooking mode
+A distinctive chef character shown during cooking mode and voice steps. Gives the app personality and makes the cooking experience feel like having a companion in the kitchen. The avatar reacts as steps progress — idle, talking, celebrating when done.
 
-Claude-powered step adjustment for substitutions
-When a user replaces or is missing an ingredient, use Claude to adjust the recipe steps to reflect the substitution or workaround.
+Voice narrator for cooking mode
+The chef avatar reads each step aloud using a natural-sounding voice. Users can choose from a small set of voice styles. Powered by a TTS API (e.g. ElevenLabs or Google TTS). Replaces the current basic expo-speech implementation. Premium feature.
 
 Recipe collections
 Let users organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". Creating more than 1 collection is premium only. First collection is free.
@@ -208,9 +222,6 @@ Multi-factor authentication via AWS Cognito. Low priority but good for trust.
 
 Barcode scanner
 Scan groceries to add to pantry instantly.
-
-Cooking companion avatar
-Fun, engaging, distinctive. Revisit when AI assistant is built.
 
 
 ================================================================
