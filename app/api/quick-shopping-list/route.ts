@@ -44,10 +44,12 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { userId, itemId } = await request.json()
+    const { userId, itemId, ingredientName, recipeId } = await request.json()
     if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 })
     if (itemId) {
       await pool.query("DELETE FROM quick_shopping_list WHERE id = $1 AND user_id = $2", [itemId, userId])
+    } else if (ingredientName && recipeId) {
+      await pool.query("DELETE FROM quick_shopping_list WHERE user_id = $1 AND ingredient_name = $2 AND recipe_id = $3", [userId, ingredientName, recipeId])
     } else {
       await pool.query("DELETE FROM quick_shopping_list WHERE user_id = $1", [userId])
     }
