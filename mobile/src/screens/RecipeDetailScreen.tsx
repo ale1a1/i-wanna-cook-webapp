@@ -52,7 +52,7 @@ export default function RecipeDetailScreen() {
   const [wineLoading, setWineLoading] = useState(false)
 
   // Ingredient substitutes (premium feature in ingredients tab)
-  const [substitutes, setSubstitutes] = useState<Record<string, string[]>>({})
+  const [substitutes, setSubstitutes] = useState<Record<string, string | null>>({})
   const [substituteLoading, setSubstituteLoading] = useState<string | null>(null)
 
   // Ingredient check flow
@@ -185,16 +185,20 @@ export default function RecipeDetailScreen() {
 
   const fetchSubstitute = useCallback(async (ingredient: string) => {
     if (!isPremium) { setShowPaywall(true); return }
-    if (substitutes[ingredient]) return
+    if (ingredient in substitutes) return
     setSubstituteLoading(ingredient)
     try {
-      const res = await apiFetch(`/api/recipes/substitute?ingredient=${encodeURIComponent(ingredient)}`, { screen: "Recipe Detail" })
+      const res = await fetch(`${API_BASE_URL}/api/recipes/suggest-substitute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingredient, recipeTitle: recipe?.title }),
+      })
       const data = await res.json()
-      setSubstitutes(prev => ({ ...prev, [ingredient]: res.ok ? (data.substitutes ?? []) : ["No substitutes found"] }))
+      setSubstitutes(prev => ({ ...prev, [ingredient]: data.substitute ?? null }))
     } catch {
-      setSubstitutes(prev => ({ ...prev, [ingredient]: ["No substitutes found"] }))
+      setSubstitutes(prev => ({ ...prev, [ingredient]: null }))
     } finally { setSubstituteLoading(null) }
-  }, [isPremium, substitutes])
+  }, [isPremium, substitutes, recipe?.title])
 
   // ── INGREDIENT CHECK FLOW ──────────────────────────────────
 
@@ -555,27 +559,20 @@ export default function RecipeDetailScreen() {
 
               {recipe.extendedIngredients?.map((ing: any) => {
                 const added = addedIngredients.has(ing.name)
-                const subs = substitutes[ing.name]
+                const sub = substitutes[ing.name]
                 const loadingSubPremium = substituteLoading === ing.name
                 const appliedSub = sessionSubstitutions.find(s => s.original === ing.name)
-                const notReplaceable = subs && (subs.length === 0 || subs[0] === "No substitutes found")
-                const subDisabled = loadingSubPremium || !!appliedSub || !!notReplaceable
+                const notReplaceable = ing.name in substitutes && !sub
+                const subDisabled = loadingSubPremium || !!appliedSub || notReplaceable
                 const inQuickList = fromScan && quickListAdded.includes(ing.name)
                 return (
                   <View key={ing.id} style={s.ingredientRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.ingredientName, appliedSub && { textDecorationLine: "line-through", color: colors.muted }]}>{ing.name}</Text>
                       {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.substitute}</Text>}
+                      {sub && !appliedSub && <Text style={{ fontSize: 12, color: colors.primary, marginTop: 2 }}>→ {sub}</Text>}
+                      {notReplaceable && <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>}
                       <Text style={s.ingredientAmount}>{ing.original}</Text>
-                      {notReplaceable && (
-                        <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>
-                      )}
-                      {subs && !notReplaceable && (
-                        <View style={s.subsBox}>
-                          <Text style={s.subsLabel}>Substitutes:</Text>
-                          {subs.map((sub, i) => <Text key={i} style={s.subItem}>• {sub}</Text>)}
-                        </View>
-                      )}
                     </View>
                     <View style={s.ingActions}>
                       <TouchableOpacity
@@ -589,9 +586,16 @@ export default function RecipeDetailScreen() {
                         }
                       </TouchableOpacity>
                       {inQuickList ? (
-                        <View style={[s.cartBtn, { borderColor: colors.primary, opacity: 0.6 }]}>
-                          <Ionicons name="flash" size={14} color={colors.primary} />
-                        </View>
+                        <TouchableOpacity
+                          style={[s.cartBtn, s.cartBtnAdded]}
+                          onPress={() => {
+                            setQuickListAdded(prev => prev.filter(n => n !== ing.name))
+                            apiFetch("/api/quick-shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id, ingredientName: ing.name, recipeId: String(recipe.id) }) })
+                            refreshQuickListCount()
+                          }}
+                        >
+                          <Ionicons name="remove" size={16} color={colors.destructive} />
+                        </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
                           style={[s.cartBtn, added && s.cartBtnAdded]}
@@ -727,9 +731,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 22 },
   ingActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   subBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.primary + "66", alignItems: "center", justifyContent: "center" },
-  subsBox: { marginTop: 8, backgroundColor: colors.card, borderRadius: radius.sm, padding: 10, borderWidth: 1, borderColor: colors.border },
-  subsLabel: { fontSize: 11, fontWeight: "700", color: colors.primary, textTransform: "uppercase", marginBottom: 4 },
-  subItem: { fontSize: 13, color: colors.text, lineHeight: 20 },
   wineIntro: { fontSize: 14, color: colors.mutedForeground, lineHeight: 22, fontStyle: "italic" },
   wineCard: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
   wineCardLeft: { gap: 6 },
