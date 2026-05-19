@@ -49,6 +49,53 @@ export default function QuickShoppingListScreen() {
     await refreshQuickListCount()
   }
 
+  const moveToShoppingList = async (item: QuickItem) => {
+    await apiFetch("/api/shopping-list", {
+      method: "POST",
+      body: JSON.stringify({
+        userId: user!.id,
+        recipeId: item.recipe_id,
+        recipeTitle: item.recipe_title,
+        ingredients: [{ name: item.ingredient_name, amount: item.ingredient_amount }],
+      }),
+    })
+    setItems(prev => prev.filter(i => i.id !== item.id))
+    await apiFetch("/api/quick-shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id, itemId: item.id }) })
+    await refreshQuickListCount()
+  }
+
+  const moveAllToShoppingList = () => {
+    Alert.alert("Move all to shopping list?", "All items will be moved to your main shopping list.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Move all", onPress: async () => {
+          const grouped: Record<string, { name: string; amount: string }[]> = {}
+          items.forEach(item => {
+            if (!grouped[item.recipe_id]) grouped[item.recipe_id] = []
+            grouped[item.recipe_id].push({ name: item.ingredient_name, amount: item.ingredient_amount })
+          })
+          const firstItem = items[0]
+          await Promise.all(
+            Object.entries(grouped).map(([recipeId, ings]) =>
+              apiFetch("/api/shopping-list", {
+                method: "POST",
+                body: JSON.stringify({
+                  userId: user!.id,
+                  recipeId,
+                  recipeTitle: items.find(i => i.recipe_id === recipeId)?.recipe_title ?? "",
+                  ingredients: ings,
+                }),
+              })
+            )
+          )
+          setItems([])
+          await apiFetch("/api/quick-shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id }) })
+          await refreshQuickListCount()
+        }
+      }
+    ])
+  }
+
   const clearAll = () => {
     Alert.alert("Clear quick list?", "Remove all items from your quick shopping list?", [
       { text: "Cancel", style: "cancel" },
@@ -76,10 +123,16 @@ export default function QuickShoppingListScreen() {
           {items.length > 0 && <Text style={s.headerCount}>{checkedCount}/{items.length}</Text>}
         </View>
         {items.length > 0 && (
-          <TouchableOpacity style={s.clearBtn} onPress={clearAll}>
-            <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-            <Text style={s.clearBtnText}>Clear</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity style={s.moveAllBtn} onPress={moveAllToShoppingList}>
+              <Ionicons name="cart-outline" size={14} color={colors.primary} />
+              <Text style={s.moveAllBtnText}>Move all</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.clearBtn} onPress={clearAll}>
+              <Ionicons name="trash-outline" size={14} color={colors.destructive} />
+              <Text style={s.clearBtnText}>Clear</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -104,9 +157,14 @@ export default function QuickShoppingListScreen() {
                 {item.ingredient_amount ? <Text style={s.amount}>{item.ingredient_amount}</Text> : null}
                 <Text style={s.recipeLabel}>{item.recipe_title}</Text>
               </View>
-              <TouchableOpacity onPress={() => deleteItem(item.id)}>
-                <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <TouchableOpacity onPress={() => moveToShoppingList(item)} style={s.moveBtn}>
+                  <Ionicons name="cart-outline" size={15} color={colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteItem(item.id)}>
+                  <Ionicons name="trash-outline" size={15} color={colors.destructive} />
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         />
@@ -122,6 +180,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
   headerCount: { fontSize: 13, color: colors.mutedForeground },
+  moveAllBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md },
+  moveAllBtnText: { fontSize: 13, color: colors.primary, fontWeight: "500" },
+  moveBtn: { padding: 4 },
   clearBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md },
   clearBtnText: { fontSize: 13, color: colors.destructive, fontWeight: "500" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },

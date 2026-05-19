@@ -558,13 +558,19 @@ export default function RecipeDetailScreen() {
                 const subs = substitutes[ing.name]
                 const loadingSubPremium = substituteLoading === ing.name
                 const appliedSub = sessionSubstitutions.find(s => s.original === ing.name)
+                const notReplaceable = subs && (subs.length === 0 || subs[0] === "No substitutes found")
+                const subDisabled = loadingSubPremium || !!appliedSub || !!notReplaceable
+                const inQuickList = fromScan && quickListAdded.includes(ing.name)
                 return (
                   <View key={ing.id} style={s.ingredientRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.ingredientName, appliedSub && { textDecorationLine: "line-through", color: colors.muted }]}>{ing.name}</Text>
                       {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.substitute}</Text>}
                       <Text style={s.ingredientAmount}>{ing.original}</Text>
-                      {subs && (
+                      {notReplaceable && (
+                        <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>
+                      )}
+                      {subs && !notReplaceable && (
                         <View style={s.subsBox}>
                           <Text style={s.subsLabel}>Substitutes:</Text>
                           {subs.map((sub, i) => <Text key={i} style={s.subItem}>• {sub}</Text>)}
@@ -573,21 +579,27 @@ export default function RecipeDetailScreen() {
                     </View>
                     <View style={s.ingActions}>
                       <TouchableOpacity
-                        style={s.subBtn}
-                        onPress={() => fetchSubstitute(ing.name)}
-                        disabled={loadingSubPremium}
+                        style={[s.subBtn, subDisabled && { opacity: 0.35 }]}
+                        onPress={() => !subDisabled && fetchSubstitute(ing.name)}
+                        disabled={subDisabled}
                       >
                         {loadingSubPremium
                           ? <ActivityIndicator size="small" color={colors.primary} />
                           : <Ionicons name="swap-horizontal-outline" size={16} color={colors.primary} />
                         }
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[s.cartBtn, added && s.cartBtnAdded]}
-                        onPress={() => toggleIngredient(ing.name, ing.original)}
-                      >
-                        <Ionicons name={added ? "remove" : "cart-outline"} size={16} color={added ? colors.destructive : colors.primary} />
-                      </TouchableOpacity>
+                      {inQuickList ? (
+                        <View style={[s.cartBtn, { borderColor: colors.primary, opacity: 0.6 }]}>
+                          <Ionicons name="flash" size={14} color={colors.primary} />
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[s.cartBtn, added && s.cartBtnAdded]}
+                          onPress={() => toggleIngredient(ing.name, ing.original)}
+                        >
+                          <Ionicons name={added ? "remove" : "cart-outline"} size={16} color={added ? colors.destructive : colors.primary} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 )
