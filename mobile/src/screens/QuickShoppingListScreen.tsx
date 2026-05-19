@@ -7,6 +7,7 @@ import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
+import { useActiveRecipeSession } from "../context/ActiveRecipeSessionContext"
 import { spacing, radius } from "../lib/theme"
 
 type QuickItem = { id: string; recipe_id: string; recipe_title: string; ingredient_name: string; ingredient_amount: string; checked: boolean }
@@ -15,6 +16,7 @@ export default function QuickShoppingListScreen() {
   const { user } = useAuth()
   const { colors } = useTheme()
   const { showError } = useGlobalError()
+  const { refreshQuickListCount } = useActiveRecipeSession()
   const s = makeStyles(colors)
   const [items, setItems] = useState<QuickItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,13 +37,16 @@ export default function QuickShoppingListScreen() {
   useFocusEffect(useCallback(() => { fetchItems() }, [fetchItems]))
 
   const toggleCheck = async (item: QuickItem) => {
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, checked: !i.checked } : i))
-    await apiFetch("/api/quick-shopping-list/check", { method: "PATCH", body: JSON.stringify({ userId: user!.id, itemId: item.id, checked: !item.checked }) })
+    const newChecked = !item.checked
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, checked: newChecked } : i))
+    await apiFetch("/api/quick-shopping-list/check", { method: "PATCH", body: JSON.stringify({ userId: user!.id, itemId: item.id, checked: newChecked }) })
+    await refreshQuickListCount()
   }
 
   const deleteItem = async (itemId: string) => {
     setItems(prev => prev.filter(i => i.id !== itemId))
     await apiFetch("/api/quick-shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id, itemId }) })
+    await refreshQuickListCount()
   }
 
   const clearAll = () => {
@@ -51,6 +56,7 @@ export default function QuickShoppingListScreen() {
         text: "Clear", style: "destructive", onPress: async () => {
           setItems([])
           await apiFetch("/api/quick-shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id }) })
+          await refreshQuickListCount()
         }
       }
     ])
