@@ -354,8 +354,11 @@ export default function RecipeDetailScreen() {
                     <Text style={s.checkSubBtnText}>Use it</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={handleBuyIt} activeOpacity={0.8}>
-                    <Ionicons name="flash" size={16} color={colors.primary} style={{ marginRight: 6 }} />
-                    <Text style={[s.checkSubBtnText, { color: colors.text }]}>Buy it</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Ionicons name="cart-outline" size={16} color={colors.text} />
+                      <Ionicons name="flash" size={12} color={colors.primary} />
+                    </View>
+                    <Text style={[s.checkSubBtnText, { color: colors.text }]}>Quick list</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -366,8 +369,11 @@ export default function RecipeDetailScreen() {
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>No substitute found</Text>
                 <View style={s.checkSubBtns}>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleBuyIt} activeOpacity={0.8}>
-                    <Ionicons name="flash" size={16} color="#fff" style={{ marginRight: 6 }} />
-                    <Text style={s.checkSubBtnText}>Buy it</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Ionicons name="cart-outline" size={16} color="#fff" />
+                      <Ionicons name="flash" size={12} color="#fff" />
+                    </View>
+                    <Text style={s.checkSubBtnText}>Quick list</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={() => advanceCheck(pendingSubstitutions)} activeOpacity={0.8}>
                     <Text style={[s.checkSubBtnText, { color: colors.text }]}>Skip</Text>
