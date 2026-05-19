@@ -616,7 +616,7 @@ export default function RecipeDetailScreen() {
                       {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.display ?? appliedSub.substitute}</Text>}
                       {sub && !appliedSub && <Text style={{ fontSize: 12, color: colors.primary, marginTop: 2 }}>→ {sub.display}{sub.substitute !== sub.display ? ` (${sub.substitute})` : ""}</Text>}
                       {notReplaceable && <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>}
-                      <Text style={s.ingredientAmount}>{ing.original}</Text>
+                      <Text style={s.ingredientAmount}>{appliedSub ? appliedSub.substitute : ing.original}</Text>
                     </View>
                     <View style={s.ingActions}>
                       <TouchableOpacity
