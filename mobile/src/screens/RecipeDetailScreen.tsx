@@ -220,6 +220,40 @@ export default function RecipeDetailScreen() {
     } finally { setSubstituteLoading(null) }
   }, [isPremium, substitutes, recipe?.title])
 
+  const applyTabSubstitute = useCallback(async (ing: any, sub: { substitute: string; display: string }) => {
+    const newSubs = [...sessionSubstitutions, {
+      original: ing.original ?? ing.name,
+      name: ing.name,
+      substitute: sub.substitute,
+      display: sub.display,
+    }]
+    setSessionSubstitutions(newSubs)
+    setSubstitutes(prev => { const next = { ...prev }; delete next[ing.name]; return next })
+    if (user && recipe) {
+      await saveSession({
+        recipeId: String(recipe.id),
+        recipeTitle: recipe.title,
+        recipeData: recipe,
+        substitutions: newSubs,
+        source: fromScan ? "scan" : "search",
+      })
+    }
+  }, [sessionSubstitutions, user, recipe, fromScan, saveSession])
+
+  const removeSubstitution = useCallback(async (original: string) => {
+    const newSubs = sessionSubstitutions.filter(s => s.original !== original)
+    setSessionSubstitutions(newSubs)
+    if (user && recipe) {
+      await saveSession({
+        recipeId: String(recipe.id),
+        recipeTitle: recipe.title,
+        recipeData: recipe,
+        substitutions: newSubs,
+        source: fromScan ? "scan" : "search",
+      })
+    }
+  }, [sessionSubstitutions, user, recipe, fromScan, saveSession])
+
   // ── INGREDIENT CHECK FLOW ──────────────────────────────────
 
   const ingredients = recipe?.extendedIngredients ?? []
@@ -607,48 +641,83 @@ export default function RecipeDetailScreen() {
                   s.original === ing.name || s.original === ing.original || s.original.includes(ing.name)
                 )
                 const notReplaceable = ing.name in substitutes && !sub
-                const subDisabled = loadingSubPremium || !!appliedSub || notReplaceable
+                const subDisabled = loadingSubPremium || !!appliedSub || notReplaceable || !!sub
                 const inQuickList = (fromScan || fromSession) && quickListAdded.includes(ing.name)
+                const hasPendingSub = !!sub && !appliedSub
                 return (
-                  <View key={`${ing.id}-${idx}`} style={s.ingredientRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.ingredientName, appliedSub && { textDecorationLine: "line-through", color: colors.muted }]}>{ing.name}</Text>
-                      {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.display ?? appliedSub.substitute}</Text>}
-                      {sub && !appliedSub && <Text style={{ fontSize: 12, color: colors.primary, marginTop: 2 }}>→ {sub.display}{sub.substitute !== sub.display ? ` (${sub.substitute})` : ""}</Text>}
-                      {notReplaceable && <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>}
-                      <Text style={s.ingredientAmount}>{appliedSub ? appliedSub.substitute : ing.original}</Text>
+                  <View key={`${ing.id}-${idx}`} style={[s.ingredientRow, { flexDirection: "column", alignItems: "stretch" }]}>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.ingredientName, appliedSub && { textDecorationLine: "line-through", color: colors.muted }]}>{ing.name}</Text>
+                        {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.display ?? appliedSub.substitute}</Text>}
+                        {notReplaceable && !appliedSub && <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>}
+                        <Text style={s.ingredientAmount}>{appliedSub ? appliedSub.substitute : ing.original}</Text>
+                      </View>
+                      <View style={s.ingActions}>
+                        {appliedSub ? (
+                          <TouchableOpacity
+                            style={s.subBtn}
+                            onPress={() => removeSubstitution(appliedSub.original)}
+                          >
+                            <Ionicons name="arrow-undo-outline" size={16} color={colors.primary} />
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={[s.subBtn, subDisabled && { opacity: 0.35 }]}
+                            onPress={() => !subDisabled && fetchSubstitute(ing.name, ing.original)}
+                            disabled={subDisabled}
+                          >
+                            {loadingSubPremium
+                              ? <ActivityIndicator size="small" color={colors.primary} />
+                              : <Ionicons name="swap-horizontal-outline" size={16} color={colors.primary} />
+                            }
+                          </TouchableOpacity>
+                        )}
+                        {inQuickList ? (
+                          <TouchableOpacity
+                            style={[s.cartBtn, s.cartBtnAdded]}
+                            onPress={() => {
+                              setQuickListAdded(prev => prev.filter(n => n !== ing.name))
+                              apiFetch("/api/quick-shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id, ingredientName: ing.name, recipeId: String(recipe.id) }) })
+                              refreshQuickListCount()
+                            }}
+                          >
+                            <Ionicons name="remove" size={16} color={colors.destructive} />
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={[s.cartBtn, added && s.cartBtnAdded]}
+                            onPress={() => toggleIngredient(ing.name, ing.original)}
+                          >
+                            <Ionicons name={added ? "remove" : "cart-outline"} size={16} color={added ? colors.destructive : colors.primary} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
-                    <View style={s.ingActions}>
-                      <TouchableOpacity
-                        style={[s.subBtn, subDisabled && { opacity: 0.35 }]}
-                        onPress={() => !subDisabled && fetchSubstitute(ing.name, ing.original)}
-                        disabled={subDisabled}
-                      >
-                        {loadingSubPremium
-                          ? <ActivityIndicator size="small" color={colors.primary} />
-                          : <Ionicons name="swap-horizontal-outline" size={16} color={colors.primary} />
-                        }
-                      </TouchableOpacity>
-                      {inQuickList ? (
-                        <TouchableOpacity
-                          style={[s.cartBtn, s.cartBtnAdded]}
-                          onPress={() => {
-                            setQuickListAdded(prev => prev.filter(n => n !== ing.name))
-                            apiFetch("/api/quick-shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id, ingredientName: ing.name, recipeId: String(recipe.id) }) })
-                            refreshQuickListCount()
-                          }}
-                        >
-                          <Ionicons name="remove" size={16} color={colors.destructive} />
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          style={[s.cartBtn, added && s.cartBtnAdded]}
-                          onPress={() => toggleIngredient(ing.name, ing.original)}
-                        >
-                          <Ionicons name={added ? "remove" : "cart-outline"} size={16} color={added ? colors.destructive : colors.primary} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    {hasPendingSub && (
+                      <View style={s.pendingSubRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.ingredientName, { color: colors.primary }]}>→ {sub.display}</Text>
+                          {sub.substitute !== sub.display && (
+                            <Text style={{ fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>{sub.substitute}</Text>
+                          )}
+                        </View>
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                          <TouchableOpacity
+                            style={[s.subActionBtn, { backgroundColor: colors.primary }]}
+                            onPress={() => applyTabSubstitute(ing, sub)}
+                          >
+                            <Ionicons name="checkmark" size={16} color="#fff" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[s.subActionBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]}
+                            onPress={() => setSubstitutes(prev => { const next = { ...prev }; delete next[ing.name]; return next })}
+                          >
+                            <Ionicons name="close" size={16} color={colors.text} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )
               })}
@@ -775,6 +844,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   stepText: { flex: 1, fontSize: 14, color: colors.text, lineHeight: 22 },
   ingActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   subBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: colors.primary + "66", alignItems: "center", justifyContent: "center" },
+  pendingSubRow: { flexDirection: "row", alignItems: "center", marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
+  subActionBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   wineIntro: { fontSize: 14, color: colors.mutedForeground, lineHeight: 22, fontStyle: "italic" },
   wineCard: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
   wineCardLeft: { gap: 6 },
