@@ -399,7 +399,7 @@ export default function RecipeDetailScreen() {
                 ))}
               </View>
             )}
-            <TouchableOpacity style={[s.sheetBtn, { backgroundColor: colors.primary, marginTop: 32 }]} onPress={() => setCheckStep(null)} activeOpacity={0.8}>
+            <TouchableOpacity style={[s.sheetBtn, { backgroundColor: colors.primary, marginTop: 32, paddingHorizontal: 48, alignSelf: "stretch", marginHorizontal: 24 }]} onPress={() => setCheckStep(null)} activeOpacity={0.8}>
               <Text style={s.sheetBtnText}>Open recipe</Text>
             </TouchableOpacity>
           </View>

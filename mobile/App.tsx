@@ -50,7 +50,15 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: st
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
-const OVERFLOW_ITEMS = [
+const OVERFLOW_ITEMS_DEFAULT = [
+  { name: "Favourites", icon: "heart-outline" as const, label: "Favourites" },
+  { name: "Tried", icon: "clipboard-outline" as const, label: "Tried" },
+  { name: "MealPlan", icon: "calendar-outline" as const, label: "Meal Plan" },
+  { name: "Profile", icon: "person-outline" as const, label: "Profile" },
+]
+
+const OVERFLOW_ITEMS_WITH_QUICK = [
+  { name: "Shopping", icon: "cart-outline" as const, label: "Shopping" },
   { name: "Favourites", icon: "heart-outline" as const, label: "Favourites" },
   { name: "Tried", icon: "clipboard-outline" as const, label: "Tried" },
   { name: "MealPlan", icon: "calendar-outline" as const, label: "Meal Plan" },
@@ -74,7 +82,8 @@ function HomeTabs() {
   const animHeight = React.useRef(new Animated.Value(0)).current
   const [currentRoute, setCurrentRoute] = React.useState("")
 
-  const overflowItems = OVERFLOW_ITEMS.map(item =>
+  const baseOverflow = quickListCount > 0 ? OVERFLOW_ITEMS_WITH_QUICK : OVERFLOW_ITEMS_DEFAULT
+  const overflowItems = baseOverflow.map(item =>
     item.name === "Profile"
       ? { ...item, icon: (user ? "person-outline" : "log-in-outline") as const, label: user ? "Profile" : "Sign in" }
       : item
