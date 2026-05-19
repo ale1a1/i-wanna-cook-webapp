@@ -36,12 +36,12 @@ function applySubstitutions(text: string, substitutions: Substitution[]): string
 export default function RecipeDetailScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
-  const { id, fromScan } = route.params
+  const { id, fromScan, fromSession } = route.params ?? {}
   const { user } = useAuth()
   const { colors } = useTheme()
   const { showError } = useGlobalError()
   const { isPremium } = useSubscription()
-  const { saveSession, refreshQuickListCount } = useActiveRecipeSession()
+  const { saveSession, clearSession, refreshQuickListCount, session: activeSession } = useActiveRecipeSession()
   const s = makeStyles(colors)
 
   const [recipe, setRecipe] = useState<any>(null)
@@ -63,7 +63,7 @@ export default function RecipeDetailScreen() {
   const [substituteLoading, setSubstituteLoading] = useState<string | null>(null)
 
   // Ingredient check flow
-  const [checkStep, setCheckStep] = useState<CheckStep | null>(fromScan ? "ask" : null)
+  const [checkStep, setCheckStep] = useState<CheckStep | null>(fromScan && !fromSession ? "ask" : null)
   const [checkIndex, setCheckIndex] = useState(0)
   const [suggestedSub, setSuggestedSub] = useState<string | null>(null)
   const [suggestedSubDisplay, setSuggestedSubDisplay] = useState<string | null>(null)
@@ -87,6 +87,12 @@ export default function RecipeDetailScreen() {
   }
 
   useEffect(() => { fetchRecipe() }, [id])
+
+  useEffect(() => {
+    if (fromSession && activeSession?.substitutions?.length) {
+      setSessionSubstitutions(activeSession.substitutions)
+    }
+  }, [fromSession, activeSession])
 
   useEffect(() => {
     if (!user || !recipe) return
@@ -303,6 +309,7 @@ export default function RecipeDetailScreen() {
         recipeTitle: recipe.title,
         recipeData: recipe,
         substitutions: subs,
+        source: fromScan ? "scan" : "search",
       })
     }
   }
@@ -501,6 +508,12 @@ export default function RecipeDetailScreen() {
               {isTried ? "Tried" : "Mark tried"}
             </Text>
           </TouchableOpacity>
+          {fromSession && (
+            <TouchableOpacity style={[s.actionBtn, { borderColor: colors.destructive + "66" }]} onPress={async () => { await clearSession(); navigation.navigate("Tabs") }}>
+              <Ionicons name="stop-circle-outline" size={20} color={colors.destructive} />
+              <Text style={[s.actionBtnText, { color: colors.destructive }]}>Stop</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={s.header}>

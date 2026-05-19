@@ -9,6 +9,7 @@ export type ActiveSession = {
   recipeTitle: string
   recipeData: any
   substitutions: Substitution[]
+  source: "scan" | "search"
 }
 
 type ContextType = {
@@ -52,6 +53,7 @@ export function ActiveRecipeSessionProvider({ children }: { children: React.Reac
           recipeTitle: data.session.recipe_title,
           recipeData: data.session.recipe_data,
           substitutions: data.session.substitutions || [],
+          source: data.session.source ?? "scan",
         })
       } else {
         setSession(null)
@@ -75,6 +77,7 @@ export function ActiveRecipeSessionProvider({ children }: { children: React.Reac
         recipeTitle: s.recipeTitle,
         recipeData: s.recipeData,
         substitutions: s.substitutions,
+        source: s.source,
       }),
     })
   }, [user])

@@ -57,14 +57,6 @@ const OVERFLOW_ITEMS_DEFAULT = [
   { name: "Profile", icon: "person-outline" as const, label: "Profile" },
 ]
 
-const OVERFLOW_ITEMS_WITH_QUICK = [
-  { name: "Shopping", icon: "cart-outline" as const, label: "Shopping" },
-  { name: "Favourites", icon: "heart-outline" as const, label: "Favourites" },
-  { name: "Tried", icon: "clipboard-outline" as const, label: "Tried" },
-  { name: "MealPlan", icon: "calendar-outline" as const, label: "Meal Plan" },
-  { name: "Profile", icon: "person-outline" as const, label: "Profile" },
-]
-
 
 function TabIcon({ name, color }: { name: keyof typeof Ionicons.glyphMap, color: string, active: boolean }) {
   return <Ionicons name={name} size={26} color={color} />
@@ -77,13 +69,21 @@ function HomeTabs() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const navigation = useNavigation<any>()
-  const { quickListCount } = useActiveRecipeSession()
+  const { quickListCount, session } = useActiveRecipeSession()
   const [overflowOpen, setOverflowOpen] = React.useState(false)
   const animHeight = React.useRef(new Animated.Value(0)).current
   const [currentRoute, setCurrentRoute] = React.useState("")
 
-  const baseOverflow = quickListCount > 0 ? OVERFLOW_ITEMS_WITH_QUICK : OVERFLOW_ITEMS_DEFAULT
-  const overflowItems = baseOverflow.map(item =>
+  // Build overflow: displaced tab + Shopping (if quick list active) + defaults
+  const overflowBase: typeof OVERFLOW_ITEMS_DEFAULT = []
+  if (session) {
+    if (session.source === "scan") overflowBase.push({ name: "Scan", icon: "camera-outline" as const, label: "Scan" })
+    else overflowBase.push({ name: "Search", icon: "search-outline" as const, label: "Search" })
+  }
+  if (quickListCount > 0) overflowBase.push({ name: "Shopping", icon: "cart-outline" as const, label: "Shopping" })
+  overflowBase.push(...OVERFLOW_ITEMS_DEFAULT)
+
+  const overflowItems = overflowBase.map(item =>
     item.name === "Profile"
       ? { ...item, icon: (user ? "person-outline" : "log-in-outline") as const, label: user ? "Profile" : "Sign in" }
       : item
@@ -128,18 +128,37 @@ function HomeTabs() {
         <Tab.Screen name="Home" component={HomeScreen} options={{
           tabBarIcon: ({ color, focused }) => <TabIcon name="home-outline" color={color} active={focused} />,
         }} />
-        <Tab.Screen name="Search" component={SearchScreen} options={{
-          tabBarIcon: ({ color, focused }) => <TabIcon name="search-outline" color={color} active={focused} />,
-        }} />
-        <Tab.Screen name="Scan" component={ScanScreen} options={{
-          tabBarIcon: ({ color, focused }) => <TabIcon name="camera-outline" color={color} active={focused} />,
-        }} />
+        {!session && (
+          <Tab.Screen name="Search" component={SearchScreen} options={{
+            tabBarIcon: ({ color, focused }) => <TabIcon name="search-outline" color={color} active={focused} />,
+          }} />
+        )}
+        {session ? (
+          <Tab.Screen
+            name="Cooking"
+            component={RecipeDetailScreen}
+            initialParams={{ id: session.recipeId, title: session.recipeTitle, fromSession: true }}
+            options={{
+              tabBarLabel: "Cooking",
+              tabBarIcon: ({ color }) => (
+                <View>
+                  <Ionicons name="restaurant" size={26} color={color} />
+                  <View style={{ position: "absolute", top: -4, right: -10, backgroundColor: colors.primary, borderRadius: 6, width: 8, height: 8 }} />
+                </View>
+              ),
+            }}
+          />
+        ) : (
+          <Tab.Screen name="Scan" component={ScanScreen} options={{
+            tabBarIcon: ({ color, focused }) => <TabIcon name="camera-outline" color={color} active={focused} />,
+          }} />
+        )}
         {quickListCount > 0 ? (
           <Tab.Screen name="QuickShopping" component={QuickShoppingListScreen} options={{
             tabBarLabel: "Quick List",
-            tabBarIcon: ({ color, focused }) => (
+            tabBarIcon: ({ color }) => (
               <View>
-                <TabIcon name="flash" color={color} active={focused} />
+                <Ionicons name="flash" size={26} color={color} />
                 <View style={{ position: "absolute", top: -4, right: -8, backgroundColor: colors.primary, borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
                   <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{quickListCount}</Text>
                 </View>
