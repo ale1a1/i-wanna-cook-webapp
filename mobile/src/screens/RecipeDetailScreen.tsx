@@ -592,19 +592,21 @@ export default function RecipeDetailScreen() {
                 <Text style={s.addAllBtnText}>{allAdded ? "All Added" : "Add All to Shopping List"}</Text>
               </TouchableOpacity>
 
-              {recipe.extendedIngredients?.map((ing: any) => {
+              {recipe.extendedIngredients?.map((ing: any, idx: number) => {
                 const added = addedIngredients.has(ing.name)
                 const sub = substitutes[ing.name]
                 const loadingSubPremium = substituteLoading === ing.name
-                const appliedSub = sessionSubstitutions.find(s => s.original === ing.name)
+                const appliedSub = sessionSubstitutions.find(s =>
+                  s.original === ing.name || s.original === ing.original || s.original.includes(ing.name)
+                )
                 const notReplaceable = ing.name in substitutes && !sub
                 const subDisabled = loadingSubPremium || !!appliedSub || notReplaceable
-                const inQuickList = fromScan && quickListAdded.includes(ing.name)
+                const inQuickList = (fromScan || fromSession) && quickListAdded.includes(ing.name)
                 return (
-                  <View key={ing.id} style={s.ingredientRow}>
+                  <View key={`${ing.id}-${idx}`} style={s.ingredientRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={[s.ingredientName, appliedSub && { textDecorationLine: "line-through", color: colors.muted }]}>{ing.name}</Text>
-                      {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.substitute}</Text>}
+                      {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.display ?? appliedSub.substitute}</Text>}
                       {sub && !appliedSub && <Text style={{ fontSize: 12, color: colors.primary, marginTop: 2 }}>→ {sub.display}{sub.substitute !== sub.display ? ` (${sub.substitute})` : ""}</Text>}
                       {notReplaceable && <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>}
                       <Text style={s.ingredientAmount}>{ing.original}</Text>
