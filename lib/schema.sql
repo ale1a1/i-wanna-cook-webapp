@@ -73,6 +73,10 @@ CREATE TABLE IF NOT EXISTS active_recipe_session (
   recipe_title TEXT NOT NULL,
   recipe_data JSONB NOT NULL,
   substitutions JSONB NOT NULL DEFAULT '[]',
+  source TEXT NOT NULL DEFAULT 'scan',
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Migration: add source column if not exists
+ALTER TABLE active_recipe_session ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'scan';
