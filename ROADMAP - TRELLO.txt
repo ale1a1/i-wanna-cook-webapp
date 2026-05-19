@@ -152,11 +152,8 @@ LIST: SHOULD — High Priority After Launch
 Meal Planner v2 — more filters before generating
 Add more options to the plan settings: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, healthiness. Settings saved so user doesn't have to re-enter them every time. Premium feature.
 
-Filter by number of people (servings)
-Let users set how many people they are cooking for — both as a search filter and as a pre-set before using the scan flow. When set via scan, carries into the search automatically. Portion amounts on the recipe scale accordingly. Also useful standalone in the search filter panel. Premium feature.
-
-Portion scaling stepper
-Stepper inside recipe detail to scale ingredient quantities for 2, 4, or 6 people. All ingredient amounts recalculate automatically. Premium feature. Complements the "filter by people" feature above.
+Guided Navigation (contextual help system)
+For non-obvious actions (quick shopping list cart button, substitution flow, session tabs, etc.), show a one-time confirmation prompt — "Do you want to do this? Yes / No" with a "Don't ask again" option. User can also tap a ? icon on any screen to trigger an animated walkthrough of that screen's features. Guided navigation can be toggled on/off in Settings. When off, all prompts are skipped and actions fire directly. First-time users have it on by default.
 
 Chef avatar narrator for cooking mode
 A distinctive chef character shown during cooking mode and voice steps. Gives the app personality and makes the cooking experience feel like having a companion in the kitchen. The avatar reacts as steps progress — idle, talking, celebrating when done.
@@ -259,6 +256,67 @@ Track user behaviour, premium conversion, trial retention.
 
 Push notification infrastructure
 Required before push notifications can be built.
+
+
+================================================================
+LIST: APIs & BREAKING POINTS
+================================================================
+
+Spoonacular
+Used for: recipe search, recipe detail, wine pairing, ingredient substitutes (legacy).
+API key: SPOONACULAR_API_KEY in .env.local (server-side only, never client).
+Proxied via: /api/recipes/* routes on the Next.js backend.
+Quota: points-based. complexSearch = 1pt + 0.01pt per result + extras if addRecipeInformation/Nutrition set.
+Breaking points:
+- 402 or "apiKey" error in response → quota exhausted for the day. Check spoonacular.com dashboard.
+- Recipe detail returns empty extendedIngredients → Spoonacular data gap, not a code bug.
+- Search returns 0 results with no error → too many filters combined, or ingredient names too specific.
+- CORS error → route is being called client-side directly. Must always go through /api/recipes/* proxy.
+
+Claude (Anthropic)
+Used for: ingredient photo scanning (vision), substitute suggestions, future AI chat.
+API key: ANTHROPIC_API_KEY in .env.local (server-side only).
+Model: claude-haiku-4-5 for substitutes and scan. Upgrade to Sonnet for chat if needed.
+Proxied via: /api/recipes/analyze-image, /api/recipes/suggest-substitute.
+Breaking points:
+- 401 → API key missing or wrong. Check .env.local and Amplify environment variables.
+- 529 or 503 → Anthropic overloaded. Retry after a few seconds.
+- Response not valid JSON → Claude returned markdown or explanation instead of plain text. Check prompt.
+- Substitute returns garbage → prompt drift. Re-check suggest-substitute route prompt format.
+- Vision returns no ingredients → image too dark/blurry or prompt needs adjustment. Check analyze-image route.
+
+AWS Cognito
+Used for: user authentication (register, login, email verify, forgot password, change password).
+Region: eu-west-2.
+Breaking points:
+- "UserNotConfirmedException" → user registered but didn't verify email. Resend code flow needed.
+- "NotAuthorizedException" → wrong password or user doesn't exist.
+- JWT expired → auto-logout should kick in. If not, check token refresh logic in AuthContext.
+- Cognito User Pool ID or Client ID mismatch → check Amplify environment variables vs aws-exports or hardcoded config.
+
+AWS RDS PostgreSQL
+Used for: all persistent data — users, favourites, shopping list, tried recipes, meal plans, ratings, quick shopping list, active recipe session.
+Region: eu-west-2.
+Proxied via: all /api/* routes that hit pool (lib/db.ts).
+Breaking points:
+- "Connection refused" or pool timeout → RDS instance stopped or security group blocking the Lambda/Amplify outbound IP. Check AWS console.
+- "column does not exist" → migration not run. Check lib/schema.sql and run the missing ALTER TABLE manually.
+- "unique constraint violated" → duplicate insert, usually fine (upsert logic should handle it). If not, check ON CONFLICT clause.
+- Slow queries → missing index or RDS instance too small. Check CloudWatch.
+
+AWS Amplify (hosting)
+Used for: auto-deploy Next.js backend + web frontend on push to main.
+Breaking points:
+- Build fails → check Amplify console build logs. Usually a missing env var or TypeScript error.
+- Environment variable not found at runtime → must be added in Amplify console under Environment Variables, not just .env.local.
+- Old code still running after push → Amplify cache. Trigger a manual redeploy from the console.
+
+Expo / React Native (mobile)
+Breaking points:
+- Metro bundler crash → delete node_modules/.cache and restart.
+- Android build fails → check C:\p\ short path workaround (Windows 260-char path limit). See APK build notes.
+- expo-speech not working on device → physical device permissions or TTS engine not installed. Works fine on emulator.
+- Navigation crash on tab swap → session state changed mid-render. Check HomeTabs conditional tab logic in App.tsx.
 
 
 ================================================================
