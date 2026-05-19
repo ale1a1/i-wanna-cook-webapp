@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState, useCallback, useRef } from "react"
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Modal
+  Image, ActivityIndicator, Alert, Modal, Animated
 } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
@@ -62,6 +62,9 @@ export default function RecipeDetailScreen() {
   const [loadingSub, setLoadingSub] = useState(false)
   const [awaitingSub, setAwaitingSub] = useState(false)
   const [pendingSubstitutions, setPendingSubstitutions] = useState<Substitution[]>([])
+  const [quickListAdded, setQuickListAdded] = useState<string[]>([])
+  const quickListBadgeScale = useRef(new Animated.Value(0)).current
+  const addedFlash = useRef(new Animated.Value(1)).current
 
   const fetchRecipe = async () => {
     setLoading(true)
@@ -241,6 +244,20 @@ export default function RecipeDetailScreen() {
 
   const handleBuyIt = async () => {
     if (!user) return
+    const isFirst = quickListAdded.length === 0
+    setQuickListAdded(prev => [...prev, currentIngredient.name])
+    if (isFirst) {
+      Animated.spring(quickListBadgeScale, { toValue: 1, useNativeDriver: true, bounciness: 14 }).start()
+    } else {
+      Animated.sequence([
+        Animated.timing(quickListBadgeScale, { toValue: 1.2, duration: 100, useNativeDriver: true }),
+        Animated.spring(quickListBadgeScale, { toValue: 1, useNativeDriver: true }),
+      ]).start()
+    }
+    Animated.sequence([
+      Animated.timing(addedFlash, { toValue: 0.3, duration: 80, useNativeDriver: true }),
+      Animated.timing(addedFlash, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start()
     await apiFetch("/api/quick-shopping-list", {
       method: "POST",
       body: JSON.stringify({
@@ -314,9 +331,18 @@ export default function RecipeDetailScreen() {
               <Text style={[s.checkProgressText, { color: colors.mutedForeground }]}>
                 {checkIndex + 1} of {ingredients.length}
               </Text>
-              <TouchableOpacity onPress={() => finishCheck(pendingSubstitutions)}>
-                <Text style={[s.checkSkipText, { color: colors.mutedForeground }]}>Skip all</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                {quickListAdded.length > 0 && (
+                  <Animated.View style={[s.quickListBadge, { transform: [{ scale: quickListBadgeScale }] }]}>
+                    <Ionicons name="cart-outline" size={13} color={colors.primary} />
+                    <Ionicons name="flash" size={10} color={colors.primary} />
+                    <Text style={[s.quickListBadgeText, { color: colors.primary }]}>{quickListAdded.length}</Text>
+                  </Animated.View>
+                )}
+                <TouchableOpacity onPress={() => finishCheck(pendingSubstitutions)}>
+                  <Text style={[s.checkSkipText, { color: colors.mutedForeground }]}>Skip all</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={s.checkContent}>
@@ -353,13 +379,15 @@ export default function RecipeDetailScreen() {
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleUseSub} activeOpacity={0.8}>
                     <Text style={s.checkSubBtnText}>Use it</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={handleBuyIt} activeOpacity={0.8}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Ionicons name="cart-outline" size={16} color={colors.text} />
-                      <Ionicons name="flash" size={12} color={colors.primary} />
-                    </View>
-                    <Text style={[s.checkSubBtnText, { color: colors.text }]}>Quick list</Text>
-                  </TouchableOpacity>
+                  <Animated.View style={{ flex: 1, opacity: addedFlash }}>
+                    <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border, flex: 1 }]} onPress={handleBuyIt} activeOpacity={0.8}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <Ionicons name="cart-outline" size={16} color={colors.text} />
+                        <Ionicons name="flash" size={12} color={colors.primary} />
+                      </View>
+                      <Text style={[s.checkSubBtnText, { color: colors.text }]}>Add to quick list</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
                 </View>
               </View>
             )}
@@ -368,13 +396,15 @@ export default function RecipeDetailScreen() {
               <View style={s.checkSubBox}>
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>No substitute found</Text>
                 <View style={s.checkSubBtns}>
-                  <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleBuyIt} activeOpacity={0.8}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Ionicons name="cart-outline" size={16} color="#fff" />
-                      <Ionicons name="flash" size={12} color="#fff" />
-                    </View>
-                    <Text style={s.checkSubBtnText}>Quick list</Text>
-                  </TouchableOpacity>
+                  <Animated.View style={{ flex: 1, opacity: addedFlash }}>
+                    <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary, flex: 1 }]} onPress={handleBuyIt} activeOpacity={0.8}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <Ionicons name="cart-outline" size={16} color="#fff" />
+                        <Ionicons name="flash" size={12} color="#fff" />
+                      </View>
+                      <Text style={s.checkSubBtnText}>Add to quick list</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={() => advanceCheck(pendingSubstitutions)} activeOpacity={0.8}>
                     <Text style={[s.checkSubBtnText, { color: colors.text }]}>Skip</Text>
                   </TouchableOpacity>
@@ -726,7 +756,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   checkSubLabel: { fontSize: 14 },
   checkSubName: { fontSize: 28, fontWeight: "800" },
   checkSubBtns: { flexDirection: "row", gap: 12, width: "100%" },
-  checkSubBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: radius.lg },
+  checkSubBtn: { flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: radius.lg, gap: 4 },
+  quickListBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.primary + "22", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1, borderColor: colors.primary + "55" },
+  quickListBadgeText: { fontSize: 13, fontWeight: "700" },
   checkSubBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   subsList: { marginTop: 8, alignItems: "center" },
 })
