@@ -23,12 +23,18 @@ function escapeRegex(str: string) {
 
 function applySubstitutions(text: string, substitutions: Substitution[]): string {
   let result = text
-  for (const { original, substitute } of substitutions) {
-    // Try to replace the full original string first (e.g. "2 large mushrooms"), then fall back to name-only
-    const fullRegex = new RegExp(escapeRegex(original), "gi")
-    const nameRegex = new RegExp(`\\b${escapeRegex(original)}\\b`, "gi")
-    const replaced = result.replace(fullRegex, substitute)
-    result = replaced !== result ? replaced : result.replace(nameRegex, substitute)
+  for (const { original, name, substitute, display } of substitutions) {
+    const replacement = display ?? substitute
+    // 1. Try full original string (e.g. "8 ounces portabella mushroom sliced")
+    const fullReplaced = result.replace(new RegExp(escapeRegex(original), "gi"), replacement)
+    if (fullReplaced !== result) { result = fullReplaced; continue }
+    // 2. Try ingredient name with word boundary (e.g. "portabella mushroom")
+    if (name) {
+      const nameReplaced = result.replace(new RegExp(`\\b${escapeRegex(name)}\\b`, "gi"), replacement)
+      if (nameReplaced !== result) { result = nameReplaced; continue }
+    }
+    // 3. Try original as word boundary (handles cases where original IS just the name)
+    result = result.replace(new RegExp(`\\b${escapeRegex(original)}\\b`, "gi"), replacement)
   }
   return result
 }
@@ -264,6 +270,7 @@ export default function RecipeDetailScreen() {
     if (!suggestedSub) return
     const newSubs = [...pendingSubstitutions, {
       original: currentIngredient.original ?? currentIngredient.name,
+      name: currentIngredient.name,
       substitute: suggestedSub,
       display: suggestedSubDisplay ?? suggestedSub,
     }]

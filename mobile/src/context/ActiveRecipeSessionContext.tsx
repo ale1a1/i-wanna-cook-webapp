@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { apiFetch } from "../lib/api"
 import { useAuth } from "./AuthContext"
 
-export type Substitution = { original: string; substitute: string; display?: string }
+export type Substitution = { original: string; name?: string; substitute: string; display?: string }
 
 export type ActiveSession = {
   recipeId: string
