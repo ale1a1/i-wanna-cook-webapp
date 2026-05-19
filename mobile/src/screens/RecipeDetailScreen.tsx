@@ -17,11 +17,18 @@ import { spacing, radius } from "../lib/theme"
 type Tab = "overview" | "ingredients" | "steps" | "wine"
 type CheckStep = "ask" | "checking" | "done"
 
+function escapeRegex(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
 function applySubstitutions(text: string, substitutions: Substitution[]): string {
   let result = text
   for (const { original, substitute } of substitutions) {
-    const regex = new RegExp(`\\b${original}\\b`, "gi")
-    result = result.replace(regex, substitute)
+    // Try to replace the full original string first (e.g. "2 large mushrooms"), then fall back to name-only
+    const fullRegex = new RegExp(escapeRegex(original), "gi")
+    const nameRegex = new RegExp(`\\b${escapeRegex(original)}\\b`, "gi")
+    const replaced = result.replace(fullRegex, substitute)
+    result = replaced !== result ? replaced : result.replace(nameRegex, substitute)
   }
   return result
 }
@@ -52,13 +59,14 @@ export default function RecipeDetailScreen() {
   const [wineLoading, setWineLoading] = useState(false)
 
   // Ingredient substitutes (premium feature in ingredients tab)
-  const [substitutes, setSubstitutes] = useState<Record<string, string | null>>({})
+  const [substitutes, setSubstitutes] = useState<Record<string, { substitute: string; display: string } | null>>({})
   const [substituteLoading, setSubstituteLoading] = useState<string | null>(null)
 
   // Ingredient check flow
   const [checkStep, setCheckStep] = useState<CheckStep | null>(fromScan ? "ask" : null)
   const [checkIndex, setCheckIndex] = useState(0)
   const [suggestedSub, setSuggestedSub] = useState<string | null>(null)
+  const [suggestedSubDisplay, setSuggestedSubDisplay] = useState<string | null>(null)
   const [loadingSub, setLoadingSub] = useState(false)
   const [awaitingSub, setAwaitingSub] = useState(false)
   const [pendingSubstitutions, setPendingSubstitutions] = useState<Substitution[]>([])
@@ -183,7 +191,7 @@ export default function RecipeDetailScreen() {
     finally { setWineLoading(false) }
   }, [recipe, isPremium, winePairing])
 
-  const fetchSubstitute = useCallback(async (ingredient: string) => {
+  const fetchSubstitute = useCallback(async (ingredient: string, amount?: string) => {
     if (!isPremium) { setShowPaywall(true); return }
     if (ingredient in substitutes) return
     setSubstituteLoading(ingredient)
@@ -191,10 +199,10 @@ export default function RecipeDetailScreen() {
       const res = await fetch(`${API_BASE_URL}/api/recipes/suggest-substitute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ingredient, recipeTitle: recipe?.title }),
+        body: JSON.stringify({ ingredient, amount, recipeTitle: recipe?.title }),
       })
       const data = await res.json()
-      setSubstitutes(prev => ({ ...prev, [ingredient]: data.substitute ?? null }))
+      setSubstitutes(prev => ({ ...prev, [ingredient]: data.substitute ? { substitute: data.substitute, display: data.display ?? data.substitute } : null }))
     } catch {
       setSubstitutes(prev => ({ ...prev, [ingredient]: null }))
     } finally { setSubstituteLoading(null) }
@@ -207,6 +215,7 @@ export default function RecipeDetailScreen() {
 
   const advanceCheck = (subs: Substitution[]) => {
     setSuggestedSub(null)
+    setSuggestedSubDisplay(null)
     setAwaitingSub(false)
     if (checkIndex + 1 >= ingredients.length) {
       finishCheck(subs)
@@ -215,18 +224,24 @@ export default function RecipeDetailScreen() {
     }
   }
 
-  const fetchSuggestedSub = useCallback(async (ingredient: string) => {
+  const fetchSuggestedSub = useCallback(async (ingredient: string, amount?: string) => {
     setLoadingSub(true)
     setSuggestedSub(null)
     try {
       const res = await fetch(`${API_BASE_URL}/api/recipes/suggest-substitute`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ingredient, recipeTitle: recipe?.title }),
+        body: JSON.stringify({ ingredient, amount, recipeTitle: recipe?.title }),
       })
       const data = await res.json()
-      setSuggestedSub(data.substitute ?? null)
-    } catch { setSuggestedSub(null) }
+      if (data.substitute) {
+        setSuggestedSub(data.substitute)
+        setSuggestedSubDisplay(data.display ?? data.substitute)
+      } else {
+        setSuggestedSub(null)
+        setSuggestedSubDisplay(null)
+      }
+    } catch { setSuggestedSub(null); setSuggestedSubDisplay(null) }
     finally { setLoadingSub(false) }
   }, [recipe?.title])
 
@@ -236,12 +251,16 @@ export default function RecipeDetailScreen() {
 
   const handleDontHaveIt = () => {
     setAwaitingSub(true)
-    fetchSuggestedSub(currentIngredient.name)
+    fetchSuggestedSub(currentIngredient.name, currentIngredient.original)
   }
 
   const handleUseSub = () => {
     if (!suggestedSub) return
-    const newSubs = [...pendingSubstitutions, { original: currentIngredient.name, substitute: suggestedSub }]
+    const newSubs = [...pendingSubstitutions, {
+      original: currentIngredient.original ?? currentIngredient.name,
+      substitute: suggestedSub,
+      display: suggestedSubDisplay ?? suggestedSub,
+    }]
     setPendingSubstitutions(newSubs)
     advanceCheck(newSubs)
   }
@@ -378,7 +397,10 @@ export default function RecipeDetailScreen() {
             {awaitingSub && !loadingSub && suggestedSub && (
               <View style={s.checkSubBox}>
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>Try this instead:</Text>
-                <Text style={[s.checkSubName, { color: colors.text }]}>{suggestedSub}</Text>
+                <Text style={[s.checkSubName, { color: colors.text }]}>{suggestedSubDisplay ?? suggestedSub}</Text>
+                {suggestedSub !== suggestedSubDisplay && suggestedSub && (
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center" }}>{suggestedSub}</Text>
+                )}
                 <View style={s.checkSubBtns}>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleUseSub} activeOpacity={0.8}>
                     <Text style={s.checkSubBtnText}>Use it</Text>
@@ -570,14 +592,14 @@ export default function RecipeDetailScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={[s.ingredientName, appliedSub && { textDecorationLine: "line-through", color: colors.muted }]}>{ing.name}</Text>
                       {appliedSub && <Text style={[s.ingredientName, { color: colors.primary }]}>→ {appliedSub.substitute}</Text>}
-                      {sub && !appliedSub && <Text style={{ fontSize: 12, color: colors.primary, marginTop: 2 }}>→ {sub}</Text>}
+                      {sub && !appliedSub && <Text style={{ fontSize: 12, color: colors.primary, marginTop: 2 }}>→ {sub.display}{sub.substitute !== sub.display ? ` (${sub.substitute})` : ""}</Text>}
                       {notReplaceable && <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>Not replaceable</Text>}
                       <Text style={s.ingredientAmount}>{ing.original}</Text>
                     </View>
                     <View style={s.ingActions}>
                       <TouchableOpacity
                         style={[s.subBtn, subDisabled && { opacity: 0.35 }]}
-                        onPress={() => !subDisabled && fetchSubstitute(ing.name)}
+                        onPress={() => !subDisabled && fetchSubstitute(ing.name, ing.original)}
                         disabled={subDisabled}
                       >
                         {loadingSubPremium
