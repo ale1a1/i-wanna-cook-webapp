@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react"
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, Easing,
+  Animated, Easing, ScrollView,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import * as Speech from "expo-speech"
@@ -290,39 +290,41 @@ export default function CookingModeScreen() {
         </Animated.View>
       </View>
 
-      {/* Progress */}
-      <View style={s.stepCounter}>
-        <Text style={s.stepCounterText}>Step {currentStep.number} of {steps.length}</Text>
-        <View style={s.progressBar}>
-          {steps.map((_, i) => (
-            <View key={i} style={[s.progressDot, i === currentIndex && s.progressDotActive, i < currentIndex && s.progressDotDone]} />
-          ))}
+      {/* Progress + Avatar row */}
+      <View style={s.stepCounterRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.stepCounterText}>Step {currentStep.number} of {steps.length}</Text>
+          <View style={s.progressBar}>
+            {steps.map((_, i) => (
+              <View key={i} style={[s.progressDot, i === currentIndex && s.progressDotActive, i < currentIndex && s.progressDotDone]} />
+            ))}
+          </View>
         </View>
-      </View>
-
-      {/* Avatar */}
-      <View style={s.avatarContainer}>
-        <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
-          <View style={[s.avatarBubble, isSpeaking && s.avatarBubbleSpeaking, isListening && !isSpeaking && s.avatarBubbleListening]}>
-            <Text style={s.avatarEmoji}>👨‍🍳</Text>
-          </View>
-        </Animated.View>
-        {isSpeaking && (
-          <View style={s.speakingDots}>
-            <SpeakingDot delay={0} colors={colors} />
-            <SpeakingDot delay={150} colors={colors} />
-            <SpeakingDot delay={300} colors={colors} />
-          </View>
-        )}
-        {!isSpeaking && isListening && (
-          <Text style={s.listeningLabel}>Listening...</Text>
-        )}
+        <View style={s.avatarContainer}>
+          <Animated.View style={{ transform: [{ translateY: bounceAnim }] }}>
+            <View style={[s.avatarBubble, isSpeaking && s.avatarBubbleSpeaking, isListening && !isSpeaking && s.avatarBubbleListening]}>
+              <Text style={s.avatarEmoji}>👨‍🍳</Text>
+            </View>
+          </Animated.View>
+          {isSpeaking && (
+            <View style={s.speakingDots}>
+              <SpeakingDot delay={0} colors={colors} />
+              <SpeakingDot delay={150} colors={colors} />
+              <SpeakingDot delay={300} colors={colors} />
+            </View>
+          )}
+          {!isSpeaking && isListening && (
+            <Text style={s.listeningLabel}>Listening...</Text>
+          )}
+        </View>
       </View>
 
       {/* Step card */}
       <View style={s.stepCard}>
         <Text style={s.stepNumber}>Step {currentStep.number}</Text>
-        <Text style={s.stepText}>{currentStep.step}</Text>
+        <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 180 }}>
+          <Text style={s.stepText}>{currentStep.step}</Text>
+        </ScrollView>
       </View>
 
       {/* Voice hint banner */}
@@ -394,20 +396,20 @@ const makeStyles = (colors: any) => StyleSheet.create({
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   headerTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: colors.text, textAlign: "center" },
   micIndicator: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  stepCounter: { alignItems: "center", paddingTop: spacing.md, paddingHorizontal: spacing.lg },
-  stepCounterText: { fontSize: 13, color: colors.mutedForeground, fontWeight: "600", marginBottom: 10 },
-  progressBar: { flexDirection: "row", gap: 6, flexWrap: "wrap", justifyContent: "center" },
+  stepCounterRow: { flexDirection: "row", alignItems: "center", paddingTop: spacing.sm, paddingHorizontal: spacing.md, gap: 12 },
+  stepCounterText: { fontSize: 13, color: colors.mutedForeground, fontWeight: "600", marginBottom: 8 },
+  progressBar: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   progressDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
   progressDotActive: { backgroundColor: colors.primary, width: 20 },
   progressDotDone: { backgroundColor: colors.primary + "66" },
-  avatarContainer: { alignItems: "center", marginTop: spacing.xl, marginBottom: spacing.sm, height: 120 },
-  avatarBubble: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.border },
+  avatarContainer: { alignItems: "center", width: 80 },
+  avatarBubble: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.border },
   avatarBubbleSpeaking: { borderColor: colors.primary, borderWidth: 3 },
   avatarBubbleListening: { borderColor: colors.green, borderWidth: 3 },
-  avatarEmoji: { fontSize: 52 },
-  speakingDots: { flexDirection: "row", alignItems: "flex-end", marginTop: 8, height: 20 },
-  listeningLabel: { marginTop: 8, fontSize: 12, color: colors.green, fontWeight: "600" },
-  stepCard: { marginHorizontal: spacing.md, marginTop: spacing.md, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border, minHeight: 140 },
+  avatarEmoji: { fontSize: 36 },
+  speakingDots: { flexDirection: "row", alignItems: "flex-end", marginTop: 4, height: 14 },
+  listeningLabel: { marginTop: 4, fontSize: 10, color: colors.green, fontWeight: "600" },
+  stepCard: { marginHorizontal: spacing.md, marginTop: spacing.sm, backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, borderColor: colors.border },
   stepNumber: { fontSize: 12, fontWeight: "700", color: colors.primary, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
   stepText: { fontSize: 17, color: colors.text, lineHeight: 26, fontWeight: "500" },
   voiceHint: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "center", marginTop: spacing.sm, backgroundColor: colors.primary + "22", paddingHorizontal: 14, paddingVertical: 6, borderRadius: 99, height: 34 },
