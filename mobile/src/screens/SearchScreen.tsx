@@ -118,8 +118,13 @@ export default function SearchScreen() {
   const fetchRecipesWithMode = useCallback(async (f: typeof filters, mode: "all" | "some") => {
     setLoading(true); setSearched(true)
     try {
-      const effective = mode === "some" ? { ...f, ingredients: f.ingredients.slice(0, 3) } : f
-      const params = buildSearchParams(effective)
+      const params = buildSearchParams(f)
+      if (mode === "some" && f.ingredients.length > 0) {
+        params.delete("includeIngredients")
+        params.set("query", f.ingredients.join(" "))
+        params.set("sort", "max-used-ingredients")
+        params.set("ignorePantry", "false")
+      }
       const res = await apiFetch(`/api/recipes/search?${params.toString()}`, { screen: "Search" })
       const data = await res.json()
       if (!res.ok) {

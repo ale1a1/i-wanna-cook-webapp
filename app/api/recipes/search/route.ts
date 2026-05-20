@@ -52,6 +52,12 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get("query")
   if (query) params.set("query", query)
 
+  const sort = searchParams.get("sort")
+  if (sort) params.set("sort", sort)
+
+  const ignorePantry = searchParams.get("ignorePantry")
+  if (ignorePantry) params.set("ignorePantry", ignorePantry)
+
   try {
     const res = await fetch(
       `https://api.spoonacular.com/recipes/complexSearch?${params.toString()}`,
