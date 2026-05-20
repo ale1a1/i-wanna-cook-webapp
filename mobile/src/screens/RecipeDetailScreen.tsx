@@ -416,23 +416,24 @@ export default function RecipeDetailScreen() {
               </View>
             </View>
 
-            <View style={s.checkContent}>
-              <Text style={[s.checkLabel, { color: colors.mutedForeground }]}>Do you have</Text>
-              <Text style={[s.checkIngredient, { color: colors.text }]}>{currentIngredient.name}</Text>
-              <Text style={[s.checkAmount, { color: colors.mutedForeground }]}>{currentIngredient.original}</Text>
-            </View>
-
             {!awaitingSub && (
-              <View style={s.checkBtns}>
-                <TouchableOpacity style={[s.checkBtn, { backgroundColor: colors.primary }]} onPress={handleHaveIt} activeOpacity={0.8}>
-                  <Ionicons name="checkmark" size={32} color="#fff" />
-                  <Text style={s.checkBtnText}>I have it</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[s.checkBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={handleDontHaveIt} activeOpacity={0.8}>
-                  <Ionicons name="close" size={32} color={colors.text} />
-                  <Text style={[s.checkBtnText, { color: colors.text }]}>I don't have it</Text>
-                </TouchableOpacity>
-              </View>
+              <>
+                <View style={s.checkContent}>
+                  <Text style={[s.checkLabel, { color: colors.mutedForeground }]}>Do you have</Text>
+                  <Text style={[s.checkIngredient, { color: colors.text }]}>{currentIngredient.name}</Text>
+                  <Text style={[s.checkAmount, { color: colors.mutedForeground }]}>{currentIngredient.original}</Text>
+                </View>
+                <View style={s.checkBtns}>
+                  <TouchableOpacity style={[s.checkBtn, { backgroundColor: colors.primary }]} onPress={handleHaveIt} activeOpacity={0.8}>
+                    <Ionicons name="checkmark" size={32} color="#fff" />
+                    <Text style={s.checkBtnText}>Yes, I have it</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.checkBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={handleDontHaveIt} activeOpacity={0.8}>
+                    <Ionicons name="close" size={32} color={colors.text} />
+                    <Text style={[s.checkBtnText, { color: colors.text }]}>No, I don't</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             )}
 
             {awaitingSub && loadingSub && (
@@ -444,22 +445,24 @@ export default function RecipeDetailScreen() {
 
             {awaitingSub && !loadingSub && suggestedSub && (
               <View style={s.checkSubBox}>
-                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>Try this instead:</Text>
-                <Text style={[s.checkSubName, { color: colors.text }]}>{suggestedSubDisplay ?? suggestedSub}</Text>
-                {suggestedSub !== suggestedSubDisplay && suggestedSub && (
-                  <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center" }}>{suggestedSub}</Text>
+                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>You can replace</Text>
+                <Text style={[s.checkSubName, { color: colors.text }]}>{currentIngredient.name}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 4 }}>
+                  <Ionicons name="arrow-forward" size={18} color={colors.primary} />
+                  <Text style={[s.checkSubName, { color: colors.primary }]}>{suggestedSubDisplay ?? suggestedSub}</Text>
+                </View>
+                {suggestedSub !== suggestedSubDisplay && (
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center", marginBottom: 4 }}>{suggestedSub}</Text>
                 )}
                 <View style={s.checkSubBtns}>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleUseSub} activeOpacity={0.8}>
-                    <Text style={s.checkSubBtnText}>Use it</Text>
+                    <Ionicons name="swap-horizontal" size={20} color="#fff" />
+                    <Text style={s.checkSubBtnText}>Yes, replace it</Text>
                   </TouchableOpacity>
                   <Animated.View style={{ flex: 1, opacity: addedFlash }}>
                     <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border, flex: 1 }]} onPress={handleBuyIt} activeOpacity={0.8}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <Ionicons name="cart-outline" size={16} color={colors.text} />
-                        <Ionicons name="flash" size={12} color={colors.primary} />
-                      </View>
-                      <Text style={[s.checkSubBtnText, { color: colors.text }]}>Add to quick list</Text>
+                      <Ionicons name="cart-outline" size={20} color={colors.text} />
+                      <Text style={[s.checkSubBtnText, { color: colors.text }]}>Buy the original</Text>
                     </TouchableOpacity>
                   </Animated.View>
                 </View>
@@ -468,15 +471,13 @@ export default function RecipeDetailScreen() {
 
             {awaitingSub && !loadingSub && !suggestedSub && (
               <View style={s.checkSubBox}>
+                <Text style={[s.checkSubName, { color: colors.text, textAlign: "center" }]}>{currentIngredient.name}</Text>
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>No substitute found</Text>
                 <View style={s.checkSubBtns}>
                   <Animated.View style={{ flex: 1, opacity: addedFlash }}>
                     <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary, flex: 1 }]} onPress={handleBuyIt} activeOpacity={0.8}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <Ionicons name="cart-outline" size={16} color="#fff" />
-                        <Ionicons name="flash" size={12} color="#fff" />
-                      </View>
-                      <Text style={s.checkSubBtnText}>Add to quick list</Text>
+                      <Ionicons name="cart-outline" size={20} color="#fff" />
+                      <Text style={s.checkSubBtnText}>Buy the original</Text>
                     </TouchableOpacity>
                   </Animated.View>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border }]} onPress={() => advanceCheck(pendingSubstitutions)} activeOpacity={0.8}>
