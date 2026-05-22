@@ -450,9 +450,9 @@ export default function RecipeDetailScreen() {
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>with</Text>
                 <Text style={[s.checkSubName, { color: colors.primary }]}>{suggestedSubDisplay ?? suggestedSub}</Text>
                 {suggestedSub !== suggestedSubDisplay && (
-                  <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center" }}>{suggestedSub}</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: "center", fontStyle: "italic", marginTop: 2, marginBottom: 2, paddingHorizontal: 16 }}>{suggestedSub}</Text>
                 )}
-                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>?</Text>
+                <Text style={[s.checkSubLabel, { color: colors.mutedForeground, marginTop: 4 }]}>?</Text>
                 <View style={s.checkSubBtns}>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleUseSub} activeOpacity={0.8}>
                     <Ionicons name="swap-horizontal" size={20} color="#fff" />
@@ -881,7 +881,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   checkSubLoading: { alignItems: "center", gap: 12 },
   checkSubLoadingText: { fontSize: 14 },
   checkSubBox: { width: "100%", alignItems: "center", gap: 8 },
-  checkSubLabel: { fontSize: 14 },
+  checkSubLabel: { fontSize: 12, letterSpacing: 0.5, textTransform: "uppercase" },
   checkSubName: { fontSize: 28, fontWeight: "800" },
   checkSubBtns: { flexDirection: "row", gap: 12, width: "100%", marginTop: 8 },
   checkSubBtn: { flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: radius.lg, gap: 4 },
