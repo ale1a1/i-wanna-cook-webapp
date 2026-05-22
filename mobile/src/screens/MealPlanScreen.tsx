@@ -152,7 +152,7 @@ export default function MealPlanScreen() {
                 {isExpanded && (
                   <View style={s.mealsContainer}>
                     {dayPlan.meals.map((meal, i) => (
-                      <TouchableOpacity key={meal.id} style={s.mealRow} onPress={() => navigation.navigate("RecipeDetail", { id: meal.id, title: meal.title })}>
+                      <TouchableOpacity key={meal.id} style={s.mealRow} onPress={() => navigation.navigate("RecipeDetail", { id: meal.id, title: meal.title, mealIndex: i })}>
                         <View style={s.mealType}>
                           <Text style={s.mealTypeText}>{["Breakfast", "Lunch", "Dinner"][i] ?? "Meal"}</Text>
                         </View>

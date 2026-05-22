@@ -42,7 +42,8 @@ function applySubstitutions(text: string, substitutions: Substitution[]): string
 export default function RecipeDetailScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
-  const { id, fromScan, fromSession } = route.params ?? {}
+  const { id, fromScan, fromSession, mealIndex } = route.params ?? {}
+  const isBreakfast = mealIndex === 0
   const { user } = useAuth()
   const { colors } = useTheme()
   const { showError } = useGlobalError()
@@ -450,9 +451,9 @@ export default function RecipeDetailScreen() {
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>with</Text>
                 <Text style={[s.checkSubName, { color: colors.primary }]}>{suggestedSubDisplay ?? suggestedSub}</Text>
                 {suggestedSub !== suggestedSubDisplay && (
-                  <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: "center", fontStyle: "italic", marginTop: 2, marginBottom: 2, paddingHorizontal: 16 }}>{suggestedSub}</Text>
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, textAlign: "center", fontStyle: "italic", marginTop: 0, marginBottom: 0, paddingHorizontal: 16 }}>{suggestedSub}</Text>
                 )}
-                <Text style={[s.checkSubLabel, { color: colors.mutedForeground, marginTop: 4 }]}>?</Text>
+                <Text style={[s.checkSubQuestion, { color: colors.mutedForeground }]}>?</Text>
                 <View style={s.checkSubBtns}>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleUseSub} activeOpacity={0.8}>
                     <Ionicons name="swap-horizontal" size={20} color="#fff" />
@@ -592,9 +593,15 @@ export default function RecipeDetailScreen() {
               </Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={[s.tab, tab === "wine" && s.tabActive]} onPress={fetchWinePairing}>
-            <Text style={[s.tabText, tab === "wine" && s.tabTextActive]}>🍷 Wine</Text>
-          </TouchableOpacity>
+          {isBreakfast ? (
+            <TouchableOpacity style={s.tab} onPress={() => Alert.alert("Seriously? 🍷", "It's breakfast… sure you want a drink?")}>
+              <Text style={s.tabText}>🍷 Wine</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={[s.tab, tab === "wine" && s.tabActive]} onPress={fetchWinePairing}>
+              <Text style={[s.tabText, tab === "wine" && s.tabTextActive]}>🍷 Wine</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={s.tabContent}>
@@ -605,16 +612,41 @@ export default function RecipeDetailScreen() {
                   {recipe.summary.replace(/<[^>]+>/g, "").slice(0, 400)}...
                 </Text>
               ) : null}
-              {recipe.nutrition?.nutrients && (
-                <View style={s.nutritionGrid}>
-                  {recipe.nutrition.nutrients.slice(0, 6).map((n: any) => (
-                    <View key={n.name} style={s.nutritionCard}>
-                      <Text style={s.nutritionValue}>{Math.round(n.amount)}{n.unit}</Text>
-                      <Text style={s.nutritionLabel}>{n.name}</Text>
+              {recipe.nutrition?.nutrients && (() => {
+                const byName = (name: string) => recipe.nutrition.nutrients.find((n: any) => n.name === name)
+                const calories = byName("Calories")
+                const protein = byName("Protein")
+                const fat = byName("Fat")
+                const satFat = byName("Saturated Fat")
+                const carbs = byName("Carbohydrates")
+                if (!calories && !protein && !fat && !carbs) return null
+                return (
+                  <View style={s.nutritionBox}>
+                    <View style={s.nutritionPerServing}>
+                      <Text style={s.nutritionPerServingText}>Per serving · {recipe.servings} servings total</Text>
                     </View>
-                  ))}
-                </View>
-              )}
+                    {calories && (
+                      <View style={s.nutritionCalRow}>
+                        <Text style={s.nutritionCalLabel}>Calories</Text>
+                        <Text style={s.nutritionCalValue}>{Math.round(calories.amount)}</Text>
+                      </View>
+                    )}
+                    <View style={s.nutritionMacros}>
+                      {[
+                        { n: protein, label: "Protein" },
+                        { n: fat, label: "Fat", sub: satFat ? `sat. fat ${Math.round(satFat.amount)}${satFat.unit}` : null },
+                        { n: carbs, label: "Carbs" },
+                      ].filter(x => x.n).map(({ n, label, sub }: any, i: number, arr: any[]) => (
+                        <View key={label} style={[s.nutritionMacroCard, i === arr.length - 1 && { borderRightWidth: 0 }]}>
+                          <Text style={s.nutritionValue}>{Math.round(n.amount)}{n.unit}</Text>
+                          <Text style={s.nutritionLabel}>{label}</Text>
+                          {sub && <Text style={s.nutritionSub}>{sub}</Text>}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )
+              })()}
             </View>
           )}
 
@@ -645,7 +677,7 @@ export default function RecipeDetailScreen() {
                 const inQuickList = (fromScan || fromSession) && quickListAdded.includes(ing.name)
                 const hasPendingSub = !!sub && !appliedSub
                 return (
-                  <View key={`${ing.id}-${idx}`} style={[s.ingredientRow, { flexDirection: "column", alignItems: "stretch" }]}>
+                  <View key={`ing-${idx}`} style={[s.ingredientRow, { flexDirection: "column", alignItems: "stretch" }]}>
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                       <View style={{ flex: 1 }}>
                         <Text style={[s.ingredientName, appliedSub && { textDecorationLine: "line-through", color: colors.muted }]}>{ing.name}</Text>
@@ -786,7 +818,11 @@ export default function RecipeDetailScreen() {
                 </>
               )}
               {!wineLoading && !winePairing && (
-                <Text style={s.wineEmpty}>No wine pairing found for this recipe.</Text>
+                <View style={s.wineEmptyBox}>
+                  <Text style={s.wineEmptyIcon}>🍷</Text>
+                  <Text style={s.wineEmptyTitle}>No pairing found</Text>
+                  <Text style={s.wineEmpty}>We couldn't find a wine match for this recipe. Try a light white or rosé — it goes with almost anything.</Text>
+                </View>
               )}
             </View>
           )}
@@ -824,10 +860,19 @@ const makeStyles = (colors: any) => StyleSheet.create({
   tabTextActive: { color: colors.primary, fontWeight: "700" },
   tabContent: { padding: spacing.md },
   summary: { fontSize: 14, color: colors.mutedForeground, lineHeight: 22 },
+  nutritionBox: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, overflow: "hidden" },
+  nutritionPerServing: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
+  nutritionPerServingText: { fontSize: 11, color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.4 },
+  nutritionCalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  nutritionCalLabel: { fontSize: 14, fontWeight: "700", color: colors.text, textTransform: "uppercase", letterSpacing: 0.5 },
+  nutritionCalValue: { fontSize: 28, fontWeight: "800", color: colors.text },
+  nutritionMacros: { flexDirection: "row" },
+  nutritionMacroCard: { flex: 1, alignItems: "center", paddingVertical: 12, borderRightWidth: 1, borderRightColor: colors.border },
   nutritionGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   nutritionCard: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.sm, minWidth: "30%", alignItems: "center", flex: 1 },
   nutritionValue: { fontSize: 18, fontWeight: "700", color: colors.text },
-  nutritionLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 2, textAlign: "center" },
+  nutritionLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 2, textAlign: "center", textTransform: "uppercase", letterSpacing: 0.3 },
+  nutritionSub: { fontSize: 10, color: colors.mutedForeground, marginTop: 3, textAlign: "center", fontStyle: "italic" },
   addAllBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.primary, padding: 14, borderRadius: radius.md, marginBottom: 16 },
   addAllBtnDone: { backgroundColor: colors.muted },
   addAllBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
@@ -859,7 +904,10 @@ const makeStyles = (colors: any) => StyleSheet.create({
   winesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   winePill: { backgroundColor: colors.primary + "22", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99 },
   winePillText: { fontSize: 13, color: colors.primary, fontWeight: "600", textTransform: "capitalize" },
-  wineEmpty: { fontSize: 14, color: colors.mutedForeground, textAlign: "center", marginTop: 32 },
+  wineEmptyBox: { alignItems: "center", marginTop: 48, paddingHorizontal: 24, gap: 8 },
+  wineEmptyIcon: { fontSize: 40 },
+  wineEmptyTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+  wineEmpty: { fontSize: 14, color: colors.mutedForeground, textAlign: "center", lineHeight: 20 },
   // Check flow
   sheetOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 12 },
@@ -880,10 +928,11 @@ const makeStyles = (colors: any) => StyleSheet.create({
   checkBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   checkSubLoading: { alignItems: "center", gap: 12 },
   checkSubLoadingText: { fontSize: 14 },
-  checkSubBox: { width: "100%", alignItems: "center", gap: 8 },
+  checkSubBox: { width: "100%", alignItems: "center", gap: 4 },
   checkSubLabel: { fontSize: 12, letterSpacing: 0.5, textTransform: "uppercase" },
   checkSubName: { fontSize: 28, fontWeight: "800" },
-  checkSubBtns: { flexDirection: "row", gap: 12, width: "100%", marginTop: 8 },
+  checkSubQuestion: { fontSize: 36, fontWeight: "800", marginTop: 8 },
+  checkSubBtns: { flexDirection: "row", gap: 12, width: "100%", marginTop: 32 },
   checkSubBtn: { flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: radius.lg, gap: 4 },
   quickListBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.primary + "22", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1, borderColor: colors.primary + "55" },
   quickListBadgeText: { fontSize: 13, fontWeight: "700" },

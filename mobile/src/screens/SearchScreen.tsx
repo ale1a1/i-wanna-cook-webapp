@@ -90,7 +90,10 @@ export default function SearchScreen() {
 
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [searched, setSearched] = useState(false)
+  const [nextOffset, setNextOffset] = useState<number | null>(null)
+  const [totalResults, setTotalResults] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
   const { isPremium } = useSubscription()
@@ -116,27 +119,68 @@ export default function SearchScreen() {
   }, [route.params?.scannedIngredients])
 
   const fetchRecipesWithMode = useCallback(async (f: typeof filters, mode: "all" | "some") => {
-    setLoading(true); setSearched(true)
+    setLoading(true); setSearched(true); setNextOffset(null)
     try {
-      const params = buildSearchParams(f)
-      if (mode === "some" && f.ingredients.length > 0) {
-        params.delete("includeIngredients")
-        params.set("query", f.ingredients.join(" "))
-        params.set("sort", "max-used-ingredients")
-        params.set("ignorePantry", "false")
-      }
-      const res = await apiFetch(`/api/recipes/search?${params.toString()}`, { screen: "Search" })
-      const data = await res.json()
-      if (!res.ok) {
-        showError(`[${res.status}] ${data.error || "Server error"}`, "Search", () => fetchRecipesWithMode(f, mode))
-        setRecipes([]); return
-      }
-      setRecipes(data.results || [])
+      const { results, nextOffset: next, totalResults: total } = await searchWithFallback(f, mode, 0)
+      setRecipes(results)
+      setNextOffset(next)
+      setTotalResults(total)
     } catch (e: any) {
       showError(e?.message || "Network error — check your connection", "Search", () => fetchRecipesWithMode(f, mode))
       setRecipes([])
     } finally { setLoading(false) }
   }, [])
+
+  const loadMore = useCallback(async () => {
+    if (!nextOffset || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const { results, nextOffset: next, totalResults: total } = await searchWithFallback(filters, ingredientMode, nextOffset)
+      setRecipes(prev => [...prev, ...results])
+      setNextOffset(next)
+      setTotalResults(total)
+    } catch {}
+    finally { setLoadingMore(false) }
+  }, [nextOffset, loadingMore, filters, ingredientMode])
+
+  const searchWithFallback = async (f: typeof filters, mode: "all" | "some", offset: number): Promise<{ results: any[]; nextOffset: number | null; totalResults: number }> => {
+    const ingredients = f.ingredients
+
+    const doFetch = async (extraParams: Record<string, string>, off: number) => {
+      const params = buildSearchParams({ ...f, ingredients: [] })
+      params.set("offset", String(off))
+      Object.entries(extraParams).forEach(([k, v]) => params.set(k, v))
+      const res = await apiFetch(`/api/recipes/search?${params.toString()}`, { screen: "Search" })
+      if (!res.ok) { showError(`[${res.status}] Server error`, "Search", () => {}); return null }
+      return res.json()
+    }
+
+    if (ingredients.length === 0) {
+      const data = await doFetch({}, offset)
+      if (!data) return { results: [], nextOffset: null, totalResults: 0 }
+      return { results: data.results || [], nextOffset: data.nextOffset ?? null, totalResults: data.totalResults ?? 0 }
+    }
+
+    // Build fallback tiers per ingredient
+    const lastWord = (ing: string) => ing.trim().split(/\s+/).at(-1)!
+    const attempts: Record<string, string>[] = [
+      { includeIngredients: ingredients.join(","), ...(mode === "some" ? { sort: "max-used-ingredients", ignorePantry: "false" } : {}) },
+      { query: ingredients.join(" "), sort: "max-used-ingredients", ignorePantry: "false" },
+    ]
+    const stripped = ingredients.map(lastWord)
+    if (stripped.join(" ") !== ingredients.join(" ")) {
+      attempts.push({ query: stripped.join(" "), sort: "max-used-ingredients", ignorePantry: "false" })
+    }
+
+    for (const extra of attempts) {
+      const data = await doFetch(extra, offset)
+      if (data && (data.results || []).length > 0) {
+        return { results: data.results, nextOffset: data.nextOffset ?? null, totalResults: data.totalResults ?? 0 }
+      }
+    }
+
+    return { results: [], nextOffset: null, totalResults: 0 }
+  }
 
   const fetchRecipes = useCallback((f = filters) => {
     fetchRecipesWithMode(f, ingredientMode)
@@ -408,6 +452,14 @@ export default function SearchScreen() {
               </View>
             </TouchableOpacity>
           )}
+          ListFooterComponent={nextOffset ? (
+            <TouchableOpacity style={s.loadMoreBtn} onPress={loadMore} disabled={loadingMore}>
+              {loadingMore
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <Text style={s.loadMoreText}>Load more recipes</Text>
+              }
+            </TouchableOpacity>
+          ) : null}
         />
       )}
 
@@ -494,6 +546,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
   emptyText: { fontSize: 18, fontWeight: "600", color: colors.text },
   emptySubText: { fontSize: 14, color: colors.mutedForeground },
+  loadMoreBtn: { alignItems: "center", justifyContent: "center", paddingVertical: 16, marginTop: 4, marginBottom: 8, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border },
+  loadMoreText: { fontSize: 15, fontWeight: "600", color: colors.primary },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, overflow: "hidden", borderWidth: 1.5, borderColor: colors.border },
   cardImage: { width: "100%", height: 180 },
   cardBody: { padding: spacing.md },
