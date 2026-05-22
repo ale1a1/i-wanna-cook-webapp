@@ -447,13 +447,12 @@ export default function RecipeDetailScreen() {
               <View style={s.checkSubBox}>
                 <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>Do you want to replace</Text>
                 <Text style={[s.checkSubName, { color: colors.text }]}>{currentIngredient.name}</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 4 }}>
-                  <Ionicons name="arrow-forward" size={18} color={colors.primary} />
-                  <Text style={[s.checkSubName, { color: colors.primary }]}>{suggestedSubDisplay ?? suggestedSub}</Text>
-                </View>
+                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>with</Text>
+                <Text style={[s.checkSubName, { color: colors.primary }]}>{suggestedSubDisplay ?? suggestedSub}</Text>
                 {suggestedSub !== suggestedSubDisplay && (
-                  <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center", marginBottom: 4 }}>{suggestedSub}</Text>
+                  <Text style={{ fontSize: 13, color: colors.mutedForeground, textAlign: "center" }}>{suggestedSub}</Text>
                 )}
+                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>?</Text>
                 <View style={s.checkSubBtns}>
                   <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.primary }]} onPress={handleUseSub} activeOpacity={0.8}>
                     <Ionicons name="swap-horizontal" size={20} color="#fff" />
