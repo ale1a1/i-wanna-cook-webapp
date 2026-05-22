@@ -82,6 +82,8 @@ Tapping the Wine tab on a breakfast recipe from the meal planner shows a joke al
 LIST: MUST — Before Launch
 ================================================================
 
+--- Auth & Legal ---
+
 Auto logout when JWT expires
 Redirect to login cleanly when the session token expires. No crash, no broken state.
 
@@ -90,6 +92,8 @@ Show a checkbox the user must tick before creating an account: "Nutrition info i
 
 Store disclaimer acceptance timestamp in DB
 When the user accepts the disclaimer, save the timestamp to their profile record in the database. Gives legal coverage and lets you track which version of the disclaimer each user accepted if the text ever changes.
+
+--- Subscription & Trial ---
 
 Wire up Google Play Billing
 Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
@@ -106,6 +110,8 @@ When trial ends, account drops to free tier automatically. No features deleted �
 Show trial days remaining on profile screen
 Visible countdown so users know how long they have left on their trial.
 
+--- Free Tier Enforcement ---
+
 Enforce 10 searches/week for free users
 After trial ends, free users are limited to 10 recipe searches per week. Show remaining count in the UI.
 
@@ -114,6 +120,33 @@ Cap free users at 3 ingredient photo scans per week. Show paywall when limit is 
 
 Lock meal plan history to premium only
 Free users can generate one plan at a time but cannot browse or restore old ones. Premium gets full history.
+
+--- Search — unlock full Spoonacular potential (we are paying for it) ---
+
+Intolerances filter
+Dairy, Egg, Gluten, Grains, Peanut, Seafood, Sesame, Shellfish, Soy, Sulfite, Tree Nut, Wheat. Proper allergy-safe filtering, not just diet type. Appears in search modal and saved to dietary profile.
+
+Meal type filter
+Breakfast, Main Course, Side Dish, Salad, Soup, Dessert, Snack, Drink. Let users find the right category of recipe.
+
+Exclude ingredients
+Blacklist specific ingredients from all results (e.g. "no mushrooms", "no onions").
+
+Sport/fitness presets
+Bulking (high protein, high calorie), Shredding (high protein, low calorie/fat), Endurance (high carb), Kids meals (simple, allergen-safe). Named filter presets mapping to Spoonacular nutrition params already supported.
+
+--- Meal & Nutrition ---
+
+Meal Planner v2 — more filters before generating
+More options: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, intolerances, healthiness, sport/fitness goal. Settings saved per user. Integrate with dietary profile. Premium feature.
+
+Macro and nutrition tracking
+Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium. Pairs directly with the nutrition panel and goal filters already built.
+
+Recipe collections
+Let users organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". First collection free, more = premium.
+
+--- App Store ---
 
 Custom app icon
 Replace Expo default icon with branded app icon.
@@ -138,6 +171,8 @@ Complete for both Google Play and App Store submission.
 Google Play developer account
 One-time $25 fee.
 
+--- Emails ---
+
 Welcome email on registration
 Triggered on account creation. Explains the trial, what's included, what happens when it ends.
 
@@ -149,28 +184,6 @@ Sent every 2 weeks to inactive users to bring them back.
 
 Account deletion confirmation email
 Sent after successful account deletion.
-
-
-================================================================
-LIST: MUST — Before Launch (additions)
-================================================================
-
-Search — full Spoonacular potential (we are paying for it, use it all)
-Currently using only a fraction of what the API supports. Must unlock:
-- Intolerances filter: Dairy, Egg, Gluten, Grains, Peanut, Seafood, Sesame, Shellfish, Soy, Sulfite, Tree Nut, Wheat — proper allergy-safe filtering, not just diet type
-- Meal type filter: Breakfast, Main Course, Side Dish, Salad, Soup, Dessert, Snack, Drink — users can find the right category of recipe
-- Exclude ingredients: users can blacklist specific ingredients from all results (e.g. "no mushrooms")
-- Sport/fitness presets: Bulking (high protein, high calorie), Shredding (high protein, low calorie, low fat), Endurance (high carb), Kids meals (simple, allergen-safe) — wire up as named filter presets mapping to the nutrition params already supported
-These filters should appear in the search filter modal and be saved to the user's dietary profile (see below).
-
-Macro and nutrition tracking
-Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium. Pairs directly with the nutrition panel and goal filters already built.
-
-Meal Planner v2 — more filters before generating
-More options before generating: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, intolerances, healthiness, sport/fitness goal. Settings saved per user. Premium feature. Integrate with dietary profile when built.
-
-Recipe collections
-Let users organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". First collection free, more = premium.
 
 
 ================================================================
