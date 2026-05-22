@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   const requestedNumber = parseInt(searchParams.get("number") || "24", 10)
 
   const buildSpoonacularParams = (offset: number) => {
-    const params = new URLSearchParams({ apiKey, number: String(BATCH_SIZE), offset: String(offset), addRecipeInformation: "true" })
+    const params = new URLSearchParams({ apiKey, number: String(BATCH_SIZE), offset: String(offset), addRecipeInformation: "true", fillIngredients: "true", addRecipeInstructions: "true" })
 
     const maxReadyTime = searchParams.get("maxReadyTime")
     if (maxReadyTime) params.set("maxReadyTime", maxReadyTime)
