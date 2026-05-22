@@ -14,7 +14,7 @@ Match all / Match some toggle
 When searching with multiple ingredients, toggle between matching all ingredients or some (best-effort). Inline toggle visible above results.
 
 Recipe detail pages
-Nutrition panel, ingredients list, step-by-step instructions. Substitutions banner when active.
+Nutrition panel (calories, protein, fat with saturated fat breakdown, carbs — per serving label), ingredients list, step-by-step instructions. Substitutions banner when active.
 
 Favourites
 Flat list. Save and remove recipes.
@@ -41,7 +41,7 @@ Voice cooking (mobile)
 Reads steps aloud. Voice commands. Powered by expo-speech.
 
 AI ingredient photo scanner (mobile)
-Camera or photo library. Up to 10 images per session. Review and remove detected ingredients before searching. Skip match-mode step when only 1 ingredient detected.
+Camera or photo library. Up to 10 images per session. Review and remove detected ingredients before searching. Skip match-mode step when only 1 ingredient detected. AI prompt returns generic ingredient names for better Spoonacular matching. 3-tier search fallback so scanned ingredients always find results.
 
 Premium tier infrastructure
 DB-based subscription tracking. Paywall modal wired up.
@@ -70,6 +70,12 @@ Server-side per-user session storing current recipe + substitutions. Loaded on a
 
 AI ingredient substitute suggestion
 Text-only Claude Haiku call. Suggests one practical substitute per missing ingredient in context of the recipe being cooked.
+
+Recipe search quality filter
+Server-side filter removes recipes with poor instructions: min 4 steps + at least 50% of ingredients mentioned in steps. Auto-refills to minimum 12 quality results per page (max 5 Spoonacular calls). Pagination with Load more button appends next clean batch.
+
+Wine pairing breakfast guard
+Tapping the Wine tab on a breakfast recipe from the meal planner shows a joke alert instead of opening wine content.
 
 
 ================================================================
@@ -146,11 +152,30 @@ Sent after successful account deletion.
 
 
 ================================================================
-LIST: SHOULD — High Priority After Launch
+LIST: MUST — Before Launch (additions)
 ================================================================
 
+Search — full Spoonacular potential (we are paying for it, use it all)
+Currently using only a fraction of what the API supports. Must unlock:
+- Intolerances filter: Dairy, Egg, Gluten, Grains, Peanut, Seafood, Sesame, Shellfish, Soy, Sulfite, Tree Nut, Wheat — proper allergy-safe filtering, not just diet type
+- Meal type filter: Breakfast, Main Course, Side Dish, Salad, Soup, Dessert, Snack, Drink — users can find the right category of recipe
+- Exclude ingredients: users can blacklist specific ingredients from all results (e.g. "no mushrooms")
+- Sport/fitness presets: Bulking (high protein, high calorie), Shredding (high protein, low calorie, low fat), Endurance (high carb), Kids meals (simple, allergen-safe) — wire up as named filter presets mapping to the nutrition params already supported
+These filters should appear in the search filter modal and be saved to the user's dietary profile (see below).
+
+Macro and nutrition tracking
+Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium. Pairs directly with the nutrition panel and goal filters already built.
+
 Meal Planner v2 — more filters before generating
-Add more options to the plan settings: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, healthiness. Settings saved so user doesn't have to re-enter them every time. Premium feature.
+More options before generating: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, intolerances, healthiness, sport/fitness goal. Settings saved per user. Premium feature. Integrate with dietary profile when built.
+
+Recipe collections
+Let users organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". First collection free, more = premium.
+
+
+================================================================
+LIST: SHOULD — High Priority After Launch
+================================================================
 
 Guided Navigation (contextual help system)
 For non-obvious actions (quick shopping list cart button, substitution flow, session tabs, etc.), show a one-time confirmation prompt — "Do you want to do this? Yes / No" with a "Don't ask again" option. User can also tap a ? icon on any screen to trigger an animated walkthrough of that screen's features. Guided navigation can be toggled on/off in Settings. When off, all prompts are skipped and actions fire directly. First-time users have it on by default.
@@ -161,14 +186,11 @@ A distinctive chef character shown during cooking mode and voice steps. Gives th
 Voice narrator for cooking mode
 The chef avatar reads each step aloud using a natural-sounding voice. Users can choose from a small set of voice styles. Powered by a TTS API (e.g. ElevenLabs or Google TTS). Replaces the current basic expo-speech implementation. Premium feature.
 
-Recipe collections
-Let users organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". Creating more than 1 collection is premium only. First collection is free.
-
 Full nutrition breakdown panel
-Currently only calories, protein, carbs, fat. Add a full panel inside recipe detail showing fibre, sugar, fat breakdown, RDA percentages. Premium feature.
+Basic panel (calories, protein, fat + sat fat, carbs, per serving) now built and live. Full premium panel (fibre, sugar, RDA percentages) still to build as premium feature.
 
 Dietary profile
-Let users set their dietary restrictions once in their profile (gluten-free, vegan, dairy-free, etc.) and have those filters automatically applied every time they search. Premium feature.
+Let users set their dietary restrictions and intolerances once in their profile — auto-applied to all searches and meal plans. Premium feature. Foundation for sport/fitness presets.
 
 AI chat assistant
 A conversational screen where users describe what they have or what they want and get recipe suggestions from Claude. "Something quick with chicken", "high protein after gym", "use my leftovers". More flexible than the scanner. Premium feature.
@@ -198,12 +220,6 @@ Make it healthier, increase protein, make it vegetarian, reduce calories. One ta
 
 Push notifications
 Dinner reminders, meal plan nudges, trial expiry alerts. Drives retention.
-
-Macro and nutrition tracking
-Daily targets, protein trends, calorie trends. Premium. Pairs well with nutrition goal filters already built.
-
-Sport and fitness meal filters
-Add Bulking, Shredding, Endurance, Kids meals to search filters. Good differentiation, easy to build.
 
 Cooking mode upgrades — individual item timers
 Set a timer for pasta, another for sauce, independently. Real cooking utility.
