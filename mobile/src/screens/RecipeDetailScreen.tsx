@@ -445,7 +445,7 @@ export default function RecipeDetailScreen() {
 
             {awaitingSub && !loadingSub && suggestedSub && (
               <View style={s.checkSubBox}>
-                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>You can replace</Text>
+                <Text style={[s.checkSubLabel, { color: colors.mutedForeground }]}>Do you want to replace</Text>
                 <Text style={[s.checkSubName, { color: colors.text }]}>{currentIngredient.name}</Text>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 4 }}>
                   <Ionicons name="arrow-forward" size={18} color={colors.primary} />
@@ -462,7 +462,7 @@ export default function RecipeDetailScreen() {
                   <Animated.View style={{ flex: 1, opacity: addedFlash }}>
                     <TouchableOpacity style={[s.checkSubBtn, { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border, flex: 1 }]} onPress={handleBuyIt} activeOpacity={0.8}>
                       <Ionicons name="cart-outline" size={20} color={colors.text} />
-                      <Text style={[s.checkSubBtnText, { color: colors.text }]}>Buy the original</Text>
+                      <Text style={[s.checkSubBtnText, { color: colors.text }]}>No, buy original</Text>
                     </TouchableOpacity>
                   </Animated.View>
                 </View>
@@ -868,23 +868,23 @@ const makeStyles = (colors: any) => StyleSheet.create({
   sheetSub: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
   sheetBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 16, borderRadius: radius.lg },
   sheetBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  checkScreen: { flex: 1, padding: 24, justifyContent: "center", alignItems: "center", gap: 16 },
+  checkScreen: { flex: 1, padding: 24, justifyContent: "center", alignItems: "center", gap: 8 },
   checkProgress: { position: "absolute", top: 60, left: 24, right: 24, flexDirection: "row", justifyContent: "space-between" },
   checkProgressText: { fontSize: 14 },
   checkSkipText: { fontSize: 14 },
-  checkContent: { alignItems: "center", gap: 8 },
+  checkContent: { alignItems: "center", gap: 6 },
   checkLabel: { fontSize: 16 },
   checkIngredient: { fontSize: 32, fontWeight: "800", textAlign: "center" },
   checkAmount: { fontSize: 14 },
-  checkBtns: { flexDirection: "row", gap: 16, width: "100%" },
+  checkBtns: { flexDirection: "row", gap: 16, width: "100%", marginTop: 8 },
   checkBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 32, borderRadius: radius.lg, gap: 8 },
   checkBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   checkSubLoading: { alignItems: "center", gap: 12 },
   checkSubLoadingText: { fontSize: 14 },
-  checkSubBox: { width: "100%", alignItems: "center", gap: 12 },
+  checkSubBox: { width: "100%", alignItems: "center", gap: 8 },
   checkSubLabel: { fontSize: 14 },
   checkSubName: { fontSize: 28, fontWeight: "800" },
-  checkSubBtns: { flexDirection: "row", gap: 12, width: "100%" },
+  checkSubBtns: { flexDirection: "row", gap: 12, width: "100%", marginTop: 8 },
   checkSubBtn: { flex: 1, flexDirection: "column", alignItems: "center", justifyContent: "center", paddingVertical: 18, borderRadius: radius.lg, gap: 4 },
   quickListBadge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.primary + "22", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 99, borderWidth: 1, borderColor: colors.primary + "55" },
   quickListBadgeText: { fontSize: 13, fontWeight: "700" },
