@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
             },
             {
               type: "text",
-              text: `Identify the cooking ingredients visible in this image. Reply with ONLY a raw JSON array of lowercase strings, no markdown, no explanation. Example: ["egg","tomato","chicken"]. If no ingredients are visible, reply with exactly: []`,
+              text: `Identify the cooking ingredients visible in this image. Use short generic names suitable for recipe searches — no colours, no adjectives, no brands (e.g. "bell pepper" not "yellow bell pepper", "cheddar" not "cheddar cheese block", "chicken breast" not "raw boneless chicken"). Reply with ONLY a raw JSON array of lowercase strings, no markdown, no explanation. Example: ["egg","tomato","chicken","bell pepper","cheddar"]. If no ingredients are visible, reply with exactly: []`,
             },
           ],
         }],
