@@ -4,7 +4,7 @@ import { cognitoClient, COGNITO_CLIENT_ID } from "@/lib/cognito"
 import pool from "@/lib/db"
 import { Resend } from "resend"
 
-const PORTFOLIO_USERNAME = "alessandro.dev.ladu"
+const PORTFOLIO_USERNAME = "alessandro.dev.ladu@gmail.com"
 const NOTIFY_EMAIL = "alessandro.dev.ladu@gmail.com"
 
 export async function POST(request: NextRequest) {
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const user = result.rows[0]
 
-    if (user.username === PORTFOLIO_USERNAME && process.env.RESEND_API_KEY) {
+    if (user.email === PORTFOLIO_USERNAME && process.env.RESEND_API_KEY) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)
         const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "unknown"
