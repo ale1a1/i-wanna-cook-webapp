@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { InitiateAuthCommand } from "@aws-sdk/client-cognito-identity-provider"
 import { cognitoClient, COGNITO_CLIENT_ID } from "@/lib/cognito"
 import pool from "@/lib/db"
+import { Resend } from "resend"
+
+const PORTFOLIO_USERNAME = "alessandro.dev.ladu"
+const NOTIFY_EMAIL = "alessandro.dev.ladu@gmail.com"
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +41,26 @@ export async function POST(request: NextRequest) {
     }
 
     const user = result.rows[0]
+
+    if (user.username === PORTFOLIO_USERNAME && process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "unknown"
+      const ua = request.headers.get("user-agent") ?? "unknown"
+      resend.emails.send({
+        from: "What Should I Cook App <onboarding@resend.dev>",
+        to: NOTIFY_EMAIL,
+        subject: "Portfolio login — someone just signed in as you",
+        html: `
+          <h2>Portfolio Demo Login</h2>
+          <p>Someone just logged in using the demo credentials on your portfolio app.</p>
+          <table style="border-collapse:collapse;font-size:14px">
+            <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Time</td><td>${new Date().toUTCString()}</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#6b7280">IP</td><td>${ip}</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#6b7280">Browser</td><td>${ua}</td></tr>
+          </table>
+        `,
+      }).catch((err) => console.error("Portfolio notify email failed:", err))
+    }
 
     return NextResponse.json({
       user: { id: user.id, email: user.email, username: user.username, theme: user.theme },
