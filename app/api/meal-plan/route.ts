@@ -4,14 +4,23 @@ import pool from "@/lib/db"
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get("userId")
+  const isPremium = searchParams.get("isPremium") === "true"
   if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 })
 
   try {
+    if (!isPremium) {
+      // Free users can only see their most recent plan
+      const result = await pool.query(
+        "SELECT * FROM meal_plans WHERE user_id = $1 ORDER BY week_start DESC LIMIT 1",
+        [userId]
+      )
+      return NextResponse.json({ plans: result.rows, historyLocked: true })
+    }
     const result = await pool.query(
-      "SELECT * FROM meal_plans WHERE user_id = $1 ORDER BY week_start DESC LIMIT 4",
+      "SELECT * FROM meal_plans WHERE user_id = $1 ORDER BY week_start DESC LIMIT 20",
       [userId]
     )
-    return NextResponse.json({ plans: result.rows })
+    return NextResponse.json({ plans: result.rows, historyLocked: false })
   } catch {
     return NextResponse.json({ error: "Failed to fetch meal plans" }, { status: 500 })
   }
