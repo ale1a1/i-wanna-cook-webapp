@@ -103,6 +103,21 @@ function buildSearchParams(filters: FiltersState): URLSearchParams {
     params.set("includeIngredients", filters.ingredients.join(","))
   }
 
+  // Intolerances
+  if (filters.intolerances && filters.intolerances.length > 0) {
+    params.set("intolerances", filters.intolerances.join(","))
+  }
+
+  // Meal type
+  if (filters.mealType && filters.mealType !== "any") {
+    params.set("type", filters.mealType)
+  }
+
+  // Exclude ingredients
+  if (filters.excludeIngredients && filters.excludeIngredients.length > 0) {
+    params.set("excludeIngredients", filters.excludeIngredients.join(","))
+  }
+
   return params
 }
 

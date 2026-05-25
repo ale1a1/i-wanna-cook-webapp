@@ -99,6 +99,12 @@ export async function GET(request: NextRequest) {
     if (maxCalories) params.set("maxCalories", maxCalories)
     const minProtein = searchParams.get("minProtein")
     if (minProtein) params.set("minProtein", minProtein)
+    const intolerances = searchParams.get("intolerances")
+    if (intolerances) params.set("intolerances", intolerances)
+    const type = searchParams.get("type")
+    if (type) params.set("type", type)
+    const excludeIngredients = searchParams.get("excludeIngredients")
+    if (excludeIngredients) params.set("excludeIngredients", excludeIngredients)
 
     return params
   }

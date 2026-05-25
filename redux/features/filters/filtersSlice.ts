@@ -9,6 +9,9 @@ export interface FiltersState {
   healthiness: string
   cuisine: string
   ingredients: string[]
+  intolerances: string[]
+  mealType: string
+  excludeIngredients: string[]
   applied: boolean
   hasActiveFilters: boolean
 }
@@ -21,6 +24,9 @@ const initialState: FiltersState = {
   healthiness: "any",
   cuisine: "any",
   ingredients: [],
+  intolerances: [],
+  mealType: "any",
+  excludeIngredients: [],
   applied: false,
   hasActiveFilters: false,
 }
@@ -63,6 +69,28 @@ export const filtersSlice = createSlice({
       state.ingredients = state.ingredients.filter((ingredient) => ingredient !== action.payload)
       state.hasActiveFilters = checkHasActiveFilters(state)
     },
+    toggleIntolerance: (state, action: PayloadAction<string>) => {
+      if (state.intolerances.includes(action.payload)) {
+        state.intolerances = state.intolerances.filter((i) => i !== action.payload)
+      } else {
+        state.intolerances.push(action.payload)
+      }
+      state.hasActiveFilters = checkHasActiveFilters(state)
+    },
+    updateMealType: (state, action: PayloadAction<string>) => {
+      state.mealType = action.payload
+      state.hasActiveFilters = checkHasActiveFilters(state)
+    },
+    addExcludeIngredient: (state, action: PayloadAction<string>) => {
+      if (!state.excludeIngredients.includes(action.payload)) {
+        state.excludeIngredients.push(action.payload)
+        state.hasActiveFilters = checkHasActiveFilters(state)
+      }
+    },
+    removeExcludeIngredient: (state, action: PayloadAction<string>) => {
+      state.excludeIngredients = state.excludeIngredients.filter((i) => i !== action.payload)
+      state.hasActiveFilters = checkHasActiveFilters(state)
+    },
     resetFilters: () => initialState,
     applyFilters: (state) => {
       state.applied = true
@@ -78,7 +106,10 @@ const checkHasActiveFilters = (state: FiltersState): boolean => {
     state.taste !== "any" ||
     state.healthiness !== "any" ||
     state.cuisine !== "any" ||
-    state.ingredients.length > 0
+    state.mealType !== "any" ||
+    state.ingredients.length > 0 ||
+    state.intolerances.length > 0 ||
+    state.excludeIngredients.length > 0
   )
 }
 
@@ -91,6 +122,10 @@ export const {
   updateCuisine,
   addIngredient,
   removeIngredient,
+  toggleIntolerance,
+  updateMealType,
+  addExcludeIngredient,
+  removeExcludeIngredient,
   resetFilters,
   applyFilters,
 } = filtersSlice.actions
