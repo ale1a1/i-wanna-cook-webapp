@@ -1,5 +1,5 @@
 ================================================================
-WHAT SHOULD I COOK — TRELLO BOARD
+WHAT SHOULD I COOK — ROADMAP
 ================================================================
 
 
@@ -77,21 +77,52 @@ Server-side filter removes recipes with poor instructions: min 4 steps + at leas
 Wine pairing breakfast guard
 Tapping the Wine tab on a breakfast recipe from the meal planner shows a joke alert instead of opening wine content.
 
+Auto logout when JWT expires ✅ DONE
+Token expiry stored in localStorage on login, checked on every route change in Header. Redirects cleanly to /login — no crash, no broken state.
+
+Registration disclaimer checkbox ✅ DONE
+Checkbox required before account creation. Acceptance timestamp stored in users.disclaimer_accepted_at.
+
+14-day free trial on registration ✅ DONE
+trial_started_at set in DB on signup. Login computes trialActive/isPremium and returns them. Redux and localStorage store full subscription state. No card required.
+
+Trial days remaining on profile screen ✅ DONE
+Trial card on profile shows days left, expired state, or premium badge. Upgrade button shown for non-premium users.
+
+Enforce 10 searches/week for free users ✅ DONE
+search_usage table tracks weekly usage per user. 429 SEARCH_LIMIT returned when exceeded. Premium and trial users are unlimited.
+
+Rate-limit AI scanner to 3 scans/week for free users ✅ DONE
+scan_usage table tracks weekly scan usage. 429 SCAN_LIMIT returned when exceeded. Mobile shows friendly upgrade message.
+
+Lock meal plan history to premium ✅ DONE
+Free users GET returns max 1 (most recent) plan with historyLocked:true. Premium gets full history up to 20.
+
+Intolerances filter ✅ DONE
+Dairy, Egg, Gluten, Grain, Peanut, Seafood, Sesame, Shellfish, Soy, Sulfite, Tree Nut, Wheat. Toggle pills in the search filter panel. Passed to Spoonacular as intolerances param.
+
+Meal type filter ✅ DONE
+Main course, side dish, dessert, breakfast, soup, salad, snack, drink, etc. Dropdown in search filter panel. Passed to Spoonacular as type param.
+
+Exclude ingredients ✅ DONE
+Blacklist specific ingredients from all results. Tag input in search filter panel. Passed to Spoonacular as excludeIngredients param.
+
+Welcome email on registration ✅ DONE
+Sent via Resend on account creation. Explains the 14-day trial, what's included, what happens when it ends, and pricing.
+
+Trial ending warning email ✅ DONE
+Sent on login when ≤2 days left on trial and not yet sent. Tracked via trial_warning_sent_at column. Prompts user to upgrade.
+
+Account deletion confirmation email ✅ DONE
+Sent after successful account deletion with user's name and confirmation that all data is permanently removed.
+
+Portfolio demo credentials button ✅ DONE
+"Use demo credentials" button on the login page pre-fills the form. Login with the portfolio account triggers a notification email with IP, browser, and timestamp.
+
 
 ================================================================
 LIST: MUST — Before Launch
 ================================================================
-
---- Auth & Legal ---
-
-Auto logout when JWT expires
-Redirect to login cleanly when the session token expires. No crash, no broken state.
-
-Registration disclaimer checkbox
-Show a checkbox the user must tick before creating an account: "Nutrition info is approximate and informational only. Not a substitute for professional dietary or medical advice. Always verify ingredients if you have allergies or intolerances." Cannot proceed without accepting.
-
-Store disclaimer acceptance timestamp in DB
-When the user accepts the disclaimer, save the timestamp to their profile record in the database. Gives legal coverage and lets you track which version of the disclaimer each user accepted if the text ever changes.
 
 --- Subscription & Trial ---
 
@@ -101,36 +132,10 @@ Android real subscription flow. Users can actually subscribe and pay via Google 
 Apple IAP (if doing iOS)
 Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
 
-14-day free trial on registration
-Full premium access from day one. No card required. Automatically expires after 14 days.
-
 Auto-downgrade to free tier when trial expires
-When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt.
+When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt. Currently trial_active is computed at login time from trial_started_at — the enforcement is already there, but the UI needs to reflect it gracefully after expiry without requiring a re-login.
 
-Show trial days remaining on profile screen
-Visible countdown so users know how long they have left on their trial.
-
---- Free Tier Enforcement ---
-
-Enforce 10 searches/week for free users
-After trial ends, free users are limited to 10 recipe searches per week. Show remaining count in the UI.
-
-Rate-limit AI scanner to 3 scans/week for free users
-Cap free users at 3 ingredient photo scans per week. Show paywall when limit is hit. Premium gets unlimited scans.
-
-Lock meal plan history to premium only
-Free users can generate one plan at a time but cannot browse or restore old ones. Premium gets full history.
-
---- Search — unlock full Spoonacular potential (we are paying for it) ---
-
-Intolerances filter
-Dairy, Egg, Gluten, Grains, Peanut, Seafood, Sesame, Shellfish, Soy, Sulfite, Tree Nut, Wheat. Proper allergy-safe filtering, not just diet type. Appears in search modal and saved to dietary profile.
-
-Meal type filter
-Breakfast, Main Course, Side Dish, Salad, Soup, Dessert, Snack, Drink. Let users find the right category of recipe.
-
-Exclude ingredients
-Blacklist specific ingredients from all results (e.g. "no mushrooms", "no onions").
+--- Search ---
 
 Sport/fitness presets
 Bulking (high protein, high calorie), Shredding (high protein, low calorie/fat), Endurance (high carb), Kids meals (simple, allergen-safe). Named filter presets mapping to Spoonacular nutrition params already supported.
@@ -138,13 +143,13 @@ Bulking (high protein, high calorie), Shredding (high protein, low calorie/fat),
 --- Meal & Nutrition ---
 
 Meal Planner v2 — more filters before generating
-More options: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, intolerances, healthiness, sport/fitness goal. Settings saved per user. Integrate with dietary profile. Premium feature.
+More options: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, intolerances, healthiness, sport/fitness goal. Settings saved per user. Premium feature.
 
 Macro and nutrition tracking
-Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium. Pairs directly with the nutrition panel and goal filters already built.
+Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium.
 
 Recipe collections
-Let users organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". First collection free, more = premium.
+Organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". First collection free, more = premium.
 
 --- App Store ---
 
@@ -173,17 +178,8 @@ One-time $25 fee.
 
 --- Emails ---
 
-Welcome email on registration
-Triggered on account creation. Explains the trial, what's included, what happens when it ends.
-
-Trial ending warning email
-Sent 2 days before trial expiry. Prompts user to subscribe.
-
 Fortnightly re-engagement email
-Sent every 2 weeks to inactive users to bring them back.
-
-Account deletion confirmation email
-Sent after successful account deletion.
+Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
 
 
 ================================================================
@@ -272,7 +268,7 @@ Redis caching
 Reduce Spoonacular API calls. Lower costs at scale.
 
 AWS SQS + Lambda email workers
-Queue workers for welcome, trial warning, re-engagement, and deletion emails.
+Queue workers for re-engagement emails. Welcome/warning/deletion emails currently fire inline (fire-and-forget). Re-engagement email has no trigger yet — needs a scheduled job.
 
 CloudFront CDN
 Faster image delivery globally.
@@ -320,11 +316,11 @@ Region: eu-west-2.
 Breaking points:
 - "UserNotConfirmedException" → user registered but didn't verify email. Resend code flow needed.
 - "NotAuthorizedException" → wrong password or user doesn't exist.
-- JWT expired → auto-logout should kick in. If not, check token refresh logic in AuthContext.
-- Cognito User Pool ID or Client ID mismatch → check Amplify environment variables vs aws-exports or hardcoded config.
+- JWT expired → auto-logout now handled. Token expiry stored in localStorage, checked on every route change in Header.
+- Cognito User Pool ID or Client ID mismatch → check Amplify environment variables vs hardcoded config.
 
 AWS RDS PostgreSQL
-Used for: all persistent data — users, favourites, shopping list, tried recipes, meal plans, ratings, quick shopping list, active recipe session.
+Used for: all persistent data — users, favourites, shopping list, tried recipes, meal plans, ratings, quick shopping list, active recipe session, search_usage, scan_usage.
 Region: eu-west-2.
 Proxied via: all /api/* routes that hit pool (lib/db.ts).
 Breaking points:
@@ -339,6 +335,14 @@ Breaking points:
 - Build fails → check Amplify console build logs. Usually a missing env var or TypeScript error.
 - Environment variable not found at runtime → must be added in Amplify console under Environment Variables, not just .env.local.
 - Old code still running after push → Amplify cache. Trigger a manual redeploy from the console.
+
+Resend (email)
+Used for: welcome email, trial warning email, deletion confirmation email, portfolio login notification, error reports.
+API key: RESEND_API_KEY in .env.local and Amplify env vars.
+From address: onboarding@resend.dev (works for sending to the Resend account owner's email on free plan).
+Breaking points:
+- Emails not arriving → check Resend dashboard for delivery status. Free plan from address only reliably delivers to the account owner's email.
+- To send to any email address → need a verified custom domain in Resend.
 
 Expo / React Native (mobile)
 Breaking points:
