@@ -9,6 +9,7 @@ import { reportError } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { useSubscription } from "../context/SubscriptionContext"
+import { AuthContext } from "../context/AuthContext"
 import PaywallModal from "../components/PaywallModal"
 import { spacing, radius } from "../lib/theme"
 
@@ -97,6 +98,7 @@ export default function SearchScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
   const { isPremium } = useSubscription()
+  const { user } = React.useContext(AuthContext)
   const [showPaywall, setShowPaywall] = useState(false)
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[], calories: "any", protein: "any" }
   const [filters, setFilters] = useState(defaultFilters)
@@ -246,10 +248,13 @@ export default function SearchScreen() {
           const res = await fetch(`${API_BASE_URL}/api/recipes/analyze-image`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }),
+            body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg", userId: user?.id, isPremium }),
           })
           const data = await res.json()
-          if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
+          if (!res.ok) {
+            if (data.code === "SCAN_LIMIT") throw new Error(`You've used all ${data.limit} free scans this week. Upgrade to Premium for unlimited scans.`)
+            throw new Error(data.error ?? `Error ${res.status}`)
+          }
           if (data.all?.length) detected.push(...data.all)
           else if (data.ingredient) detected.push(data.ingredient)
         })

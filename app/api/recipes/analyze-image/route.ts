@@ -1,15 +1,39 @@
 import { NextRequest, NextResponse } from "next/server"
+import pool from "@/lib/db"
+
+const FREE_SCAN_LIMIT = 3
 
 export async function POST(request: NextRequest) {
-  let body: { base64: string; mimeType?: string }
+  let body: { base64: string; mimeType?: string; userId?: string; isPremium?: boolean }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
   }
 
-  const { base64, mimeType = "image/jpeg" } = body
+  const { base64, mimeType = "image/jpeg", userId, isPremium } = body
   if (!base64) return NextResponse.json({ error: "Missing base64 image data" }, { status: 400 })
+
+  if (userId && !isPremium) {
+    const weekStart = new Date()
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+    const weekStartStr = weekStart.toISOString().split("T")[0]
+
+    const usage = await pool.query(
+      "SELECT count FROM scan_usage WHERE user_id = $1 AND week_start = $2",
+      [userId, weekStartStr]
+    ).catch(() => ({ rows: [] }))
+
+    const currentCount = usage.rows[0]?.count ?? 0
+    if (currentCount >= FREE_SCAN_LIMIT) {
+      return NextResponse.json({ error: "Weekly scan limit reached", code: "SCAN_LIMIT", limit: FREE_SCAN_LIMIT, used: currentCount }, { status: 429 })
+    }
+    await pool.query(
+      `INSERT INTO scan_usage (user_id, week_start, count) VALUES ($1, $2, 1)
+       ON CONFLICT (user_id, week_start) DO UPDATE SET count = scan_usage.count + 1`,
+      [userId, weekStartStr]
+    ).catch(() => {})
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return NextResponse.json({ error: "Anthropic API key not configured" }, { status: 500 })

@@ -92,3 +92,12 @@ CREATE TABLE IF NOT EXISTS search_usage (
   count INTEGER NOT NULL DEFAULT 0,
   UNIQUE(user_id, week_start)
 );
+
+-- Migration: weekly scan usage tracking
+CREATE TABLE IF NOT EXISTS scan_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  week_start DATE NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  UNIQUE(user_id, week_start)
+);

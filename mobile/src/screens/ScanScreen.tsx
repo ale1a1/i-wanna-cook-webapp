@@ -17,6 +17,9 @@ import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { API_BASE_URL } from "../lib/api"
 import { reportError } from "../lib/reportError"
+import { useContext } from "react"
+import { AuthContext } from "../context/AuthContext"
+import { SubscriptionContext } from "../context/SubscriptionContext"
 
 type Step = "capture" | "review" | "mode" | "filters"
 
@@ -25,6 +28,8 @@ export default function ScanScreen() {
   const { showError } = useGlobalError()
   const navigation = useNavigation<any>()
   const s = makeStyles(colors)
+  const { user } = useContext(AuthContext)
+  const { isPremium } = useContext(SubscriptionContext)
 
   const [step, setStep] = useState<Step>("capture")
   const [capturedAssets, setCapturedAssets] = useState<ImagePicker.ImagePickerAsset[]>([])
@@ -67,10 +72,13 @@ export default function ScanScreen() {
           const res = await fetch(`${API_BASE_URL}/api/recipes/analyze-image`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg" }),
+            body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg", userId: user?.id, isPremium }),
           })
           const data = await res.json()
-          if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
+          if (!res.ok) {
+            if (data.code === "SCAN_LIMIT") throw new Error(`You've used all ${data.limit} free scans this week. Upgrade to Premium for unlimited scans.`)
+            throw new Error(data.error ?? `Error ${res.status}`)
+          }
           if (data.all?.length) detected.push(...data.all)
           else if (data.ingredient) detected.push(data.ingredient)
         })
