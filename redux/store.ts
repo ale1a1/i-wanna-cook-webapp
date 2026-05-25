@@ -19,7 +19,16 @@ function loadAuthFromStorage() {
     if (user.id && user.email && user.username) {
       return {
         auth: {
-          user: { id: user.id, email: user.email, username: user.username, theme: user.theme ?? "system" },
+          user: {
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            theme: user.theme ?? "system",
+            subscriptionTier: user.subscriptionTier ?? "free",
+            trialExpiresAt: user.trialExpiresAt ?? null,
+            trialActive: user.trialActive ?? false,
+            isPremium: user.isPremium ?? false,
+          },
           isAuthenticated: true,
           accessToken: user.accessToken ?? null,
         },

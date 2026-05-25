@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
 
     // Store profile in RDS immediately with the real Cognito sub
     await pool.query(
-      `INSERT INTO users (cognito_sub, email, username, disclaimer_accepted_at)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (cognito_sub, email, username, disclaimer_accepted_at, subscription_tier, trial_started_at)
+       VALUES ($1, $2, $3, $4, 'free', NOW())
        ON CONFLICT (email) DO UPDATE SET cognito_sub = EXCLUDED.cognito_sub, username = EXCLUDED.username, disclaimer_accepted_at = EXCLUDED.disclaimer_accepted_at`,
       [cognitoSub, email.toLowerCase(), username, disclaimerAcceptedAt ?? null]
     )
