@@ -31,6 +31,20 @@ export default function Header() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!user) return
+    try {
+      const saved = localStorage.getItem("user")
+      if (!saved) return
+      const u = JSON.parse(saved)
+      if (u.tokenExpiry && Date.now() > u.tokenExpiry) {
+        dispatch(logout())
+        localStorage.removeItem("user")
+        router.push("/login")
+      }
+    } catch { /* ignore */ }
+  }, [pathname])
+
   useEffect(() => { setMobileMenuOpen(false) }, [pathname])
 
   const handleLogout = () => {

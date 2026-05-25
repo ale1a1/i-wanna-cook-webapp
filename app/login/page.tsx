@@ -129,7 +129,8 @@ export default function LoginPage() {
         theme: userTheme,
         accessToken: data.tokens?.accessToken,
       }))
-      localStorage.setItem("user", JSON.stringify({ ...data.user, accessToken: data.tokens?.accessToken }))
+      const tokenExpiry = Date.now() + (data.tokens?.expiresIn ?? 3600) * 1000
+      localStorage.setItem("user", JSON.stringify({ ...data.user, accessToken: data.tokens?.accessToken, tokenExpiry }))
       setTheme(userTheme)
       router.push("/")
     } catch {
