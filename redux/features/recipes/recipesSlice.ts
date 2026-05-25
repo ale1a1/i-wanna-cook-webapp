@@ -108,13 +108,17 @@ function buildSearchParams(filters: FiltersState): URLSearchParams {
 
 export const fetchRecipes = createAsyncThunk(
   "recipes/fetchRecipes",
-  async (filters: FiltersState, { rejectWithValue }) => {
+  async (filters: FiltersState, { rejectWithValue, getState }) => {
     try {
+      const state = getState() as RootState
+      const { user } = state.auth
       const params = buildSearchParams(filters)
+      if (user?.id) params.set("userId", user.id)
+      if (user?.isPremium) params.set("isPremium", "true")
       const res = await fetch(`/api/recipes/search?${params.toString()}`)
       if (!res.ok) {
         const err = await res.json()
-        return rejectWithValue(err.error || "Failed to fetch recipes")
+        return rejectWithValue(err.code === "SEARCH_LIMIT" ? `You've used all ${err.limit} free searches this week. Upgrade to Premium for unlimited searches.` : err.error || "Failed to fetch recipes")
       }
       const data = await res.json()
       return { results: data.results as Recipe[], totalResults: data.totalResults as number }
@@ -129,10 +133,13 @@ export const loadMoreRecipes = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     const state = getState() as RootState
     const { currentOffset, currentFilters } = state.recipes
+    const { user } = state.auth
     if (!currentFilters) return rejectWithValue("No filters")
     try {
       const params = buildSearchParams(currentFilters)
       params.set("offset", String(currentOffset))
+      if (user?.id) params.set("userId", user.id)
+      if (user?.isPremium) params.set("isPremium", "true")
       const res = await fetch(`/api/recipes/search?${params.toString()}`)
       if (!res.ok) {
         const err = await res.json()
