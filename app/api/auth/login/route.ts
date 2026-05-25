@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Get user profile from RDS
     const result = await pool.query(
-      "SELECT id, email, username, theme FROM users WHERE email = $1",
+      "SELECT id, email, username, theme, subscription_tier, trial_started_at FROM users WHERE email = $1",
       [email.toLowerCase()]
     )
 
@@ -71,8 +71,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const trialStarted = user.trial_started_at ? new Date(user.trial_started_at) : null
+    const trialExpiresAt = trialStarted ? new Date(trialStarted.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString() : null
+    const trialActive = trialExpiresAt ? new Date() < new Date(trialExpiresAt) : false
+    const isPremium = user.subscription_tier === 'premium' || trialActive
+
     return NextResponse.json({
-      user: { id: user.id, email: user.email, username: user.username, theme: user.theme },
+      user: { id: user.id, email: user.email, username: user.username, theme: user.theme, subscriptionTier: user.subscription_tier, trialExpiresAt, trialActive, isPremium },
       tokens: {
         idToken: tokens.IdToken,
         accessToken: tokens.AccessToken,

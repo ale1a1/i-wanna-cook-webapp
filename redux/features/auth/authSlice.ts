@@ -6,6 +6,10 @@ interface User {
   email: string
   username: string
   theme: string
+  subscriptionTier: string
+  trialExpiresAt: string | null
+  trialActive: boolean
+  isPremium: boolean
 }
 
 interface AuthState {
@@ -24,12 +28,16 @@ export const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    login: (state, action: PayloadAction<{ id: string; email: string; username: string; theme: string; accessToken?: string }>) => {
+    login: (state, action: PayloadAction<{ id: string; email: string; username: string; theme: string; accessToken?: string; subscriptionTier?: string; trialExpiresAt?: string | null; trialActive?: boolean; isPremium?: boolean }>) => {
       state.user = {
         id: action.payload.id,
         email: action.payload.email,
         username: action.payload.username,
         theme: action.payload.theme ?? "system",
+        subscriptionTier: action.payload.subscriptionTier ?? "free",
+        trialExpiresAt: action.payload.trialExpiresAt ?? null,
+        trialActive: action.payload.trialActive ?? false,
+        isPremium: action.payload.isPremium ?? false,
       }
       state.isAuthenticated = true
       state.accessToken = action.payload.accessToken ?? null
