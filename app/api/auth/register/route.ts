@@ -7,7 +7,7 @@ const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, username, password } = await request.json()
+    const { email, username, password, disclaimerAcceptedAt } = await request.json()
 
     if (!email || !username || !password) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
 
     // Store profile in RDS immediately with the real Cognito sub
     await pool.query(
-      `INSERT INTO users (cognito_sub, email, username)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (email) DO UPDATE SET cognito_sub = EXCLUDED.cognito_sub, username = EXCLUDED.username`,
-      [cognitoSub, email.toLowerCase(), username]
+      `INSERT INTO users (cognito_sub, email, username, disclaimer_accepted_at)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO UPDATE SET cognito_sub = EXCLUDED.cognito_sub, username = EXCLUDED.username, disclaimer_accepted_at = EXCLUDED.disclaimer_accepted_at`,
+      [cognitoSub, email.toLowerCase(), username, disclaimerAcceptedAt ?? null]
     )
 
     return NextResponse.json({ message: "Registration successful. Check your email for the verification code." }, { status: 201 })

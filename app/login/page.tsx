@@ -80,6 +80,7 @@ export default function LoginPage() {
 
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [registerForm, setRegisterForm] = useState({ email: "", username: "", password: "", confirmPassword: "" })
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
   const [activeTab, setActiveTab] = useState("login")
   const [touched, setTouched] = useState({ email: false, username: false, password: false, confirmPassword: false })
   const [loginTouched, setLoginTouched] = useState({ email: false })
@@ -101,6 +102,7 @@ export default function LoginPage() {
     ? "Passwords do not match" : ""
   const registerValid = !emailError && !usernameError && !passwordError && !confirmError
     && registerForm.email && registerForm.username && registerForm.password && registerForm.confirmPassword
+    && disclaimerAccepted
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -149,7 +151,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: registerForm.email, username: registerForm.username, password: registerForm.password }),
+        body: JSON.stringify({ email: registerForm.email, username: registerForm.username, password: registerForm.password, disclaimerAcceptedAt: new Date().toISOString() }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error); return }
@@ -312,6 +314,19 @@ export default function LoginPage() {
                     <EyeToggle show={showPasswords.confirm} onToggle={() => setShowPasswords((s) => ({ ...s, confirm: !s.confirm }))} />
                   </div>
                   <FieldError message={confirmError} />
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-md border bg-muted/40">
+                  <input
+                    id="disclaimer"
+                    type="checkbox"
+                    checked={disclaimerAccepted}
+                    onChange={(e) => setDisclaimerAccepted(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
+                  />
+                  <label htmlFor="disclaimer" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
+                    I understand that nutrition information is approximate and for informational purposes only. It is not a substitute for professional dietary or medical advice. I will always verify ingredients independently if I have allergies or intolerances.
+                  </label>
                 </div>
 
                 {error && <p className="text-sm text-destructive">{error}</p>}

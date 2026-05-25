@@ -80,3 +80,6 @@ CREATE TABLE IF NOT EXISTS active_recipe_session (
 
 -- Migration: add source column if not exists
 ALTER TABLE active_recipe_session ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'scan';
+
+-- Migration: disclaimer acceptance
+ALTER TABLE users ADD COLUMN IF NOT EXISTS disclaimer_accepted_at TIMESTAMP;
