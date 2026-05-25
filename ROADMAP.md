@@ -1,0 +1,368 @@
+================================================================
+WHAT SHOULD I COOK — ROADMAP
+================================================================
+
+
+================================================================
+LIST: ALREADY BUILT
+================================================================
+
+Recipe search with filters
+Prep time, budget, diet, cuisine, taste, healthiness, calories, protein, ingredients.
+
+Match all / Match some toggle
+When searching with multiple ingredients, toggle between matching all ingredients or some (best-effort). Inline toggle visible above results.
+
+Recipe detail pages
+Nutrition panel (calories, protein, fat with saturated fat breakdown, carbs — per serving label), ingredients list, step-by-step instructions. Substitutions banner when active.
+
+Favourites
+Flat list. Save and remove recipes.
+
+Shopping list
+Check off items per recipe. Delete individual items or clear all.
+
+Tried recipes history
+Log recipes tried.
+
+User accounts
+Register, login, email verify, forgot password, change password, delete account.
+
+Light / dark theme
+
+Weekly AI meal planner (v1 — basic)
+Generate, save, delete plans. Meal plan history stored in DB.
+Settings: daily calories target, diet type only.
+
+Cooking mode (mobile)
+Fullscreen step-by-step view. Swipe navigation.
+
+Voice cooking (mobile)
+Reads steps aloud. Voice commands. Powered by expo-speech.
+
+AI ingredient photo scanner (mobile)
+Camera or photo library. Up to 10 images per session. Review and remove detected ingredients before searching. Skip match-mode step when only 1 ingredient detected. AI prompt returns generic ingredient names for better Spoonacular matching. 3-tier search fallback so scanned ingredients always find results.
+
+Premium tier infrastructure
+DB-based subscription tracking. Paywall modal wired up.
+
+AI Fridge Scan → Ingredient Check → Recipe Flow (Core Feature)
+Full end-to-end flow:
+1. Scan fridge (up to 10 photos) → detected ingredients shown as chips
+2. Remove wrong items, add more photos — no manual typing
+3. If 2+ ingredients: choose Match all or Match some
+4. Search results shown
+5. Tap a recipe → "Cook it now?" bottom sheet
+6. Check ingredients one by one — "I have it" / "I don't have it"
+7. Missing ingredient: AI (Claude Haiku) suggests a substitute
+   → "Use it": substitute swapped into recipe steps automatically
+   → "Buy it": added to Quick Shopping List
+8. If AI returns no substitute: "No substitute found" with Buy it / Skip
+9. Done screen shows all substitutions applied
+10. Recipe opens with substituted steps and ingredients highlighted
+11. Session saved server-side — survives app restart
+
+Quick Shopping List
+Separate from main shopping list. Holds ingredients flagged as missing during the scan flow. Lives in the nav bar replacing the Shopping tab (with unchecked count badge) whenever items are present. Check off, delete, clear all. Server-side persisted per user.
+
+Active Recipe Session
+Server-side per-user session storing current recipe + substitutions. Loaded on app start. Cleared when session ends.
+
+AI ingredient substitute suggestion
+Text-only Claude Haiku call. Suggests one practical substitute per missing ingredient in context of the recipe being cooked.
+
+Recipe search quality filter
+Server-side filter removes recipes with poor instructions: min 4 steps + at least 50% of ingredients mentioned in steps. Auto-refills to minimum 12 quality results per page (max 5 Spoonacular calls). Pagination with Load more button appends next clean batch.
+
+Wine pairing breakfast guard
+Tapping the Wine tab on a breakfast recipe from the meal planner shows a joke alert instead of opening wine content.
+
+Auto logout when JWT expires ✅ DONE
+Token expiry stored in localStorage on login, checked on every route change in Header. Redirects cleanly to /login — no crash, no broken state.
+
+Registration disclaimer checkbox ✅ DONE
+Checkbox required before account creation. Acceptance timestamp stored in users.disclaimer_accepted_at.
+
+14-day free trial on registration ✅ DONE
+trial_started_at set in DB on signup. Login computes trialActive/isPremium and returns them. Redux and localStorage store full subscription state. No card required.
+
+Trial days remaining on profile screen ✅ DONE
+Trial card on profile shows days left, expired state, or premium badge. Upgrade button shown for non-premium users.
+
+Enforce 10 searches/week for free users ✅ DONE
+search_usage table tracks weekly usage per user. 429 SEARCH_LIMIT returned when exceeded. Premium and trial users are unlimited.
+
+Rate-limit AI scanner to 3 scans/week for free users ✅ DONE
+scan_usage table tracks weekly scan usage. 429 SCAN_LIMIT returned when exceeded. Mobile shows friendly upgrade message.
+
+Lock meal plan history to premium ✅ DONE
+Free users GET returns max 1 (most recent) plan with historyLocked:true. Premium gets full history up to 20.
+
+Intolerances filter ✅ DONE
+Dairy, Egg, Gluten, Grain, Peanut, Seafood, Sesame, Shellfish, Soy, Sulfite, Tree Nut, Wheat. Toggle pills in the search filter panel. Passed to Spoonacular as intolerances param.
+
+Meal type filter ✅ DONE
+Main course, side dish, dessert, breakfast, soup, salad, snack, drink, etc. Dropdown in search filter panel. Passed to Spoonacular as type param.
+
+Exclude ingredients ✅ DONE
+Blacklist specific ingredients from all results. Tag input in search filter panel. Passed to Spoonacular as excludeIngredients param.
+
+Welcome email on registration ✅ DONE
+Sent via Resend on account creation. Explains the 14-day trial, what's included, what happens when it ends, and pricing.
+
+Trial ending warning email ✅ DONE
+Sent on login when ≤2 days left on trial and not yet sent. Tracked via trial_warning_sent_at column. Prompts user to upgrade.
+
+Account deletion confirmation email ✅ DONE
+Sent after successful account deletion with user's name and confirmation that all data is permanently removed.
+
+Portfolio demo credentials button ✅ DONE
+"Use demo credentials" button on the login page pre-fills the form. Login with the portfolio account triggers a notification email with IP, browser, and timestamp.
+
+
+================================================================
+LIST: MUST — Before Launch
+================================================================
+
+--- Subscription & Trial ---
+
+Wire up Google Play Billing
+Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
+
+Apple IAP (if doing iOS)
+Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
+
+Auto-downgrade to free tier when trial expires
+When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt. Currently trial_active is computed at login time from trial_started_at — the enforcement is already there, but the UI needs to reflect it gracefully after expiry without requiring a re-login.
+
+--- Search ---
+
+Sport/fitness presets
+Bulking (high protein, high calorie), Shredding (high protein, low calorie/fat), Endurance (high carb), Kids meals (simple, allergen-safe). Named filter presets mapping to Spoonacular nutrition params already supported.
+
+--- Meal & Nutrition ---
+
+Meal Planner v2 — more filters before generating
+More options: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, intolerances, healthiness, sport/fitness goal. Settings saved per user. Premium feature.
+
+Macro and nutrition tracking
+Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium.
+
+Recipe collections
+Organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". First collection free, more = premium.
+
+--- App Store ---
+
+Custom app icon
+Replace Expo default icon with branded app icon.
+
+Custom splash screen
+Branded splash screen for app launch.
+
+Privacy policy page
+Required by both App Store and Google Play.
+
+Terms of service page
+
+App store screenshots
+Minimum 5 to 8 screenshots showing key features.
+
+App store description and keyword optimisation
+Written description with keywords for discoverability.
+
+Age rating questionnaire
+Complete for both Google Play and App Store submission.
+
+Google Play developer account
+One-time $25 fee.
+
+--- Emails ---
+
+Fortnightly re-engagement email
+Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
+
+
+================================================================
+LIST: SHOULD — High Priority After Launch
+================================================================
+
+Guided Navigation (contextual help system)
+For non-obvious actions (quick shopping list cart button, substitution flow, session tabs, etc.), show a one-time confirmation prompt — "Do you want to do this? Yes / No" with a "Don't ask again" option. User can also tap a ? icon on any screen to trigger an animated walkthrough of that screen's features. Guided navigation can be toggled on/off in Settings. When off, all prompts are skipped and actions fire directly. First-time users have it on by default.
+
+Chef avatar narrator for cooking mode
+A distinctive chef character shown during cooking mode and voice steps. Gives the app personality and makes the cooking experience feel like having a companion in the kitchen. The avatar reacts as steps progress — idle, talking, celebrating when done.
+
+Voice narrator for cooking mode
+The chef avatar reads each step aloud using a natural-sounding voice. Users can choose from a small set of voice styles. Powered by a TTS API (e.g. ElevenLabs or Google TTS). Replaces the current basic expo-speech implementation. Premium feature.
+
+Full nutrition breakdown panel
+Basic panel (calories, protein, fat + sat fat, carbs, per serving) now built and live. Full premium panel (fibre, sugar, RDA percentages) still to build as premium feature.
+
+Dietary profile
+Let users set their dietary restrictions and intolerances once in their profile — auto-applied to all searches and meal plans. Premium feature. Foundation for sport/fitness presets.
+
+AI chat assistant
+A conversational screen where users describe what they have or what they want and get recipe suggestions from Claude. "Something quick with chicken", "high protein after gym", "use my leftovers". More flexible than the scanner. Premium feature.
+
+Smart recommendations
+Suggest recipes based on the user's tried recipes and favourites history. Low API cost, high perceived value.
+
+Pantry tracking
+Manual ingredient inventory. Highlight items approaching expiry. Auto-suggest recipes that use what is about to expire. Big differentiator.
+
+Redis caching
+Reduce Spoonacular API calls. Lower costs at scale.
+
+CloudFront CDN
+Faster image delivery globally.
+
+Analytics
+Track searches, saves, completions, premium conversion, trial retention, meal plan usage, shopping list engagement.
+
+
+================================================================
+LIST: COULD — Later
+================================================================
+
+AI recipe modification
+Make it healthier, increase protein, make it vegetarian, reduce calories. One tap. Claude API. Premium only.
+
+Push notifications
+Dinner reminders, meal plan nudges, trial expiry alerts. Drives retention.
+
+Cooking mode upgrades — individual item timers
+Set a timer for pasta, another for sauce, independently. Real cooking utility.
+
+Voice cooking assistant Phase 2
+Always-on microphone across the whole app. Navigate by voice, search by voice, apply filters by voice. "Go to favourites", "search chicken pasta", "open the first one", "scroll down". Persistent subtle listening indicator.
+
+Language preference
+User selects language, persisted to profile. Flag in navbar.
+
+MFA
+Multi-factor authentication via AWS Cognito. Low priority but good for trust.
+
+Barcode scanner
+Scan groceries to add to pantry instantly.
+
+
+================================================================
+LIST: FUTURE — Phase 3
+================================================================
+
+Supermarket shopping list integration
+Once the in-app shopping list is generated from a recipe or meal plan, let the user send it directly to an online supermarket for delivery or click-and-collect. One tap from the app shopping list to a populated supermarket cart. Target UK supermarkets: Tesco, Morrisons, Aldi, Lidl, Sainsbury's. No public cart APIs exist for these retailers today — this requires either a partnership or enterprise deal with the retailer, or an aggregator like Instacart if they expand UK coverage. Track Instacart UK availability. This is Phase 3 and partnership territory, but a genuine differentiator worth pursuing once the core product has traction.
+
+Fridge photo to full pantry state
+Already partially built — ingredient scan exists. Full "what can I cook with this?" flow using full pantry state. Needs Spoonacular Cook plan ($29/mo) at scale.
+
+Collection management
+Recipe boards, folders, custom collections. More of a web feature.
+
+
+================================================================
+LIST: TECHNICAL DEBT
+================================================================
+
+Redis caching
+Reduce Spoonacular API calls. Lower costs at scale.
+
+AWS SQS + Lambda email workers
+Queue workers for re-engagement emails. Welcome/warning/deletion emails currently fire inline (fire-and-forget). Re-engagement email has no trigger yet — needs a scheduled job.
+
+CloudFront CDN
+Faster image delivery globally.
+
+Stripe subscriptions
+Web subscription flow.
+
+Analytics platform
+Track user behaviour, premium conversion, trial retention.
+
+Push notification infrastructure
+Required before push notifications can be built.
+
+
+================================================================
+LIST: APIs & BREAKING POINTS
+================================================================
+
+Spoonacular
+Used for: recipe search, recipe detail, wine pairing, ingredient substitutes (legacy).
+API key: SPOONACULAR_API_KEY in .env.local (server-side only, never client).
+Proxied via: /api/recipes/* routes on the Next.js backend.
+Quota: points-based. complexSearch = 1pt + 0.01pt per result + extras if addRecipeInformation/Nutrition set.
+Breaking points:
+- 402 or "apiKey" error in response → quota exhausted for the day. Check spoonacular.com dashboard.
+- Recipe detail returns empty extendedIngredients → Spoonacular data gap, not a code bug.
+- Search returns 0 results with no error → too many filters combined, or ingredient names too specific.
+- CORS error → route is being called client-side directly. Must always go through /api/recipes/* proxy.
+
+Claude (Anthropic)
+Used for: ingredient photo scanning (vision), substitute suggestions, future AI chat.
+API key: ANTHROPIC_API_KEY in .env.local (server-side only).
+Model: claude-haiku-4-5 for substitutes and scan. Upgrade to Sonnet for chat if needed.
+Proxied via: /api/recipes/analyze-image, /api/recipes/suggest-substitute.
+Breaking points:
+- 401 → API key missing or wrong. Check .env.local and Amplify environment variables.
+- 529 or 503 → Anthropic overloaded. Retry after a few seconds.
+- Response not valid JSON → Claude returned markdown or explanation instead of plain text. Check prompt.
+- Substitute returns garbage → prompt drift. Re-check suggest-substitute route prompt format.
+- Vision returns no ingredients → image too dark/blurry or prompt needs adjustment. Check analyze-image route.
+
+AWS Cognito
+Used for: user authentication (register, login, email verify, forgot password, change password).
+Region: eu-west-2.
+Breaking points:
+- "UserNotConfirmedException" → user registered but didn't verify email. Resend code flow needed.
+- "NotAuthorizedException" → wrong password or user doesn't exist.
+- JWT expired → auto-logout now handled. Token expiry stored in localStorage, checked on every route change in Header.
+- Cognito User Pool ID or Client ID mismatch → check Amplify environment variables vs hardcoded config.
+
+AWS RDS PostgreSQL
+Used for: all persistent data — users, favourites, shopping list, tried recipes, meal plans, ratings, quick shopping list, active recipe session, search_usage, scan_usage.
+Region: eu-west-2.
+Proxied via: all /api/* routes that hit pool (lib/db.ts).
+Breaking points:
+- "Connection refused" or pool timeout → RDS instance stopped or security group blocking the Lambda/Amplify outbound IP. Check AWS console.
+- "column does not exist" → migration not run. Check lib/schema.sql and run the missing ALTER TABLE manually.
+- "unique constraint violated" → duplicate insert, usually fine (upsert logic should handle it). If not, check ON CONFLICT clause.
+- Slow queries → missing index or RDS instance too small. Check CloudWatch.
+
+AWS Amplify (hosting)
+Used for: auto-deploy Next.js backend + web frontend on push to main.
+Breaking points:
+- Build fails → check Amplify console build logs. Usually a missing env var or TypeScript error.
+- Environment variable not found at runtime → must be added in Amplify console under Environment Variables, not just .env.local.
+- Old code still running after push → Amplify cache. Trigger a manual redeploy from the console.
+
+Resend (email)
+Used for: welcome email, trial warning email, deletion confirmation email, portfolio login notification, error reports.
+API key: RESEND_API_KEY in .env.local and Amplify env vars.
+From address: onboarding@resend.dev (works for sending to the Resend account owner's email on free plan).
+Breaking points:
+- Emails not arriving → check Resend dashboard for delivery status. Free plan from address only reliably delivers to the account owner's email.
+- To send to any email address → need a verified custom domain in Resend.
+
+Expo / React Native (mobile)
+Breaking points:
+- Metro bundler crash → delete node_modules/.cache and restart.
+- Android build fails → check C:\p\ short path workaround (Windows 260-char path limit). See APK build notes.
+- expo-speech not working on device → physical device permissions or TTS engine not installed. Works fine on emulator.
+- Navigation crash on tab swap → session state changed mid-render. Check HomeTabs conditional tab logic in App.tsx.
+
+
+================================================================
+PRICING
+================================================================
+
+Free — $0
+10 searches/week, 3 scans/week, flat favourites list, basic features. 14-day trial on signup.
+
+Premium — $2.49/month or $19.99/year
+Full access. Unlimited scans and searches. All premium features.
+
+Future pricing — $4.99/month
+Once AI assistant and personalisation are live.
+
+14-day free trial on every new account. No card required.
