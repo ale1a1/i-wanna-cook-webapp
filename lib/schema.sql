@@ -84,6 +84,9 @@ ALTER TABLE active_recipe_session ADD COLUMN IF NOT EXISTS source TEXT NOT NULL 
 -- Migration: disclaimer acceptance
 ALTER TABLE users ADD COLUMN IF NOT EXISTS disclaimer_accepted_at TIMESTAMP;
 
+-- Migration: trial warning email tracking
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_warning_sent_at TIMESTAMP;
+
 -- Migration: weekly search usage tracking
 CREATE TABLE IF NOT EXISTS search_usage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

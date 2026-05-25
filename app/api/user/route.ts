@@ -5,6 +5,7 @@ import {
 } from "@aws-sdk/client-cognito-identity-provider"
 import { cognitoClient } from "@/lib/cognito"
 import pool from "@/lib/db"
+import { Resend } from "resend"
 
 const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,}$/
 
@@ -80,6 +81,10 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "User ID and access token are required" }, { status: 400 })
     }
 
+    // Fetch email/username before deletion for the confirmation email
+    const userResult = await pool.query("SELECT email, username FROM users WHERE id = $1", [userId])
+    const deletedUser = userResult.rows[0]
+
     // Delete from Cognito using the user's own access token — no IAM needed
     await cognitoClient.send(new DeleteUserCommand({
       AccessToken: accessToken,
@@ -87,6 +92,23 @@ export async function DELETE(request: NextRequest) {
 
     // Delete from RDS (cascades to all related data)
     await pool.query("DELETE FROM users WHERE id = $1", [userId])
+
+    if (deletedUser && process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      resend.emails.send({
+        from: "What Should I Cook App <onboarding@resend.dev>",
+        to: deletedUser.email,
+        subject: "Your account has been deleted",
+        html: `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
+            <h1 style="font-size:22px;margin-bottom:8px">Account deleted</h1>
+            <p style="color:#374151">Hi ${deletedUser.username}, your account and all associated data have been permanently deleted.</p>
+            <p style="color:#374151">If you didn't request this, please contact us immediately.</p>
+            <p style="color:#6b7280;font-size:13px;margin-top:24px">This action cannot be undone.</p>
+          </div>
+        `,
+      }).catch((err) => console.error("Deletion confirmation email failed:", err))
+    }
 
     return NextResponse.json({ message: "Account deleted successfully" })
   } catch (err: any) {

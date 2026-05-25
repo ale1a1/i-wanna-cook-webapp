@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     // Get user profile from RDS
     const result = await pool.query(
-      "SELECT id, email, username, theme, subscription_tier, trial_started_at FROM users WHERE email = $1",
+      "SELECT id, email, username, theme, subscription_tier, trial_started_at, trial_warning_sent_at FROM users WHERE email = $1",
       [email.toLowerCase()]
     )
 
@@ -75,6 +75,28 @@ export async function POST(request: NextRequest) {
     const trialExpiresAt = trialStarted ? new Date(trialStarted.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString() : null
     const trialActive = trialExpiresAt ? new Date() < new Date(trialExpiresAt) : false
     const isPremium = user.subscription_tier === 'premium' || trialActive
+
+    // Send trial warning email if trial ends within 2 days and hasn't been sent yet
+    if (trialActive && trialExpiresAt && process.env.RESEND_API_KEY && !user.trial_warning_sent_at) {
+      const msLeft = new Date(trialExpiresAt).getTime() - Date.now()
+      const daysLeft = msLeft / (1000 * 60 * 60 * 24)
+      if (daysLeft <= 2) {
+        const resend = new Resend(process.env.RESEND_API_KEY)
+        resend.emails.send({
+          from: "What Should I Cook App <onboarding@resend.dev>",
+          to: user.email,
+          subject: "Your free trial ends in 2 days",
+          html: `
+            <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
+              <h1 style="font-size:22px;margin-bottom:8px">Your trial ends soon ⏳</h1>
+              <p style="color:#374151">Hey ${user.username}, your 14-day Premium trial expires on <strong>${new Date(trialExpiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}</strong>.</p>
+              <p style="color:#374151">After that you'll be on the free plan — 10 searches/week, 3 scans/week. Upgrade to keep unlimited access for just <strong>$2.49/month</strong>.</p>
+            </div>
+          `,
+        }).catch((err) => console.error("Trial warning email failed:", err))
+        pool.query("UPDATE users SET trial_warning_sent_at = NOW() WHERE id = $1", [user.id]).catch(() => {})
+      }
+    }
 
     return NextResponse.json({
       user: { id: user.id, email: user.email, username: user.username, theme: user.theme, subscriptionTier: user.subscription_tier, trialExpiresAt, trialActive, isPremium },
