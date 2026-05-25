@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { User, Settings, Moon, Sun, Monitor, Loader2, Eye, EyeOff, Pencil, Check, X, Trash2 } from "lucide-react"
+import { User, Settings, Moon, Sun, Monitor, Loader2, Eye, EyeOff, Pencil, Check, X, Trash2, Crown, Clock } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { selectAuth, logout, updateUser } from "@/redux/features/auth/authSlice"
@@ -209,6 +209,51 @@ export default function ProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Subscription / Trial */}
+      {(() => {
+        const now = Date.now()
+        const trialExpiry = user.trialExpiresAt ? new Date(user.trialExpiresAt).getTime() : null
+        const daysLeft = trialExpiry ? Math.max(0, Math.ceil((trialExpiry - now) / (1000 * 60 * 60 * 24))) : 0
+        const trialActive = user.trialActive
+        const isPremium = user.subscriptionTier === "premium"
+
+        return (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {isPremium ? (
+                    <Crown className="h-5 w-5 text-yellow-500" />
+                  ) : trialActive ? (
+                    <Clock className="h-5 w-5 text-primary" />
+                  ) : (
+                    <Crown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <div>
+                    <p className="font-semibold">
+                      {isPremium ? "Premium" : trialActive ? "Free Trial" : "Free Plan"}
+                    </p>
+                    {trialActive && !isPremium && (
+                      <p className="text-sm text-muted-foreground">
+                        {daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining
+                      </p>
+                    )}
+                    {!trialActive && !isPremium && (
+                      <p className="text-sm text-muted-foreground">Trial ended — upgrade to keep premium features</p>
+                    )}
+                  </div>
+                </div>
+                {!isPremium && (
+                  <Button size="sm" variant={trialActive ? "outline" : "default"}>
+                    Upgrade
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Stats */}
       <Card>
