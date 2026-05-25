@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
+import pool from "@/lib/db"
+
+const FREE_SEARCH_LIMIT = 10
 
 const MIN_RESULTS = 12
 const BATCH_SIZE = 24
@@ -27,6 +30,31 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url)
+
+  // Rate limiting for free users
+  const userId = searchParams.get("userId")
+  const isPremium = searchParams.get("isPremium") === "true"
+  const isLoadMore = parseInt(searchParams.get("offset") || "0", 10) > 0
+
+  if (userId && !isPremium && !isLoadMore) {
+    const weekStart = new Date()
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+    const weekStartStr = weekStart.toISOString().split("T")[0]
+
+    const usage = await pool.query(
+      "SELECT count FROM search_usage WHERE user_id = $1 AND week_start = $2",
+      [userId, weekStartStr]
+    )
+    const currentCount = usage.rows[0]?.count ?? 0
+    if (currentCount >= FREE_SEARCH_LIMIT) {
+      return NextResponse.json({ error: "Weekly search limit reached", code: "SEARCH_LIMIT", limit: FREE_SEARCH_LIMIT, used: currentCount }, { status: 429 })
+    }
+    await pool.query(
+      `INSERT INTO search_usage (user_id, week_start, count) VALUES ($1, $2, 1)
+       ON CONFLICT (user_id, week_start) DO UPDATE SET count = search_usage.count + 1`,
+      [userId, weekStartStr]
+    )
+  }
 
   // Client passes offset for "Load more" — we use it as our starting page
   const clientOffset = parseInt(searchParams.get("offset") || "0", 10)
