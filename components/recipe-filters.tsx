@@ -13,6 +13,10 @@ import {
   updateCuisine,
   addIngredient,
   removeIngredient,
+  toggleIntolerance,
+  updateMealType,
+  addExcludeIngredient,
+  removeExcludeIngredient,
   resetFilters,
   applyFilters,
   selectFilters,
@@ -23,7 +27,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Clock, DollarSign, Utensils, Coffee, ShoppingBag, RefreshCw, X, Globe, Heart } from "lucide-react"
+import { Clock, DollarSign, Utensils, Coffee, ShoppingBag, RefreshCw, X, Globe, Heart, AlertTriangle, UtensilsCrossed, Ban } from "lucide-react"
+
+const INTOLERANCES = ["Dairy", "Egg", "Gluten", "Grain", "Peanut", "Seafood", "Sesame", "Shellfish", "Soy", "Sulfite", "Tree Nut", "Wheat"]
+
+const MEAL_TYPES = [
+  "main course", "side dish", "dessert", "appetizer", "salad", "bread",
+  "breakfast", "soup", "beverage", "sauce", "marinade", "fingerfood", "snack", "drink",
+]
 
 const CUISINES = [
   "African", "Asian", "American", "British", "Cajun", "Caribbean",
@@ -39,6 +50,7 @@ export default function RecipeFilters() {
   const hasActiveFilters = useAppSelector(selectHasActiveFilters)
   const filtersApplied = useAppSelector(selectFiltersApplied)
   const [ingredientInput, setIngredientInput] = useState("")
+  const [excludeInput, setExcludeInput] = useState("")
 
   const handleAddIngredient = (ingredient: string = ingredientInput) => {
     if (ingredient.trim()) {
@@ -245,7 +257,82 @@ export default function RecipeFilters() {
               ))}
             </div>
           )}
+          {/* Meal Type */}
+        <div className="space-y-2">
+          <label className="flex items-center text-sm font-medium">
+            <UtensilsCrossed className="h-4 w-4 mr-2 text-primary" />
+            Meal Type
+          </label>
+          <Select value={filters.mealType ?? "any"} onValueChange={(value) => dispatch(updateMealType(value))}>
+            <SelectTrigger className={(filters.mealType ?? "any") !== "any" ? "border-primary text-primary" : ""}>
+              <SelectValue placeholder="Any type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">Any type</SelectItem>
+              {MEAL_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
+        {/* Intolerances */}
+        <div className="space-y-2">
+          <label className="flex items-center text-sm font-medium">
+            <AlertTriangle className="h-4 w-4 mr-2 text-primary" />
+            Intolerances
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {INTOLERANCES.map((item) => {
+              const active = (filters.intolerances ?? []).includes(item)
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => dispatch(toggleIntolerance(item))}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${active ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/50"}`}
+                >
+                  {item}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Exclude Ingredients */}
+        <div className="space-y-2">
+          <label className="flex items-center text-sm font-medium">
+            <Ban className="h-4 w-4 mr-2 text-primary" />
+            Exclude Ingredients
+          </label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. mushrooms, onions..."
+              value={excludeInput}
+              onChange={(e) => setExcludeInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (excludeInput.trim()) { dispatch(addExcludeIngredient(excludeInput.trim())); setExcludeInput("") } } }}
+            />
+            <span className={!excludeInput.trim() ? "cursor-not-allowed" : undefined}>
+              <Button type="button" size="sm" onClick={() => { if (excludeInput.trim()) { dispatch(addExcludeIngredient(excludeInput.trim())); setExcludeInput("") } }} disabled={!excludeInput.trim()} className={!excludeInput.trim() ? "pointer-events-none" : ""}>
+                Add
+              </Button>
+            </span>
+          </div>
+          {(filters.excludeIngredients ?? []).length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {(filters.excludeIngredients ?? []).map((item, i) => (
+                <Badge key={i} variant="secondary" className="flex items-center gap-1 bg-destructive/10 text-destructive border-destructive/20">
+                  {item}
+                  <button onClick={() => dispatch(removeExcludeIngredient(item))} className="ml-1 rounded-full hover:bg-muted p-0.5">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
       </div>
 
       <div className="space-y-2">
