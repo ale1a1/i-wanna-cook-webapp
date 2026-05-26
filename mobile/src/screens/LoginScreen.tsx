@@ -1,5 +1,5 @@
-import React, { useState } from "react"
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native"
+import React, { useState, useRef } from "react"
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
@@ -20,6 +20,7 @@ export default function LoginScreen() {
   const { login } = useAuth()
   const { colors } = useTheme()
   const s = makeStyles(colors)
+  const scrollRef = useRef<ScrollView>(null)
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
@@ -27,6 +28,14 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState({ login: false, reg: false, confirm: false })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // verification step
+  const [verifyEmail, setVerifyEmail] = useState("")
+  const [verifyCode, setVerifyCode] = useState("")
+  const [verifyError, setVerifyError] = useState("")
+  const [verifyLoading, setVerifyLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
+  const [loginSuccess, setLoginSuccess] = useState("")
 
   const passwordPassed = PASSWORD_RULES.filter(r => r.test(regForm.password)).length
   const regValid = regForm.email && regForm.username.length >= 3 &&
@@ -52,27 +61,111 @@ export default function LoginScreen() {
       const res = await apiFetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: regForm.email, username: regForm.username, password: regForm.password }) })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Registration failed"); return }
-      setActiveTab("login"); setError("")
+      setVerifyEmail(regForm.email)
+      setVerifyCode("")
+      setVerifyError("")
+      scrollRef.current?.scrollTo({ y: 0, animated: true })
     } catch { setError("Something went wrong. Please try again.") }
     finally { setLoading(false) }
   }
 
+  const handleVerify = async () => {
+    setVerifyError(""); setVerifyLoading(true)
+    try {
+      const res = await apiFetch("/api/auth/verify", { method: "POST", body: JSON.stringify({ email: verifyEmail, code: verifyCode }) })
+      const data = await res.json()
+      if (!res.ok) { setVerifyError(data.error || "Verification failed"); return }
+      setVerifyEmail("")
+      setVerifyCode("")
+      setActiveTab("login")
+      setLoginForm(f => ({ ...f, email: regForm.email }))
+      setLoginSuccess("Email verified! You can now sign in.")
+      scrollRef.current?.scrollTo({ y: 0, animated: true })
+    } catch { setVerifyError("Something went wrong. Please try again.") }
+    finally { setVerifyLoading(false) }
+  }
+
+  const handleResend = async () => {
+    setResendLoading(true); setVerifyError("")
+    try {
+      await apiFetch("/api/auth/verify", { method: "PUT", body: JSON.stringify({ email: verifyEmail }) })
+    } catch { /* ignore */ }
+    finally { setResendLoading(false) }
+  }
+
+  if (verifyEmail) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView ref={scrollRef} style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+          <View style={s.logoRow}>
+            <Ionicons name="restaurant" size={48} color={colors.primary} />
+            <Text style={s.logoText}>What Should I Cook?</Text>
+          </View>
+          <View style={s.card}>
+            <View style={[s.banner, { backgroundColor: colors.primary + "22" }]}>
+              <Ionicons name="mail-outline" size={20} color={colors.primary} />
+              <Text style={[s.bannerText, { color: colors.primary }]}>
+                We sent a 6-digit code to {verifyEmail}. Check your inbox (and spam folder).
+              </Text>
+            </View>
+            <View style={s.form}>
+              <Text style={s.sectionTitle}>Verify your email</Text>
+              <View style={s.field}>
+                <Text style={s.label}>Verification code</Text>
+                <TextInput
+                  style={[s.input, s.codeInput]}
+                  value={verifyCode}
+                  onChangeText={v => setVerifyCode(v.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="123456"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoFocus
+                />
+              </View>
+              {verifyError ? <Text style={s.error}>{verifyError}</Text> : null}
+              <TouchableOpacity
+                style={[s.submitBtn, verifyCode.length !== 6 && s.submitBtnDisabled]}
+                onPress={handleVerify}
+                disabled={verifyLoading || verifyCode.length !== 6}
+              >
+                {verifyLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Verify Email</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={s.linkBtn} onPress={handleResend} disabled={resendLoading}>
+                <Text style={s.linkBtnText}>{resendLoading ? "Sending..." : "Didn't get a code? Resend"}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.linkBtn} onPress={() => setVerifyEmail("")}>
+                <Text style={[s.linkBtnText, { color: colors.muted }]}>Back to register</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1 }}>
+      <ScrollView ref={scrollRef} style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <View style={s.logoRow}>
           <Ionicons name="restaurant" size={48} color={colors.primary} />
           <Text style={s.logoText}>What Should I Cook?</Text>
         </View>
         <View style={s.card}>
           <View style={s.tabs}>
-            <TouchableOpacity style={[s.tab, activeTab === "login" && s.tabActive]} onPress={() => { setActiveTab("login"); setError("") }}>
+            <TouchableOpacity style={[s.tab, activeTab === "login" && s.tabActive]} onPress={() => { setActiveTab("login"); setError(""); setLoginSuccess("") }}>
               <Text style={[s.tabText, activeTab === "login" && s.tabTextActive]}>Login</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[s.tab, activeTab === "register" && s.tabActive]} onPress={() => { setActiveTab("register"); setError("") }}>
+            <TouchableOpacity style={[s.tab, activeTab === "register" && s.tabActive]} onPress={() => { setActiveTab("register"); setError(""); setLoginSuccess("") }}>
               <Text style={[s.tabText, activeTab === "register" && s.tabTextActive]}>Register</Text>
             </TouchableOpacity>
           </View>
+          {loginSuccess ? (
+            <View style={[s.banner, { backgroundColor: colors.green + "22" }]}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={colors.green} />
+              <Text style={[s.bannerText, { color: colors.green }]}>{loginSuccess}</Text>
+            </View>
+          ) : null}
           {activeTab === "login" ? (
             <View style={s.form}>
               <View style={s.field}>
@@ -111,29 +204,40 @@ export default function LoginScreen() {
                     <Ionicons name={showPass.reg ? "eye-off" : "eye"} size={20} color={colors.muted} />
                   </TouchableOpacity>
                 </View>
-                {regForm.password.length > 0 && (
-                  <View style={{ marginTop: 8 }}>
-                    <View style={s.strengthBar}>
-                      <View style={[s.strengthFill, { width: `${(passwordPassed / PASSWORD_RULES.length) * 100}%` as any, backgroundColor: passwordPassed <= 2 ? colors.destructive : passwordPassed <= 4 ? colors.yellow : colors.green }]} />
-                    </View>
-                    {PASSWORD_RULES.map(rule => (
-                      <View key={rule.label} style={s.ruleRow}>
-                        <Ionicons name={rule.test(regForm.password) ? "checkmark-circle" : "close-circle"} size={13} color={rule.test(regForm.password) ? colors.green : colors.muted} />
-                        <Text style={[s.ruleText, rule.test(regForm.password) && { color: colors.green }]}>{rule.label}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
               </View>
               <View style={s.field}>
                 <Text style={s.label}>Confirm Password</Text>
                 <View style={s.inputWrapper}>
-                  <TextInput style={[s.input, { flex: 1, borderWidth: 0 }]} value={regForm.confirm} onChangeText={v => setRegForm(f => ({ ...f, confirm: v }))} placeholder="••••••••" placeholderTextColor={colors.muted} secureTextEntry={!showPass.confirm} autoCapitalize="none" />
+                  <TextInput
+                    style={[s.input, { flex: 1, borderWidth: 0 }]}
+                    value={regForm.confirm}
+                    onChangeText={v => setRegForm(f => ({ ...f, confirm: v }))}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry={!showPass.confirm}
+                    autoCapitalize="none"
+                  />
                   <TouchableOpacity onPress={() => setShowPass(p => ({ ...p, confirm: !p.confirm }))}>
                     <Ionicons name={showPass.confirm ? "eye-off" : "eye"} size={20} color={colors.muted} />
                   </TouchableOpacity>
                 </View>
+                {regForm.confirm.length > 0 && regForm.password !== regForm.confirm && (
+                  <Text style={s.error}>Passwords do not match</Text>
+                )}
               </View>
+              {regForm.password.length > 0 && (
+                <View style={s.rulesBox}>
+                  <View style={s.strengthBar}>
+                    <View style={[s.strengthFill, { width: `${(passwordPassed / PASSWORD_RULES.length) * 100}%` as any, backgroundColor: passwordPassed <= 2 ? colors.destructive : passwordPassed <= 4 ? colors.yellow : colors.green }]} />
+                  </View>
+                  {PASSWORD_RULES.map(rule => (
+                    <View key={rule.label} style={s.ruleRow}>
+                      <Ionicons name={rule.test(regForm.password) ? "checkmark-circle" : "close-circle"} size={13} color={rule.test(regForm.password) ? colors.green : colors.muted} />
+                      <Text style={[s.ruleText, rule.test(regForm.password) && { color: colors.green }]}>{rule.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
               {error ? <Text style={s.error}>{error}</Text> : null}
               <TouchableOpacity style={[s.submitBtn, !regValid && s.submitBtnDisabled]} onPress={handleRegister} disabled={loading || !regValid}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Create Account</Text>}
@@ -142,13 +246,13 @@ export default function LoginScreen() {
           )}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingTop: 40, paddingBottom: 40 },
+  content: { padding: spacing.md, paddingTop: 40, paddingBottom: 120 },
   logoRow: { alignItems: "center", gap: 12, marginBottom: 28 },
   logoText: { fontSize: 22, fontWeight: "800", color: colors.text, textAlign: "center" },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
@@ -162,12 +266,19 @@ const makeStyles = (colors: any) => StyleSheet.create({
   label: { fontSize: 13, fontWeight: "600", color: colors.text },
   input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 11, color: colors.text, fontSize: 14 },
   inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12 },
+  codeInput: { textAlign: "center", fontSize: 28, fontWeight: "700", letterSpacing: 8 },
+  rulesBox: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 10, gap: 4 },
   strengthBar: { height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: "hidden", marginBottom: 6 },
-  strengthFill: { height: "100%", borderRadius: 2 },
+  strengthFill: { height: "100%" as any, borderRadius: 2 },
   ruleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
   ruleText: { fontSize: 12, color: colors.muted },
   error: { fontSize: 13, color: colors.destructive },
   submitBtn: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.md, alignItems: "center" },
   submitBtnDisabled: { opacity: 0.5 },
   submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  banner: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  bannerText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+  linkBtn: { alignItems: "center", paddingVertical: 4 },
+  linkBtnText: { fontSize: 13, color: colors.primary },
 })

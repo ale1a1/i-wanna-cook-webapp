@@ -63,7 +63,7 @@ export default function ProfileScreen() {
       .catch(() => {})
   }, [user]))
 
-  const handleLogout = async () => { await logout(); navigation.navigate("Home") }
+  const handleLogout = async () => { await logout(); navigation.navigate("Tabs") }
 
   const handleSaveUsername = async () => {
     if (newUsername.length < 3) { setUsernameError("Min. 3 characters"); return }
@@ -98,7 +98,7 @@ export default function ProfileScreen() {
       const res = await apiFetch("/api/user", { method: "DELETE", body: JSON.stringify({ userId: user!.id, accessToken: user!.accessToken }) })
       const data = await res.json()
       if (!res.ok) { setDeleteError(data.error); return }
-      await logout(); navigation.navigate("Home")
+      await logout(); navigation.navigate("Tabs")
     } catch { setDeleteError("Deletion failed") }
     finally { setDeleteLoading(false) }
   }
