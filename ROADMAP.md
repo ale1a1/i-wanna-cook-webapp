@@ -2,6 +2,10 @@
 WHAT SHOULD I COOK — ROADMAP
 ================================================================
 
+All items refer to the mobile app (React Native / Expo) unless explicitly stated otherwise.
+Backend API routes (/api/*) and the Next.js server are shared infrastructure — they are
+not considered "web app features" and changes to them apply to both platforms.
+
 
 ================================================================
 LIST: ALREADY BUILT
@@ -25,8 +29,8 @@ Check off items per recipe. Delete individual items or clear all.
 Tried recipes history
 Log recipes tried.
 
-User accounts
-Register, login, email verify, forgot password, change password, delete account.
+User accounts (mobile)
+Register, login, email verify (inline verification code screen), forgot password, change password, delete account. All flows handled inside the app — no browser redirect.
 
 Light / dark theme
 
@@ -34,13 +38,13 @@ Weekly AI meal planner (v1 — basic)
 Generate, save, delete plans. Meal plan history stored in DB.
 Settings: daily calories target, diet type only.
 
-Cooking mode (mobile)
+Cooking mode
 Fullscreen step-by-step view. Swipe navigation.
 
-Voice cooking (mobile)
+Voice cooking
 Reads steps aloud. Voice commands. Powered by expo-speech.
 
-AI ingredient photo scanner (mobile)
+AI ingredient photo scanner
 Camera or photo library. Up to 10 images per session. Review and remove detected ingredients before searching. Skip match-mode step when only 1 ingredient detected. AI prompt returns generic ingredient names for better Spoonacular matching. 3-tier search fallback so scanned ingredients always find results.
 
 Premium tier infrastructure
@@ -78,22 +82,19 @@ Wine pairing breakfast guard
 Tapping the Wine tab on a breakfast recipe from the meal planner shows a joke alert instead of opening wine content.
 
 Auto logout when JWT expires ✅ DONE
-Token expiry stored in localStorage on login, checked on every route change in Header. Redirects cleanly to /login — no crash, no broken state.
+Token expiry checked on app focus and API calls. Clears auth state and returns user to sign-in — no crash, no broken state.
 
 Registration disclaimer checkbox ✅ DONE
 Checkbox required before account creation. Acceptance timestamp stored in users.disclaimer_accepted_at.
 
 14-day free trial on registration ✅ DONE
-trial_started_at set in DB on signup. Login computes trialActive/isPremium and returns them. Redux and localStorage store full subscription state. No card required.
-
-Trial days remaining on profile screen ✅ DONE
-Trial card on profile shows days left, expired state, or premium badge. Upgrade button shown for non-premium users.
+trial_started_at set in DB on signup. Login computes trialActive/isPremium and returns them. No card required.
 
 Enforce 10 searches/week for free users ✅ DONE
-search_usage table tracks weekly usage per user. 429 SEARCH_LIMIT returned when exceeded. Premium and trial users are unlimited.
+search_usage table tracks weekly usage per user. 429 SEARCH_LIMIT returned when exceeded. App shows friendly upgrade message. Premium and trial users are unlimited.
 
 Rate-limit AI scanner to 3 scans/week for free users ✅ DONE
-scan_usage table tracks weekly scan usage. 429 SCAN_LIMIT returned when exceeded. Mobile shows friendly upgrade message.
+scan_usage table tracks weekly scan usage. 429 SCAN_LIMIT returned when exceeded. App shows friendly upgrade message.
 
 Lock meal plan history to premium ✅ DONE
 Free users GET returns max 1 (most recent) plan with historyLocked:true. Premium gets full history up to 20.
@@ -116,8 +117,11 @@ Sent on login when ≤2 days left on trial and not yet sent. Tracked via trial_w
 Account deletion confirmation email ✅ DONE
 Sent after successful account deletion with user's name and confirmation that all data is permanently removed.
 
-Portfolio demo credentials button ✅ DONE
-"Use demo credentials" button on the login page pre-fills the form. Login with the portfolio account triggers a notification email with IP, browser, and timestamp.
+Registration UX — inline email verification ✅ DONE
+After registration, app shows a dedicated verification code screen (not a silent tab switch). Blue info banner, large centered code input, Verify button, Resend link. After verify, switches to login tab with success banner. Cognito AutoVerifiedAttributes enabled so resend works.
+
+Cognito verification email branding ✅ DONE
+Subject: "Your What Should I Cook verification code". HTML body with app name header and styled code block.
 
 
 ================================================================
@@ -126,6 +130,10 @@ LIST: MUST — Before Launch
 
 --- Subscription & Trial ---
 
+Trial days remaining on profile screen
+Show a trial status card on the mobile Profile screen: days remaining, expired state, or premium badge. Upgrade button for non-premium users.
+NOTE: This exists on the web app only. NOT yet built in mobile.
+
 Wire up Google Play Billing
 Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
 
@@ -133,7 +141,7 @@ Apple IAP (if doing iOS)
 Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
 
 Auto-downgrade to free tier when trial expires
-When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt. Currently trial_active is computed at login time from trial_started_at — the enforcement is already there, but the UI needs to reflect it gracefully after expiry without requiring a re-login.
+When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt. trial_active is computed at login time from trial_started_at — enforcement is already there, but the UI needs to reflect it gracefully after expiry without requiring a re-login.
 
 --- Search ---
 
@@ -237,7 +245,7 @@ Voice cooking assistant Phase 2
 Always-on microphone across the whole app. Navigate by voice, search by voice, apply filters by voice. "Go to favourites", "search chicken pasta", "open the first one", "scroll down". Persistent subtle listening indicator.
 
 Language preference
-User selects language, persisted to profile. Flag in navbar.
+User selects language, persisted to profile.
 
 MFA
 Multi-factor authentication via AWS Cognito. Low priority but good for trust.
@@ -256,8 +264,8 @@ Once the in-app shopping list is generated from a recipe or meal plan, let the u
 Fridge photo to full pantry state
 Already partially built — ingredient scan exists. Full "what can I cook with this?" flow using full pantry state. Needs Spoonacular Cook plan ($29/mo) at scale.
 
-Collection management
-Recipe boards, folders, custom collections. More of a web feature.
+Recipe collections management
+Recipe boards, folders, custom collections.
 
 
 ================================================================
@@ -272,9 +280,6 @@ Queue workers for re-engagement emails. Welcome/warning/deletion emails currentl
 
 CloudFront CDN
 Faster image delivery globally.
-
-Stripe subscriptions
-Web subscription flow.
 
 Analytics platform
 Track user behaviour, premium conversion, trial retention.
@@ -316,8 +321,9 @@ Region: eu-west-2.
 Breaking points:
 - "UserNotConfirmedException" → user registered but didn't verify email. Resend code flow needed.
 - "NotAuthorizedException" → wrong password or user doesn't exist.
-- JWT expired → auto-logout now handled. Token expiry stored in localStorage, checked on every route change in Header.
+- JWT expired → auto-logout handled. Auth state cleared on expiry.
 - Cognito User Pool ID or Client ID mismatch → check Amplify environment variables vs hardcoded config.
+- Resend code fails with "Auto verification not turned on" → AutoVerifiedAttributes must include 'email' on the user pool (now set).
 
 AWS RDS PostgreSQL
 Used for: all persistent data — users, favourites, shopping list, tried recipes, meal plans, ratings, quick shopping list, active recipe session, search_usage, scan_usage.
@@ -337,7 +343,7 @@ Breaking points:
 - Old code still running after push → Amplify cache. Trigger a manual redeploy from the console.
 
 Resend (email)
-Used for: welcome email, trial warning email, deletion confirmation email, portfolio login notification, error reports.
+Used for: welcome email, trial warning email, deletion confirmation email, portfolio login notification.
 API key: RESEND_API_KEY in .env.local and Amplify env vars.
 From address: onboarding@resend.dev (works for sending to the Resend account owner's email on free plan).
 Breaking points:
@@ -347,9 +353,11 @@ Breaking points:
 Expo / React Native (mobile)
 Breaking points:
 - Metro bundler crash → delete node_modules/.cache and restart.
+- Public Wi-Fi blocks LAN → use pnpm expo start --tunnel (ngrok tunnel bypasses client isolation).
 - Android build fails → check C:\p\ short path workaround (Windows 260-char path limit). See APK build notes.
 - expo-speech not working on device → physical device permissions or TTS engine not installed. Works fine on emulator.
 - Navigation crash on tab swap → session state changed mid-render. Check HomeTabs conditional tab logic in App.tsx.
+- "failed to download remote update" error in Expo Go → usually a network issue (public Wi-Fi). Use --tunnel.
 
 
 ================================================================
