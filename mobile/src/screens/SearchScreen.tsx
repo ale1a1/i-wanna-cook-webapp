@@ -155,6 +155,7 @@ export default function SearchScreen() {
   const [sortDirection, setSortDirection] = useState("desc")
   const [ingredientMode, setIngredientMode] = useState<"all" | "some">("all")
   const [fromScan, setFromScan] = useState(false)
+  const [lastSearchKey, setLastSearchKey] = useState<string | null>(null)
 
   // collapsible sections
   const [openSection, setOpenSection] = useState<string | null>(null)
@@ -255,6 +256,9 @@ export default function SearchScreen() {
 
   const startSearch = (f = filters) => {
     setFiltersOpen(false)
+    const key = JSON.stringify({ f, nutrition, sort, sortDirection, ingredientMode })
+    if (key === lastSearchKey) return
+    setLastSearchKey(key)
     fetchRecipesWithMode(f, ingredientMode)
   }
 
@@ -421,24 +425,12 @@ export default function SearchScreen() {
     <>
     <SafeAreaView style={s.container} edges={["top"]}>
       <View style={s.topBar}>
-        {searched ? (
-          <TouchableOpacity style={s.refinePill} onPress={() => setFiltersOpen(true)}>
-            <Ionicons name="options-outline" size={16} color={colors.mutedForeground} />
-            <Text style={s.refineSummary} numberOfLines={1}>{filterSummary}</Text>
-            <Text style={s.refineBtn}>Refine</Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
-              <Ionicons name="options-outline" size={20} color={colors.primary} />
-              <Text style={s.filterToggleText}>Filters</Text>
-              {hasActiveFilters && <View style={s.filterDot} />}
-            </TouchableOpacity>
-            <TouchableOpacity style={[s.applyBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => startSearch()} disabled={!hasActiveFilters}>
-              <Text style={s.applyBtnText}>Search</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
+          <Ionicons name="options-outline" size={20} color={hasActiveFilters ? colors.primary : colors.mutedForeground} />
+          <Text style={s.filterToggleText} numberOfLines={1}>{searched && hasActiveFilters ? filterSummary : "Filters"}</Text>
+          {hasActiveFilters && <View style={s.filterDot} />}
+          {searched && <Text style={s.refineLabel}>Refine</Text>}
+        </TouchableOpacity>
       </View>
 
       <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet">
@@ -582,12 +574,12 @@ export default function SearchScreen() {
 
           </ScrollView>
           <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setNutrition(defaultNutrition); setSort("none"); setSortDirection("desc"); setSearched(false) }} disabled={!hasActiveFilters && !searched}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setNutrition(defaultNutrition); setSort("none"); setSortDirection("desc"); setSearched(false); setLastSearchKey(null) }} disabled={!hasActiveFilters && !searched}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.applyBtnLarge, !hasActiveFilters && s.btnDisabled]} onPress={() => startSearch()} disabled={!hasActiveFilters}>
-              <Text style={s.applyBtnText}>Apply Filters</Text>
+              <Text style={s.applyBtnText}>Search</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -695,9 +687,10 @@ const makeStyles = (colors: any) => StyleSheet.create({
   refinePill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   refineSummary: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "500" },
   refineBtn: { color: colors.primary, fontSize: 14, fontWeight: "700" },
-  filterToggle: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, backgroundColor: colors.card, padding: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
-  filterToggleText: { color: colors.text, fontSize: 15, fontWeight: "500" },
-  filterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary, marginLeft: "auto" },
+  filterToggle: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, backgroundColor: colors.card, paddingHorizontal: 14, paddingVertical: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  filterToggleText: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "500" },
+  filterDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  refineLabel: { fontSize: 13, fontWeight: "700", color: colors.primary },
   applyBtn: { backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: radius.md },
   applyBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
