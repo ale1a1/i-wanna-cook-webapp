@@ -146,13 +146,15 @@ export default function ProfileScreen() {
 
         {/* Trial / subscription card */}
         {(() => {
-          const { isPremium, trialActive, trialExpiresAt } = user as any
+          const isPremium = (user as any).isPremium ?? false
+          const trialActive = (user as any).trialActive ?? false
+          const trialExpiresAt = (user as any).trialExpiresAt ?? null
           const daysLeft = trialExpiresAt
             ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
             : 0
           if (isPremium && !trialActive) {
             return (
-              <View style={[s.card, { borderColor: colors.primary }]}>
+              <View style={[s.card, { borderColor: colors.primary, backgroundColor: colors.primary + "18" }]}>
                 <View style={s.trialRow}>
                   <Ionicons name="star" size={18} color={colors.primary} />
                   <Text style={[s.trialTitle, { color: colors.primary }]}>Premium</Text>
@@ -163,7 +165,7 @@ export default function ProfileScreen() {
           }
           if (trialActive) {
             return (
-              <View style={[s.card, { borderColor: colors.primary }]}>
+              <View style={[s.card, { borderColor: colors.primary, backgroundColor: colors.primary + "18" }]}>
                 <View style={s.trialRow}>
                   <Ionicons name="timer-outline" size={18} color={colors.primary} />
                   <Text style={[s.trialTitle, { color: colors.primary }]}>Free Trial</Text>
@@ -174,9 +176,9 @@ export default function ProfileScreen() {
             )
           }
           return (
-            <View style={[s.card, { borderColor: colors.border }]}>
+            <View style={[s.card, { borderColor: colors.destructive, backgroundColor: colors.destructive + "18" }]}>
               <View style={s.trialRow}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.mutedForeground} />
+                <Ionicons name="lock-closed-outline" size={18} color={colors.destructive} />
                 <Text style={[s.trialTitle, { color: colors.text }]}>Free Plan</Text>
               </View>
               <Text style={s.trialSub}>10 searches/week · 3 scans/week</Text>
