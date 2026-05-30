@@ -4,6 +4,7 @@
 
 - Don't use fire-and-forget for important async operations (like emails). Always `await` and log the result.
 - Don't check git push permission implicitly — always ask before pushing.
+- Never commit unless the user explicitly says to commit. Do not ask if they want to commit after finishing a task. Wait for them to say "commit" or "now commit".
 - When checking which user triggered something, match against `user.email`, not `user.username`.
 - Don't over-explain or narrate what you're doing. Be short.
 - Don't repeat the same instruction back to me. Just do it.
