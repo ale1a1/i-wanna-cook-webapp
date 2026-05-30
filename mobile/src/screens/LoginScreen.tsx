@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login")
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [regForm, setRegForm] = useState({ email: "", username: "", password: "", confirm: "" })
-  const [showPass, setShowPass] = useState({ login: false, reg: false, confirm: false })
+  const [showPass, setShowPass] = useState({ login: false, reg: false, confirm: false, reset: false })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -37,7 +37,16 @@ export default function LoginScreen() {
   const [resendLoading, setResendLoading] = useState(false)
   const [loginSuccess, setLoginSuccess] = useState("")
 
+  // forgot password step: "email" | "reset" | null
+  const [forgotStep, setForgotStep] = useState<"email" | "reset" | null>(null)
+  const [forgotEmail, setForgotEmail] = useState("")
+  const [resetCode, setResetCode] = useState("")
+  const [resetPassword, setResetPassword] = useState("")
+  const [forgotError, setForgotError] = useState("")
+  const [forgotLoading, setForgotLoading] = useState(false)
+
   const passwordPassed = PASSWORD_RULES.filter(r => r.test(regForm.password)).length
+  const resetPasswordPassed = PASSWORD_RULES.filter(r => r.test(resetPassword)).length
   const regValid = regForm.email && regForm.username.length >= 3 &&
     PASSWORD_RULES.every(r => r.test(regForm.password)) && regForm.password === regForm.confirm
 
@@ -93,6 +102,34 @@ export default function LoginScreen() {
     finally { setResendLoading(false) }
   }
 
+  const handleForgotRequest = async () => {
+    if (!forgotEmail) { setForgotError("Enter your email"); return }
+    setForgotError(""); setForgotLoading(true)
+    try {
+      await apiFetch("/api/auth/forgot-password", { method: "POST", body: JSON.stringify({ email: forgotEmail }) })
+      setForgotStep("reset")
+    } catch { setForgotError("Something went wrong. Please try again.") }
+    finally { setForgotLoading(false) }
+  }
+
+  const handleForgotReset = async () => {
+    if (!PASSWORD_RULES.every(r => r.test(resetPassword))) { setForgotError("Password doesn't meet requirements"); return }
+    setForgotError(""); setForgotLoading(true)
+    try {
+      const res = await apiFetch("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ email: forgotEmail, code: resetCode, newPassword: resetPassword }) })
+      const data = await res.json()
+      if (!res.ok) { setForgotError(data.error || "Reset failed"); return }
+      setForgotStep(null)
+      setForgotEmail("")
+      setResetCode("")
+      setResetPassword("")
+      setLoginForm(f => ({ ...f, email: forgotEmail }))
+      setLoginSuccess("Password reset! You can now sign in.")
+    } catch { setForgotError("Something went wrong. Please try again.") }
+    finally { setForgotLoading(false) }
+  }
+
+  // Verify email screen
   if (verifyEmail) {
     return (
       <View style={{ flex: 1 }}>
@@ -112,23 +149,10 @@ export default function LoginScreen() {
               <Text style={s.sectionTitle}>Verify your email</Text>
               <View style={s.field}>
                 <Text style={s.label}>Verification code</Text>
-                <TextInput
-                  style={[s.input, s.codeInput]}
-                  value={verifyCode}
-                  onChangeText={v => setVerifyCode(v.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="123456"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  autoFocus
-                />
+                <TextInput style={[s.input, s.codeInput]} value={verifyCode} onChangeText={v => setVerifyCode(v.replace(/\D/g, "").slice(0, 6))} placeholder="123456" placeholderTextColor={colors.muted} keyboardType="number-pad" maxLength={6} autoFocus />
               </View>
               {verifyError ? <Text style={s.error}>{verifyError}</Text> : null}
-              <TouchableOpacity
-                style={[s.submitBtn, verifyCode.length !== 6 && s.submitBtnDisabled]}
-                onPress={handleVerify}
-                disabled={verifyLoading || verifyCode.length !== 6}
-              >
+              <TouchableOpacity style={[s.submitBtn, verifyCode.length !== 6 && s.submitBtnDisabled]} onPress={handleVerify} disabled={verifyLoading || verifyCode.length !== 6}>
                 {verifyLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Verify Email</Text>}
               </TouchableOpacity>
               <TouchableOpacity style={s.linkBtn} onPress={handleResend} disabled={resendLoading}>
@@ -136,6 +160,97 @@ export default function LoginScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={s.linkBtn} onPress={() => setVerifyEmail("")}>
                 <Text style={[s.linkBtnText, { color: colors.muted }]}>Back to register</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  // Forgot password — enter email
+  if (forgotStep === "email") {
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+          <View style={s.logoRow}>
+            <Ionicons name="restaurant" size={48} color={colors.primary} />
+            <Text style={s.logoText}>What Should I Cook?</Text>
+          </View>
+          <View style={s.card}>
+            <View style={s.form}>
+              <Text style={s.sectionTitle}>Reset password</Text>
+              <Text style={{ fontSize: 13, color: colors.mutedForeground }}>Enter your email and we'll send you a reset code.</Text>
+              <View style={s.field}>
+                <Text style={s.label}>Email</Text>
+                <TextInput style={s.input} value={forgotEmail} onChangeText={setForgotEmail} placeholder="you@example.com" placeholderTextColor={colors.muted} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoFocus />
+              </View>
+              {forgotError ? <Text style={s.error}>{forgotError}</Text> : null}
+              <TouchableOpacity style={[s.submitBtn, !forgotEmail && s.submitBtnDisabled]} onPress={handleForgotRequest} disabled={forgotLoading || !forgotEmail}>
+                {forgotLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Send Reset Code</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={s.linkBtn} onPress={() => { setForgotStep(null); setForgotError("") }}>
+                <Text style={[s.linkBtnText, { color: colors.muted }]}>Back to sign in</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  // Forgot password — enter code + new password
+  if (forgotStep === "reset") {
+    return (
+      <View style={{ flex: 1 }}>
+        <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+          <View style={s.logoRow}>
+            <Ionicons name="restaurant" size={48} color={colors.primary} />
+            <Text style={s.logoText}>What Should I Cook?</Text>
+          </View>
+          <View style={s.card}>
+            <View style={[s.banner, { backgroundColor: colors.primary + "22" }]}>
+              <Ionicons name="mail-outline" size={20} color={colors.primary} />
+              <Text style={[s.bannerText, { color: colors.primary }]}>We sent a reset code to {forgotEmail}. Check your inbox.</Text>
+            </View>
+            <View style={s.form}>
+              <Text style={s.sectionTitle}>Set new password</Text>
+              <View style={s.field}>
+                <Text style={s.label}>Reset code</Text>
+                <TextInput style={[s.input, s.codeInput]} value={resetCode} onChangeText={v => setResetCode(v.replace(/\D/g, "").slice(0, 6))} placeholder="123456" placeholderTextColor={colors.muted} keyboardType="number-pad" maxLength={6} autoFocus />
+              </View>
+              <View style={s.field}>
+                <Text style={s.label}>New password</Text>
+                <View style={s.inputWrapper}>
+                  <TextInput style={[s.input, { flex: 1, borderWidth: 0 }]} value={resetPassword} onChangeText={setResetPassword} placeholder="••••••••" placeholderTextColor={colors.muted} secureTextEntry={!showPass.reset} autoCapitalize="none" />
+                  <TouchableOpacity onPress={() => setShowPass(p => ({ ...p, reset: !p.reset }))}>
+                    <Ionicons name={showPass.reset ? "eye-off" : "eye"} size={20} color={colors.muted} />
+                  </TouchableOpacity>
+                </View>
+                {resetPassword.length > 0 && (
+                  <View style={[s.rulesBox, { marginTop: 6 }]}>
+                    <View style={s.strengthBar}>
+                      <View style={[s.strengthFill, { width: `${(resetPasswordPassed / PASSWORD_RULES.length) * 100}%` as any, backgroundColor: resetPasswordPassed <= 2 ? colors.destructive : resetPasswordPassed <= 4 ? colors.yellow : colors.green }]} />
+                    </View>
+                    {PASSWORD_RULES.map(rule => (
+                      <View key={rule.label} style={s.ruleRow}>
+                        <Ionicons name={rule.test(resetPassword) ? "checkmark-circle" : "close-circle"} size={13} color={rule.test(resetPassword) ? colors.green : colors.muted} />
+                        <Text style={[s.ruleText, rule.test(resetPassword) && { color: colors.green }]}>{rule.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+              {forgotError ? <Text style={s.error}>{forgotError}</Text> : null}
+              <TouchableOpacity
+                style={[s.submitBtn, (resetCode.length !== 6 || !PASSWORD_RULES.every(r => r.test(resetPassword))) && s.submitBtnDisabled]}
+                onPress={handleForgotReset}
+                disabled={forgotLoading || resetCode.length !== 6 || !PASSWORD_RULES.every(r => r.test(resetPassword))}
+              >
+                {forgotLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Reset Password</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={s.linkBtn} onPress={() => setForgotStep("email")}>
+                <Text style={[s.linkBtnText, { color: colors.muted }]}>Back</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -185,6 +300,9 @@ export default function LoginScreen() {
               <TouchableOpacity style={s.submitBtn} onPress={handleLogin} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Sign in</Text>}
               </TouchableOpacity>
+              <TouchableOpacity style={s.linkBtn} onPress={() => { setForgotEmail(loginForm.email); setForgotError(""); setForgotStep("email") }}>
+                <Text style={s.linkBtnText}>Forgot password?</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={s.form}>
@@ -208,15 +326,7 @@ export default function LoginScreen() {
               <View style={s.field}>
                 <Text style={s.label}>Confirm Password</Text>
                 <View style={s.inputWrapper}>
-                  <TextInput
-                    style={[s.input, { flex: 1, borderWidth: 0 }]}
-                    value={regForm.confirm}
-                    onChangeText={v => setRegForm(f => ({ ...f, confirm: v }))}
-                    placeholder="••••••••"
-                    placeholderTextColor={colors.muted}
-                    secureTextEntry={!showPass.confirm}
-                    autoCapitalize="none"
-                  />
+                  <TextInput style={[s.input, { flex: 1, borderWidth: 0 }]} value={regForm.confirm} onChangeText={v => setRegForm(f => ({ ...f, confirm: v }))} placeholder="••••••••" placeholderTextColor={colors.muted} secureTextEntry={!showPass.confirm} autoCapitalize="none" />
                   <TouchableOpacity onPress={() => setShowPass(p => ({ ...p, confirm: !p.confirm }))}>
                     <Ionicons name={showPass.confirm ? "eye-off" : "eye"} size={20} color={colors.muted} />
                   </TouchableOpacity>
