@@ -242,7 +242,7 @@ function AppNavigator() {
       <Stack.Screen name="Tabs" component={HomeTabs} options={{ headerShown: false }} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={({ route }: any) => ({ title: route.params?.title ?? "Recipe", headerBackTitle: "Back" })} />
       <Stack.Screen name="CookingMode" component={CookingModeScreen} options={{ headerShown: false, presentation: "fullScreenModal" }} />
-      <Stack.Screen name="Login" component={LoginScreen} options={({ navigation }: any) => ({ title: "Sign in", presentation: "modal", headerLeft: () => ( <TouchableOpacity onPress={() => navigation.navigate("Tabs")} style={{ paddingHorizontal: 8 }}><Ionicons name="close" size={24} color="#fff" /></TouchableOpacity> ) })} />
+      <Stack.Screen name="Login" component={LoginScreen} options={({ navigation }: any) => ({ title: "Sign in", presentation: "modal", headerLeft: () => ( <TouchableOpacity onPress={() => navigation.navigate("Tabs")} style={{ paddingHorizontal: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity> ) })} />
       <Stack.Screen name="Favourites" component={FavouritesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Tried" component={TriedRecipesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="MealPlan" component={MealPlanScreen} options={{ headerShown: false }} />
