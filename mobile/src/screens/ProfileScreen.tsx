@@ -161,7 +161,7 @@ export default function ProfileScreen() {
               </View>
             )
           }
-          if (trialActive && daysLeft > 0) {
+          if (trialActive) {
             return (
               <View style={[s.card, { borderColor: colors.primary }]}>
                 <View style={s.trialRow}>

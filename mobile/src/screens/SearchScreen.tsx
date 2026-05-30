@@ -9,7 +9,7 @@ import { reportError } from "../lib/reportError"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { useSubscription } from "../context/SubscriptionContext"
-import { AuthContext } from "../context/AuthContext"
+import { useAuth } from "../context/AuthContext"
 import PaywallModal from "../components/PaywallModal"
 import { spacing, radius } from "../lib/theme"
 
@@ -98,7 +98,7 @@ export default function SearchScreen() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [ingredientInput, setIngredientInput] = useState("")
   const { isPremium } = useSubscription()
-  const { user } = React.useContext(AuthContext)
+  const { user } = useAuth()
   const [showPaywall, setShowPaywall] = useState(false)
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[], calories: "any", protein: "any" }
   const [filters, setFilters] = useState(defaultFilters)
