@@ -157,7 +157,7 @@ export default function SearchScreen() {
   const [fromScan, setFromScan] = useState(false)
 
   // collapsible sections
-  const [openSection, setOpenSection] = useState<string | null>("recipe")
+  const [openSection, setOpenSection] = useState<string | null>(null)
 
   useEffect(() => {
     if (route.params?.scannedIngredients?.length) {
@@ -432,8 +432,14 @@ export default function SearchScreen() {
                 <FilterPicker label="Cuisine" values={CUISINES} labelMap={{ any: "Any cuisine", italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese", french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek" }} field="cuisine" />
                 <FilterPicker label="Healthiness" values={HEALTHINESS} labelMap={HEALTH_LABELS} field="healthiness" />
                 <FilterPicker label="Taste" values={TASTES} labelMap={TASTE_LABELS} field="taste" />
+              </View>
+            )}
+
+            {/* ── INGREDIENTS ── */}
+            <SectionHeader title="Ingredients" sectionKey="ingredients" />
+            {openSection === "ingredients" && (
+              <View style={s.sectionBody}>
                 <View style={s.filterRow}>
-                  <Text style={s.filterRowLabel}>Ingredients</Text>
                   <View style={s.ingredientRow}>
                     <TextInput style={s.ingredientInput} value={ingredientInput} onChangeText={setIngredientInput} placeholder="e.g. chicken, garlic..." placeholderTextColor={colors.muted} onSubmitEditing={addIngredient} returnKeyType="done" />
                     <TouchableOpacity style={[s.addBtn, !ingredientInput.trim() && s.btnDisabled]} onPress={addIngredient} disabled={!ingredientInput.trim()}>
