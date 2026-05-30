@@ -158,6 +158,7 @@ export default function SearchScreen() {
 
   // collapsible sections
   const [openSection, setOpenSection] = useState<string | null>(null)
+  const [openPicker, setOpenPicker] = useState<string | null>(null)
 
   useEffect(() => {
     if (route.params?.scannedIngredients?.length) {
@@ -314,24 +315,37 @@ export default function SearchScreen() {
 
   const pickAndAnalyzeImages = useCallback(() => { setCapturedAssets([]); setScannerOpen(true) }, [])
 
-  const FilterPicker = ({ label, values, labelMap, field }: { label: string; values: string[]; labelMap: Record<string, string>; field: keyof typeof filters }) => (
-    <View style={s.filterRow}>
-      <Text style={s.filterRowLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {values.map(v => (
-          <TouchableOpacity key={v} style={[s.pill, (filters as any)[field] === v && s.pillActive]} onPress={() => setFilters(f => ({ ...f, [field]: v }))}>
-            <Text style={[s.pillText, (filters as any)[field] === v && s.pillTextActive]}>{labelMap[v] ?? v.charAt(0).toUpperCase() + v.slice(1)}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  )
+  const FilterPicker = ({ label, values, labelMap, field }: { label: string; values: string[]; labelMap: Record<string, string>; field: keyof typeof filters }) => {
+    const current = (filters as any)[field] as string
+    const isOpen = openPicker === field
+    const isActive = current !== "any"
+    return (
+      <View>
+        <TouchableOpacity style={[s.filterSelectRow, isOpen && s.filterSelectRowOpen]} onPress={() => setOpenPicker(isOpen ? null : field)} activeOpacity={0.7}>
+          <Text style={s.filterSelectLabel}>{label}</Text>
+          <View style={s.filterSelectRight}>
+            <Text style={[s.filterSelectValue, isActive && { color: colors.primary, fontWeight: "700" }]}>{labelMap[current] ?? current}</Text>
+            <Ionicons name={isOpen ? "chevron-up" : "chevron-down"} size={16} color={isActive ? colors.primary : colors.muted} />
+          </View>
+        </TouchableOpacity>
+        {isOpen && (
+          <View style={s.filterDropdown}>
+            {values.map(v => (
+              <TouchableOpacity key={v} style={[s.filterDropdownItem, current === v && s.filterDropdownItemActive]} onPress={() => { setFilters(f => ({ ...f, [field]: v })); setOpenPicker(null) }}>
+                <Text style={[s.filterDropdownText, current === v && s.filterDropdownTextActive]}>{labelMap[v] ?? v}</Text>
+                {current === v && <Ionicons name="checkmark" size={16} color={colors.primary} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+    )
+  }
 
   const NutritionInput = ({ label, minKey, maxKey, unit, premium }: { label: string; minKey: keyof NutritionFilters; maxKey: keyof NutritionFilters; unit: string; premium?: boolean }) => (
     <View style={s.nutritionRow}>
       <View style={s.nutritionLabelRow}>
         <Text style={s.nutritionLabel}>{label}</Text>
-        {premium && <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>}
       </View>
       <View style={s.nutritionInputs}>
         <View style={s.nutritionField}>
@@ -368,15 +382,29 @@ export default function SearchScreen() {
     </View>
   )
 
-  const SectionHeader = ({ title, sectionKey, badge }: { title: string; sectionKey: string; badge?: string }) => (
-    <TouchableOpacity style={s.sectionHeader} onPress={() => setOpenSection(openSection === sectionKey ? null : sectionKey)} activeOpacity={0.7}>
-      <Text style={s.sectionTitle}>{title}</Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        {badge && <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>{badge}</Text></View>}
-        <Ionicons name={openSection === sectionKey ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
-      </View>
-    </TouchableOpacity>
-  )
+  const sectionCounts = {
+    recipe: [filters.prepTime, filters.budget, filters.diet, filters.cuisine, filters.healthiness, filters.taste].filter(v => v !== "any").length,
+    ingredients: filters.ingredients.length,
+    macros: (["minCalories","maxCalories","minProtein","maxProtein","minCarbs","maxCarbs","minFat","maxFat","minSaturatedFat","maxSaturatedFat","minFiber","maxFiber","minSugar","maxSugar","minCholesterol","maxCholesterol","minSodium","maxSodium","minAlcohol","maxAlcohol","minCaffeine","maxCaffeine"] as (keyof NutritionFilters)[]).filter(k => nutrition[k].trim() !== "").length,
+    micros: (["minVitaminA","maxVitaminA","minVitaminC","maxVitaminC","minVitaminD","maxVitaminD","minVitaminB6","maxVitaminB6","minVitaminB12","maxVitaminB12","minCalcium","maxCalcium","minIron","maxIron","minMagnesium","maxMagnesium","minPotassium","maxPotassium","minZinc","maxZinc"] as (keyof NutritionFilters)[]).filter(k => nutrition[k].trim() !== "").length,
+    sort: sort !== "none" ? 1 : 0,
+  }
+
+  const SectionHeader = ({ title, sectionKey, badge }: { title: string; sectionKey: string; badge?: string }) => {
+    const count = sectionCounts[sectionKey as keyof typeof sectionCounts] ?? 0
+    return (
+      <TouchableOpacity style={s.sectionHeader} onPress={() => { setOpenSection(openSection === sectionKey ? null : sectionKey); setOpenPicker(null) }} activeOpacity={0.7}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={s.sectionTitle}>{title}</Text>
+          {count > 0 && <View style={s.sectionCountBadge}><Text style={s.sectionCountText}>{count}</Text></View>}
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {badge && <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>{badge}</Text></View>}
+          <Ionicons name={openSection === sectionKey ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+        </View>
+      </TouchableOpacity>
+    )
+  }
 
   const filterSummary = (() => {
     const parts: string[] = []
@@ -420,7 +448,7 @@ export default function SearchScreen() {
             <Text style={s.modalTitle}>Filter Recipes</Text>
             <View style={{ width: 24 }} />
           </View>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40, paddingTop: 12 }} keyboardShouldPersistTaps="handled">
 
             {/* ── RECIPE ── */}
             <SectionHeader title="Recipe" sectionKey="recipe" />
@@ -439,7 +467,7 @@ export default function SearchScreen() {
             <SectionHeader title="Ingredients" sectionKey="ingredients" />
             {openSection === "ingredients" && (
               <View style={s.sectionBody}>
-                <View style={s.filterRow}>
+                <View style={[s.filterRow, { marginTop: 8 }]}>
                   <View style={s.ingredientRow}>
                     <TextInput style={s.ingredientInput} value={ingredientInput} onChangeText={setIngredientInput} placeholder="e.g. chicken, garlic..." placeholderTextColor={colors.muted} onSubmitEditing={addIngredient} returnKeyType="done" />
                     <TouchableOpacity style={[s.addBtn, !ingredientInput.trim() && s.btnDisabled]} onPress={addIngredient} disabled={!ingredientInput.trim()}>
@@ -476,37 +504,37 @@ export default function SearchScreen() {
             {/* ── MACROS ── */}
             <SectionHeader title="Macronutrients" sectionKey="macros" badge="Premium" />
             {openSection === "macros" && (
-              <View style={s.sectionBody}>
-                <NutritionInput label="Calories" minKey="minCalories" maxKey="maxCalories" unit="kcal" premium />
-                <NutritionInput label="Protein" minKey="minProtein" maxKey="maxProtein" unit="g" premium />
-                <NutritionInput label="Carbohydrates" minKey="minCarbs" maxKey="maxCarbs" unit="g" premium />
-                <NutritionInput label="Fat" minKey="minFat" maxKey="maxFat" unit="g" premium />
-                <NutritionInput label="Saturated Fat" minKey="minSaturatedFat" maxKey="maxSaturatedFat" unit="g" premium />
-                <NutritionInput label="Fiber" minKey="minFiber" maxKey="maxFiber" unit="g" premium />
-                <NutritionInput label="Sugar" minKey="minSugar" maxKey="maxSugar" unit="g" premium />
-                <NutritionInput label="Cholesterol" minKey="minCholesterol" maxKey="maxCholesterol" unit="mg" premium />
-                <NutritionInput label="Sodium" minKey="minSodium" maxKey="maxSodium" unit="mg" premium />
-                <NutritionInput label="Alcohol" minKey="minAlcohol" maxKey="maxAlcohol" unit="g" premium />
-                <NutritionInput label="Caffeine" minKey="minCaffeine" maxKey="maxCaffeine" unit="mg" premium />
+              <View style={[s.sectionBody, { paddingTop: 12 }]}>
+                <NutritionInput label="Calories" minKey="minCalories" maxKey="maxCalories" unit="kcal" />
+                <NutritionInput label="Protein" minKey="minProtein" maxKey="maxProtein" unit="g" />
+                <NutritionInput label="Carbohydrates" minKey="minCarbs" maxKey="maxCarbs" unit="g" />
+                <NutritionInput label="Fat" minKey="minFat" maxKey="maxFat" unit="g" />
+                <NutritionInput label="Saturated Fat" minKey="minSaturatedFat" maxKey="maxSaturatedFat" unit="g" />
+                <NutritionInput label="Fiber" minKey="minFiber" maxKey="maxFiber" unit="g" />
+                <NutritionInput label="Sugar" minKey="minSugar" maxKey="maxSugar" unit="g" />
+                <NutritionInput label="Cholesterol" minKey="minCholesterol" maxKey="maxCholesterol" unit="mg" />
+                <NutritionInput label="Sodium" minKey="minSodium" maxKey="maxSodium" unit="mg" />
+                <NutritionInput label="Alcohol" minKey="minAlcohol" maxKey="maxAlcohol" unit="g" />
+                <NutritionInput label="Caffeine" minKey="minCaffeine" maxKey="maxCaffeine" unit="mg" />
               </View>
             )}
 
             {/* ── MICRONUTRIENTS ── */}
             <SectionHeader title="Micronutrients" sectionKey="micros" badge="Premium" />
             {openSection === "micros" && (
-              <View style={s.sectionBody}>
+              <View style={[s.sectionBody, { paddingTop: 12 }]}>
                 <Text style={s.microSubtitle}>Vitamins</Text>
-                <NutritionInput label="Vitamin A" minKey="minVitaminA" maxKey="maxVitaminA" unit="IU" premium />
-                <NutritionInput label="Vitamin C" minKey="minVitaminC" maxKey="maxVitaminC" unit="mg" premium />
-                <NutritionInput label="Vitamin D" minKey="minVitaminD" maxKey="maxVitaminD" unit="µg" premium />
-                <NutritionInput label="Vitamin B6" minKey="minVitaminB6" maxKey="maxVitaminB6" unit="mg" premium />
-                <NutritionInput label="Vitamin B12" minKey="minVitaminB12" maxKey="maxVitaminB12" unit="µg" premium />
+                <NutritionInput label="Vitamin A" minKey="minVitaminA" maxKey="maxVitaminA" unit="IU" />
+                <NutritionInput label="Vitamin C" minKey="minVitaminC" maxKey="maxVitaminC" unit="mg" />
+                <NutritionInput label="Vitamin D" minKey="minVitaminD" maxKey="maxVitaminD" unit="µg" />
+                <NutritionInput label="Vitamin B6" minKey="minVitaminB6" maxKey="maxVitaminB6" unit="mg" />
+                <NutritionInput label="Vitamin B12" minKey="minVitaminB12" maxKey="maxVitaminB12" unit="µg" />
                 <Text style={[s.microSubtitle, { marginTop: 8 }]}>Minerals</Text>
-                <NutritionInput label="Calcium" minKey="minCalcium" maxKey="maxCalcium" unit="mg" premium />
-                <NutritionInput label="Iron" minKey="minIron" maxKey="maxIron" unit="mg" premium />
-                <NutritionInput label="Magnesium" minKey="minMagnesium" maxKey="maxMagnesium" unit="mg" premium />
-                <NutritionInput label="Potassium" minKey="minPotassium" maxKey="maxPotassium" unit="mg" premium />
-                <NutritionInput label="Zinc" minKey="minZinc" maxKey="maxZinc" unit="mg" premium />
+                <NutritionInput label="Calcium" minKey="minCalcium" maxKey="maxCalcium" unit="mg" />
+                <NutritionInput label="Iron" minKey="minIron" maxKey="maxIron" unit="mg" />
+                <NutritionInput label="Magnesium" minKey="minMagnesium" maxKey="maxMagnesium" unit="mg" />
+                <NutritionInput label="Potassium" minKey="minPotassium" maxKey="maxPotassium" unit="mg" />
+                <NutritionInput label="Zinc" minKey="minZinc" maxKey="maxZinc" unit="mg" />
               </View>
             )}
 
@@ -514,31 +542,40 @@ export default function SearchScreen() {
             <SectionHeader title="Sort" sectionKey="sort" />
             {openSection === "sort" && (
               <View style={s.sectionBody}>
-                <View style={s.filterRow}>
-                  <Text style={s.filterRowLabel}>Sort by</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                    <TouchableOpacity style={[s.pill, sort === "none" && s.pillActive]} onPress={() => setSort("none")}>
-                      <Text style={[s.pillText, sort === "none" && s.pillTextActive]}>None</Text>
+                {/* Sort by — dropdown row */}
+                <TouchableOpacity style={[s.filterSelectRow, openPicker === "sort" && s.filterSelectRowOpen]} onPress={() => setOpenPicker(openPicker === "sort" ? null : "sort")} activeOpacity={0.7}>
+                  <Text style={s.filterSelectLabel}>Sort by</Text>
+                  <View style={s.filterSelectRight}>
+                    <Text style={[s.filterSelectValue, sort !== "none" && { color: colors.primary, fontWeight: "700" }]}>
+                      {sort === "none" ? "None" : SORT_OPTIONS.find(o => o.value === sort)?.label}
+                    </Text>
+                    <Ionicons name={openPicker === "sort" ? "chevron-up" : "chevron-down"} size={16} color={sort !== "none" ? colors.primary : colors.muted} />
+                  </View>
+                </TouchableOpacity>
+                {openPicker === "sort" && (
+                  <View style={s.filterDropdown}>
+                    <TouchableOpacity style={[s.filterDropdownItem, sort === "none" && s.filterDropdownItemActive]} onPress={() => { setSort("none"); setOpenPicker(null) }}>
+                      <Text style={[s.filterDropdownText, sort === "none" && s.filterDropdownTextActive]}>None</Text>
+                      {sort === "none" && <Ionicons name="checkmark" size={16} color={colors.primary} />}
                     </TouchableOpacity>
                     {SORT_OPTIONS.map(o => (
-                      <TouchableOpacity key={o.value} style={[s.pill, sort === o.value && s.pillActive]} onPress={() => setSort(o.value)}>
-                        <Text style={[s.pillText, sort === o.value && s.pillTextActive]}>{o.label}</Text>
+                      <TouchableOpacity key={o.value} style={[s.filterDropdownItem, sort === o.value && s.filterDropdownItemActive]} onPress={() => { setSort(o.value); setOpenPicker(null) }}>
+                        <Text style={[s.filterDropdownText, sort === o.value && s.filterDropdownTextActive]}>{o.label}</Text>
+                        {sort === o.value && <Ionicons name="checkmark" size={16} color={colors.primary} />}
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
-                </View>
-                {sort !== "none" && (
-                  <View style={s.filterRow}>
-                    <Text style={s.filterRowLabel}>Direction</Text>
-                    <View style={s.modeToggleRow}>
-                      <TouchableOpacity style={[s.modeToggleBtn, sortDirection === "asc" && s.modeToggleBtnActive]} onPress={() => setSortDirection("asc")}>
-                        <Text style={[s.modeToggleText, sortDirection === "asc" && s.modeToggleTextActive]}>Ascending</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[s.modeToggleBtn, sortDirection === "desc" && s.modeToggleBtnActive]} onPress={() => setSortDirection("desc")}>
-                        <Text style={[s.modeToggleText, sortDirection === "desc" && s.modeToggleTextActive]}>Descending</Text>
-                      </TouchableOpacity>
-                    </View>
                   </View>
+                )}
+                {/* Direction toggle — only shown when sort is active */}
+                {sort !== "none" && (
+                  <TouchableOpacity style={[s.filterSelectRow, { marginTop: 4 }]} onPress={() => setSortDirection(d => d === "asc" ? "desc" : "asc")} activeOpacity={0.7}>
+                    <Text style={s.filterSelectLabel}>Direction</Text>
+                    <View style={s.filterSelectRight}>
+                      <Text style={[s.filterSelectValue, { color: colors.primary, fontWeight: "700" }]}>
+                        {sortDirection === "asc" ? "↑ Ascending" : "↓ Descending"}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
                 )}
               </View>
             )}
@@ -678,16 +715,28 @@ const makeStyles = (colors: any) => StyleSheet.create({
   badge: { backgroundColor: colors.primary + "33", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   badgeText: { fontSize: 11, color: colors.primary, fontWeight: "600" },
   modalContainer: { flex: 1, backgroundColor: colors.background },
-  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
+  modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, paddingBottom: 16, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)", marginBottom: 8 },
   modalTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   modalFooter: { flexDirection: "row", gap: 12, padding: spacing.md, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.3)" },
   // sections
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.md, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
-  sectionBody: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: 4 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.md, paddingVertical: 14, backgroundColor: colors.card, marginBottom: 2, marginTop: 10 },
+  sectionTitle: { fontSize: 13, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8 },
+  sectionCountBadge: { backgroundColor: colors.primary, borderRadius: 99, minWidth: 20, height: 20, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
+  sectionCountText: { fontSize: 11, fontWeight: "700", color: "#fff" },
+  sectionBody: { backgroundColor: colors.background, paddingHorizontal: spacing.md, paddingTop: 4, paddingBottom: 8, marginBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   // filter rows
   filterRow: { marginBottom: spacing.md },
   filterRowLabel: { fontSize: 12, fontWeight: "600", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  filterSelectRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: 4 },
+  filterSelectRowOpen: { borderBottomColor: colors.primary },
+  filterSelectLabel: { fontSize: 15, color: colors.text, fontWeight: "500" },
+  filterSelectRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  filterSelectValue: { fontSize: 14, color: colors.mutedForeground },
+  filterDropdown: { backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, marginBottom: 4, overflow: "hidden" },
+  filterDropdownItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  filterDropdownItemActive: { backgroundColor: colors.primary + "11" },
+  filterDropdownText: { fontSize: 14, color: colors.text },
+  filterDropdownTextActive: { color: colors.primary, fontWeight: "600" },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
   pillActive: { borderColor: colors.primary, backgroundColor: colors.primary + "22" },
   pillText: { fontSize: 14, color: colors.mutedForeground },
@@ -714,7 +763,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   nutritionFieldLabel: { fontSize: 11, color: colors.muted, fontWeight: "600", width: 24 },
   nutritionInput: { flex: 1, color: colors.text, fontSize: 14, padding: 0 },
   nutritionUnit: { fontSize: 11, color: colors.muted },
-  microSubtitle: { fontSize: 12, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
+  microSubtitle: { fontSize: 12, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, textAlign: "center" },
   // premium
   premiumBadge: { backgroundColor: "#f59e0b22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
