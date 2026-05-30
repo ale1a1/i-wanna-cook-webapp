@@ -17,9 +17,8 @@ import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { API_BASE_URL } from "../lib/api"
 import { reportError } from "../lib/reportError"
-import { useContext } from "react"
-import { AuthContext } from "../context/AuthContext"
-import { SubscriptionContext } from "../context/SubscriptionContext"
+import { useAuth } from "../context/AuthContext"
+import { useSubscription } from "../context/SubscriptionContext"
 
 type Step = "capture" | "review" | "mode" | "filters"
 
@@ -28,8 +27,8 @@ export default function ScanScreen() {
   const { showError } = useGlobalError()
   const navigation = useNavigation<any>()
   const s = makeStyles(colors)
-  const { user } = useContext(AuthContext)
-  const { isPremium } = useContext(SubscriptionContext)
+  const { user } = useAuth()
+  const { isPremium } = useSubscription()
 
   const [step, setStep] = useState<Step>("capture")
   const [capturedAssets, setCapturedAssets] = useState<ImagePicker.ImagePickerAsset[]>([])
