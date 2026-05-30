@@ -28,6 +28,13 @@ const BUDGET_LABELS: Record<string, string> = { any: "Any budget", cheap: "Budge
 const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
 const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
 const CALORIE_LABELS: Record<string, string> = { any: "Any", under400: "< 400 kcal", under600: "< 600 kcal", under800: "< 800 kcal", over800: "> 800 kcal" }
+
+const PRESETS = [
+  { key: "bulking",   label: "Bulking",    icon: "barbell-outline",     desc: "High protein, high calorie", filters: { protein: "over40", calories: "over800", diet: "any", healthiness: "any" } },
+  { key: "shredding", label: "Shredding",  icon: "flame-outline",       desc: "High protein, low calorie",  filters: { protein: "over40", calories: "under600", diet: "any", healthiness: "healthy" } },
+  { key: "endurance", label: "Endurance",  icon: "bicycle-outline",     desc: "High carb, energy-dense",    filters: { protein: "any",    calories: "over800", diet: "any", healthiness: "healthy" } },
+  { key: "kids",      label: "Kids meals", icon: "happy-outline",       desc: "Simple, allergen-safe",      filters: { protein: "any",    calories: "under600", diet: "any", healthiness: "healthy" } },
+] as const
 const PROTEIN_LABELS: Record<string, string> = { any: "Any", over20: "> 20g", over40: "> 40g", over60: "> 60g" }
 
 function buildSearchParams(f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[]; calories: string; protein: string }): URLSearchParams {
@@ -102,6 +109,7 @@ export default function SearchScreen() {
   const [showPaywall, setShowPaywall] = useState(false)
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[], calories: "any", protein: "any" }
   const [filters, setFilters] = useState(defaultFilters)
+  const [activePreset, setActivePreset] = useState<string | null>(null)
   const [ingredientMode, setIngredientMode] = useState<"all" | "some">("all")
   const [fromScan, setFromScan] = useState(false)
 
@@ -350,6 +358,37 @@ export default function SearchScreen() {
             <View style={{ width: 24 }} />
           </View>
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
+            <View style={s.filterGroup}>
+              <View style={s.premiumLabelRow}>
+                <Text style={s.filterLabel}>Goal Presets</Text>
+                <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>
+              </View>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {PRESETS.map(p => {
+                  const active = activePreset === p.key
+                  return (
+                    <TouchableOpacity
+                      key={p.key}
+                      style={[s.presetCard, active && s.presetCardActive]}
+                      onPress={() => {
+                        if (!isPremium) { setShowPaywall(true); return }
+                        if (active) {
+                          setActivePreset(null)
+                          setFilters(f => ({ ...f, protein: "any", calories: "any", healthiness: "any" }))
+                        } else {
+                          setActivePreset(p.key)
+                          setFilters(f => ({ ...f, ...p.filters }))
+                        }
+                      }}
+                    >
+                      <Ionicons name={p.icon as any} size={20} color={active ? "#fff" : colors.primary} />
+                      <Text style={[s.presetLabel, active && { color: "#fff" }]}>{p.label}</Text>
+                      <Text style={[s.presetDesc, active && { color: "rgba(255,255,255,0.8)" }]}>{p.desc}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
             <FilterPicker label="Prep Time" values={PREP_TIMES} labelMap={PREP_LABELS} field="prepTime" />
             <FilterPicker label="Budget" values={BUDGETS} labelMap={BUDGET_LABELS} field="budget" />
             <FilterPicker label="Diet" values={DIETS} labelMap={{ any: "Any diet", vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }} field="diet" />
@@ -420,7 +459,7 @@ export default function SearchScreen() {
             </View>
           </ScrollView>
           <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false) }} disabled={!hasActiveFilters && !searched}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false); setActivePreset(null) }} disabled={!hasActiveFilters && !searched}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
@@ -587,6 +626,10 @@ const makeStyles = (colors: any) => StyleSheet.create({
   premiumLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   premiumBadge: { backgroundColor: "#f59e0b22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
+  presetCard: { width: "47%", borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, padding: 12, gap: 4 },
+  presetCardActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  presetLabel: { fontSize: 13, fontWeight: "700", color: colors.primary },
+  presetDesc: { fontSize: 11, color: colors.mutedForeground },
   scannerContainer: { flex: 1, backgroundColor: colors.background },
   scannerHeader: { padding: spacing.md, alignItems: "flex-end" },
   scannerCapture: { flex: 1, padding: spacing.md, gap: 20 },
