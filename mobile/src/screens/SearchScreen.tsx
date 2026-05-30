@@ -13,6 +13,12 @@ import { useAuth } from "../context/AuthContext"
 import PaywallModal from "../components/PaywallModal"
 import { spacing, radius } from "../lib/theme"
 
+let SpeechRecognitionModule: any = null
+try {
+  const mod = require("expo-speech-recognition")
+  SpeechRecognitionModule = mod.ExpoSpeechRecognitionModule
+} catch { /* not available in Expo Go */ }
+
 type Recipe = { id: number; title: string; image: string; readyInMinutes: number; servings: number; pricePerServing: number; vegan: boolean; vegetarian: boolean; glutenFree: boolean }
 
 const DIETS = ["any", "vegetarian", "vegan", "glutenFree", "keto", "paleo"]
@@ -160,6 +166,13 @@ export default function SearchScreen() {
   // collapsible sections
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [openPicker, setOpenPicker] = useState<string | null>(null)
+
+  // AI suggestions
+  const [aiGoal, setAiGoal] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState("")
+  const [aiApplied, setAiApplied] = useState("")
+  const [isListening, setIsListening] = useState(false)
 
   useEffect(() => {
     if (route.params?.scannedIngredients?.length) {
@@ -319,6 +332,52 @@ export default function SearchScreen() {
 
   const pickAndAnalyzeImages = useCallback(() => { setCapturedAssets([]); setScannerOpen(true) }, [])
 
+  const applyAiSuggestion = async (goal: string) => {
+    if (!isPremium) { setShowPaywall(true); return }
+    if (!goal.trim()) return
+    setAiLoading(true); setAiError("")
+    try {
+      const res = await apiFetch("/api/recipes/suggest-filters", { method: "POST", body: JSON.stringify({ goal }) })
+      const data = await res.json()
+      if (!res.ok) { setAiError(data.error || "AI request failed"); return }
+      const p = data.params as Record<string, any>
+      // apply nutrition params
+      const nutritionKeys = Object.keys(defaultNutrition) as (keyof NutritionFilters)[]
+      const newNutrition = { ...defaultNutrition }
+      nutritionKeys.forEach(k => { if (p[k] !== undefined) newNutrition[k] = String(p[k]) })
+      setNutrition(newNutrition)
+      // apply recipe filters
+      if (p.diet) setFilters(f => ({ ...f, diet: Object.entries({ vegetarian: "vegetarian", vegan: "vegan", "gluten free": "glutenFree", ketogenic: "keto", paleo: "paleo" }).find(([k]) => p.diet.includes(k))?.[1] ?? f.diet }))
+      if (p.maxReadyTime) setFilters(f => { const v = p.maxReadyTime <= 15 ? "under15" : p.maxReadyTime <= 30 ? "under30" : p.maxReadyTime <= 60 ? "under60" : "over60"; return { ...f, prepTime: v } })
+      // apply sort
+      if (p.sort) { setSort(p.sort); setSortDirection(p.sortDirection ?? "desc") }
+      setAiApplied(goal)
+      setAiGoal("")
+    } catch { setAiError("Something went wrong. Please try again.") }
+    finally { setAiLoading(false) }
+  }
+
+  const startVoiceInput = useCallback(async () => {
+    if (!SpeechRecognitionModule) return
+    try {
+      setIsListening(true)
+      setAiGoal("")
+      await SpeechRecognitionModule.start({ lang: "en-US", interimResults: true })
+      const cleanup = () => { setIsListening(false) }
+      SpeechRecognitionModule.addListener("result", (e: any) => {
+        const transcript = e.results?.[0]?.transcript ?? ""
+        setAiGoal(transcript.trim().split(/\s+/).slice(0, 30).join(" "))
+      })
+      SpeechRecognitionModule.addListener("end", cleanup)
+      SpeechRecognitionModule.addListener("error", cleanup)
+    } catch { setIsListening(false) }
+  }, [])
+
+  const stopVoiceInput = useCallback(() => {
+    SpeechRecognitionModule?.stop()
+    setIsListening(false)
+  }, [])
+
   const FilterPicker = ({ label, values, labelMap, field }: { label: string; values: string[]; labelMap: Record<string, string>; field: keyof typeof filters }) => {
     const current = (filters as any)[field] as string
     const isOpen = openPicker === field
@@ -392,6 +451,7 @@ export default function SearchScreen() {
     macros: (["minCalories","maxCalories","minProtein","maxProtein","minCarbs","maxCarbs","minFat","maxFat","minSaturatedFat","maxSaturatedFat","minFiber","maxFiber","minSugar","maxSugar","minCholesterol","maxCholesterol","minSodium","maxSodium","minAlcohol","maxAlcohol","minCaffeine","maxCaffeine"] as (keyof NutritionFilters)[]).filter(k => nutrition[k].trim() !== "").length,
     micros: (["minVitaminA","maxVitaminA","minVitaminC","maxVitaminC","minVitaminD","maxVitaminD","minVitaminB6","maxVitaminB6","minVitaminB12","maxVitaminB12","minCalcium","maxCalcium","minIron","maxIron","minMagnesium","maxMagnesium","minPotassium","maxPotassium","minZinc","maxZinc"] as (keyof NutritionFilters)[]).filter(k => nutrition[k].trim() !== "").length,
     sort: sort !== "none" ? 1 : 0,
+    ai: aiApplied ? 1 : 0,
   }
 
   const SectionHeader = ({ title, sectionKey, badge }: { title: string; sectionKey: string; badge?: string }) => {
@@ -530,6 +590,67 @@ export default function SearchScreen() {
               </View>
             )}
 
+            {/* ── AI SUGGESTIONS ── */}
+            <SectionHeader title="AI Suggestions" sectionKey="ai" badge="Premium" />
+            {openSection === "ai" && (
+              <View style={[s.sectionBody, { paddingTop: 12 }]}>
+                {/* Quick presets */}
+                <Text style={s.aiSubtitle}>Quick presets</Text>
+                <View style={s.aiChipsRow}>
+                  {["Bulking", "Shredding", "Endurance", "Weight Loss", "High Fibre", "Kids", "Quick Meal", "Recovery"].map(preset => (
+                    <TouchableOpacity
+                      key={preset}
+                      style={[s.aiChip, aiApplied === preset && s.aiChipActive]}
+                      onPress={() => applyAiSuggestion(preset)}
+                      disabled={aiLoading}
+                    >
+                      <Text style={[s.aiChipText, aiApplied === preset && s.aiChipTextActive]}>{preset}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Ask AI */}
+                <Text style={[s.aiSubtitle, { marginTop: 16 }]}>Ask AI</Text>
+                <View style={s.aiInputRow}>
+                  <TextInput
+                    style={s.aiInput}
+                    value={aiGoal}
+                    onChangeText={v => { const words = v.trim().split(/\s+/); setAiGoal(words.length > 30 ? words.slice(0, 30).join(" ") : v) }}
+                    placeholder="e.g. post-workout high protein low fat..."
+                    placeholderTextColor={colors.muted}
+                    returnKeyType="go"
+                    onSubmitEditing={() => applyAiSuggestion(aiGoal)}
+                    editable={!aiLoading}
+                  />
+                  <TouchableOpacity
+                    style={[s.aiMicBtn, isListening && s.aiMicBtnActive]}
+                    onPress={isListening ? stopVoiceInput : startVoiceInput}
+                    disabled={aiLoading}
+                  >
+                    <Ionicons name={isListening ? "stop" : "mic"} size={18} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.aiGoBtn, (!aiGoal.trim() || aiLoading) && s.btnDisabled]}
+                    onPress={() => applyAiSuggestion(aiGoal)}
+                    disabled={!aiGoal.trim() || aiLoading}
+                  >
+                    {aiLoading ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={18} color="#fff" />}
+                  </TouchableOpacity>
+                </View>
+
+                {aiError ? <Text style={s.aiError}>{aiError}</Text> : null}
+                {aiApplied ? (
+                  <View style={s.aiAppliedRow}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.green} />
+                    <Text style={s.aiAppliedText}>Filters set for "{aiApplied}"</Text>
+                    <TouchableOpacity onPress={() => { setAiApplied(""); setNutrition(defaultNutrition); setSort("none") }}>
+                      <Text style={s.aiClearText}>Clear</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+              </View>
+            )}
+
             {/* ── SORT ── */}
             <SectionHeader title="Sort" sectionKey="sort" />
             {openSection === "sort" && (
@@ -574,7 +695,7 @@ export default function SearchScreen() {
 
           </ScrollView>
           <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setNutrition(defaultNutrition); setSort("none"); setSortDirection("desc"); setSearched(false); setLastSearchKey(null) }} disabled={!hasActiveFilters && !searched}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setNutrition(defaultNutrition); setSort("none"); setSortDirection("desc"); setSearched(false); setLastSearchKey(null); setAiApplied(""); setAiGoal("") }} disabled={!hasActiveFilters && !searched}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
@@ -757,6 +878,21 @@ const makeStyles = (colors: any) => StyleSheet.create({
   nutritionInput: { flex: 1, color: colors.text, fontSize: 14, padding: 0 },
   nutritionUnit: { fontSize: 11, color: colors.muted },
   microSubtitle: { fontSize: 12, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10, textAlign: "center" },
+  aiSubtitle: { fontSize: 11, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
+  aiChipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  aiChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: colors.primary, backgroundColor: "transparent" },
+  aiChipActive: { backgroundColor: colors.primary },
+  aiChipText: { fontSize: 13, fontWeight: "600", color: colors.primary },
+  aiChipTextActive: { color: "#fff" },
+  aiInputRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  aiInput: { flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, fontSize: 14 },
+  aiMicBtn: { width: 42, height: 42, borderRadius: radius.md, backgroundColor: colors.mutedForeground, alignItems: "center", justifyContent: "center" },
+  aiMicBtnActive: { backgroundColor: colors.destructive },
+  aiGoBtn: { width: 42, height: 42, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  aiError: { fontSize: 13, color: colors.destructive, marginTop: 8 },
+  aiAppliedRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10 },
+  aiAppliedText: { flex: 1, fontSize: 13, color: colors.green },
+  aiClearText: { fontSize: 13, color: colors.destructive, fontWeight: "600" },
   // premium
   premiumBadge: { backgroundColor: "#f59e0b22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
   premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
