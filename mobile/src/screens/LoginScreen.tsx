@@ -203,7 +203,7 @@ export default function LoginScreen() {
   if (forgotStep === "reset") {
     return (
       <View style={{ flex: 1 }}>
-        <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        <ScrollView style={s.container} contentContainerStyle={[s.content, { paddingBottom: 200 }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={s.logoRow}>
             <Ionicons name="restaurant" size={48} color={colors.primary} />
             <Text style={s.logoText}>What Should I Cook?</Text>
