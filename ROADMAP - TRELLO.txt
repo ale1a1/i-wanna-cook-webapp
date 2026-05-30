@@ -123,16 +123,15 @@ After registration, app shows a dedicated verification code screen (not a silent
 Cognito verification email branding ✅ DONE
 Subject: "Your What Should I Cook verification code". HTML body with app name header and styled code block.
 
+Trial days remaining on profile screen ✅ DONE
+Profile screen shows a trial status card: days remaining with badge, expired/free plan state with upgrade button, or Premium badge. trialExpiresAt/trialActive/isPremium stored in AuthContext and AsyncStorage on login.
+
 
 ================================================================
 LIST: MUST — Before Launch
 ================================================================
 
 --- Subscription & Trial ---
-
-Trial days remaining on profile screen
-Show a trial status card on the mobile Profile screen: days remaining, expired state, or premium badge. Upgrade button for non-premium users.
-NOTE: This exists on the web app only. NOT yet built in mobile.
 
 Wire up Google Play Billing
 Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
