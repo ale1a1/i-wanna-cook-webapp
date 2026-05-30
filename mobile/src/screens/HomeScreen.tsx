@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { useTheme } from "../context/ThemeContext"
+import { useAuth } from "../context/AuthContext"
 import { spacing, radius } from "../lib/theme"
 
 const FEATURES = [
@@ -22,8 +23,15 @@ const HOW_IT_WORKS = [
 export default function HomeScreen() {
   const navigation = useNavigation<any>()
   const { colors } = useTheme()
+  const { user } = useAuth()
   const s = makeStyles(colors)
   const scrollRef = useRef<ScrollView>(null)
+
+  const trialActive = (user as any)?.trialActive ?? false
+  const trialExpiresAt = (user as any)?.trialExpiresAt ?? null
+  const daysLeft = trialExpiresAt
+    ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0
 
   useFocusEffect(useCallback(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false })
@@ -32,6 +40,15 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
       <ScrollView ref={scrollRef} contentContainerStyle={s.content}>
+        {trialActive && (
+          <TouchableOpacity style={s.trialBanner} onPress={() => navigation.navigate("Profile")} activeOpacity={0.8}>
+            <Ionicons name="timer-outline" size={16} color="#fff" />
+            <Text style={s.trialBannerText}>
+              {daysLeft > 0 ? `Free trial — ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "Your trial has expired"}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        )}
         <View style={s.hero}>
           <View style={s.iconCircle}>
             <Ionicons name="restaurant" size={48} color={colors.primary} />
@@ -116,4 +133,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   cta: { alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: 40 },
   ctaTitle: { fontSize: 22, fontWeight: "700", color: colors.text, textAlign: "center", marginBottom: 8 },
   ctaSub: { fontSize: 14, color: colors.mutedForeground, marginBottom: 20 },
+  trialBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.primary, marginHorizontal: spacing.md, marginTop: spacing.md, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10 },
+  trialBannerText: { flex: 1, color: "#fff", fontWeight: "600", fontSize: 13 },
 })
