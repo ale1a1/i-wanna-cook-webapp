@@ -132,6 +132,9 @@ Primary-colored banner at top of Home screen shown only to trial users. Displays
 Forgot password flow on mobile ✅ DONE
 Inline two-step flow: enter email → receive code → enter code + new password with strength checker. "Forgot password?" link on login tab pre-fills email if already typed. On success returns to login with green banner and email pre-filled.
 
+Advanced search filter panel ✅ DONE
+5 collapsible sections: Recipe (prep time, budget, diet, cuisine, healthiness, taste), Ingredients (text input + AI camera scan), Macronutrients (calories, protein, carbs, fat, sat fat, fiber, sugar, cholesterol, sodium, alcohol, caffeine — min/max), Micronutrients (vitamins A/C/D/B6/B12, minerals calcium/iron/magnesium/potassium/zinc — min/max), Sort (8 sort options + asc/desc). All nutrition params passed directly to Spoonacular complexSearch. Active filter count badge on each section header. Macronutrients and Micronutrients are Premium-gated.
+
 Trial expiry modal — 1-2 days warning
 When trial is 1-2 days from expiring, show a one-time modal on app open prompting user to upgrade. Fire once per account, not every session.
 
@@ -150,11 +153,6 @@ Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
 
 Auto-downgrade to free tier when trial expires
 When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt. trial_active is computed at login time from trial_started_at — enforcement is already there, but the UI needs to reflect it gracefully after expiry without requiring a re-login.
-
---- Search ---
-
-Sport/fitness presets
-Bulking (high protein, high calorie), Shredding (high protein, low calorie/fat), Endurance (high carb), Kids meals (simple, allergen-safe). Named filter presets mapping to Spoonacular nutrition params already supported.
 
 --- Meal & Nutrition ---
 
