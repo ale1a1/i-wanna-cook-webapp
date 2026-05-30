@@ -303,6 +303,9 @@ export default function LoginScreen() {
               <TouchableOpacity style={s.linkBtn} onPress={() => { setForgotEmail(loginForm.email); setForgotError(""); setForgotStep("email") }}>
                 <Text style={s.linkBtnText}>Forgot password?</Text>
               </TouchableOpacity>
+              <TouchableOpacity style={s.linkBtn} onPress={() => navigation.navigate("Tabs")}>
+                <Text style={[s.linkBtnText, { color: colors.muted }]}>Continue as guest</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={s.form}>
