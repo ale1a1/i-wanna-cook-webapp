@@ -29,15 +29,44 @@ const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", 
 const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
 const CALORIE_LABELS: Record<string, string> = { any: "Any", under400: "< 400 kcal", under600: "< 600 kcal", under800: "< 800 kcal", over800: "> 800 kcal" }
 
-const PRESETS = [
-  { key: "bulking",   label: "Bulking",    icon: "barbell-outline",     desc: "High protein, high calorie", filters: { protein: "over40", calories: "over800", diet: "any", healthiness: "any" } },
-  { key: "shredding", label: "Shredding",  icon: "flame-outline",       desc: "High protein, low calorie",  filters: { protein: "over40", calories: "under600", diet: "any", healthiness: "healthy" } },
-  { key: "endurance", label: "Endurance",  icon: "bicycle-outline",     desc: "High carb, energy-dense",    filters: { protein: "any",    calories: "over800", diet: "any", healthiness: "healthy" } },
-  { key: "kids",      label: "Kids meals", icon: "happy-outline",       desc: "Simple, allergen-safe",      filters: { protein: "any",    calories: "under600", diet: "any", healthiness: "healthy" } },
-] as const
+// extraParams are passed directly to Spoonacular complexSearch on top of the normal filter params
+const PRESETS: { key: string; label: string; icon: string; desc: string; filters: Partial<{ protein: string; calories: string; healthiness: string; diet: string }>; extraParams: Record<string, string> }[] = [
+  {
+    key: "bulking",
+    label: "Bulking",
+    icon: "barbell-outline",
+    desc: "High protein, high calorie",
+    filters: { protein: "over40", calories: "over800" },
+    extraParams: { minProtein: "40", minCalories: "600", sort: "protein", sortDirection: "desc" },
+  },
+  {
+    key: "shredding",
+    label: "Shredding",
+    icon: "flame-outline",
+    desc: "High protein, low calorie",
+    filters: { protein: "over40", calories: "under600", healthiness: "healthy" },
+    extraParams: { minProtein: "30", maxCalories: "600", maxFat: "20", sort: "calories", sortDirection: "asc" },
+  },
+  {
+    key: "endurance",
+    label: "Endurance",
+    icon: "bicycle-outline",
+    desc: "High carb, energy-dense",
+    filters: { calories: "over800", healthiness: "healthy" },
+    extraParams: { minCarbs: "60", minCalories: "500", sort: "carbohydrates", sortDirection: "desc" },
+  },
+  {
+    key: "kids",
+    label: "Kids meals",
+    icon: "happy-outline",
+    desc: "Simple, allergen-safe",
+    filters: { calories: "under600", healthiness: "healthy" },
+    extraParams: { maxCalories: "500", maxSugar: "15", maxSodium: "600", maxReadyTime: "30", sort: "time", sortDirection: "asc" },
+  },
+]
 const PROTEIN_LABELS: Record<string, string> = { any: "Any", over20: "> 20g", over40: "> 40g", over60: "> 60g" }
 
-function buildSearchParams(f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[]; calories: string; protein: string }): URLSearchParams {
+function buildSearchParams(f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[]; calories: string; protein: string }, extraParams?: Record<string, string>): URLSearchParams {
   const params = new URLSearchParams()
 
   switch (f.prepTime) {
@@ -84,6 +113,11 @@ function buildSearchParams(f: { prepTime: string; budget: string; diet: string; 
     case "over20": params.set("minProtein", "20"); break
     case "over40": params.set("minProtein", "40"); break
     case "over60": params.set("minProtein", "60"); break
+  }
+
+  // preset extra params override/extend filter params
+  if (extraParams) {
+    Object.entries(extraParams).forEach(([k, v]) => params.set(k, v))
   }
 
   return params
@@ -155,9 +189,10 @@ export default function SearchScreen() {
 
   const searchWithFallback = async (f: typeof filters, mode: "all" | "some", offset: number): Promise<{ results: any[]; nextOffset: number | null; totalResults: number }> => {
     const ingredients = f.ingredients
+    const presetExtra = activePreset ? (PRESETS.find(p => p.key === activePreset)?.extraParams ?? {}) : {}
 
     const doFetch = async (extraParams: Record<string, string>, off: number) => {
-      const params = buildSearchParams({ ...f, ingredients: [] })
+      const params = buildSearchParams({ ...f, ingredients: [] }, presetExtra)
       params.set("offset", String(off))
       Object.entries(extraParams).forEach(([k, v]) => params.set(k, v))
       const res = await apiFetch(`/api/recipes/search?${params.toString()}`, { screen: "Search" })
