@@ -37,6 +37,7 @@ Light / dark theme
 Weekly AI meal planner (v1 — basic)
 Generate, save, delete plans. Meal plan history stored in DB.
 Settings: daily calories target, diet type only.
+NOTE: Meal planner should draw inspiration from the search filter system — use same nutrition params, diet filters, cuisine preferences, and AI suggestions when generating plans.
 
 Cooking mode
 Fullscreen step-by-step view. Swipe navigation.
@@ -135,6 +136,9 @@ Inline two-step flow: enter email → receive code → enter code + new password
 Advanced search filter panel ✅ DONE
 5 collapsible sections: Recipe (prep time, budget, diet, cuisine, healthiness, taste), Ingredients (text input + AI camera scan), Macronutrients (calories, protein, carbs, fat, sat fat, fiber, sugar, cholesterol, sodium, alcohol, caffeine — min/max), Micronutrients (vitamins A/C/D/B6/B12, minerals calcium/iron/magnesium/potassium/zinc — min/max), Sort (8 sort options + asc/desc). All nutrition params passed directly to Spoonacular complexSearch. Active filter count badge on each section header. Macronutrients and Micronutrients are Premium-gated.
 
+AI Suggestions in search filter panel ✅ DONE
+Premium section in filter panel. 5 quick preset chips: Kids, Weight Loss, Mass Gaining, Endurance Sport, High Intensity Sport. Free-text "Ask AI" input (max 30 words) with voice input via mic button. Claude Haiku interprets the goal and returns Spoonacular params applied directly to filter state. Applied state shown with confirmation + Clear button.
+
 Trial expiry modal — 1-2 days warning
 When trial is 1-2 days from expiring, show a one-time modal on app open prompting user to upgrade. Fire once per account, not every session.
 
@@ -165,6 +169,12 @@ Daily targets for calories, protein, carbs, fat. Track meals logged against targ
 Recipe collections
 Organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday". First collection free, more = premium.
 
+--- Legal & Safety ---
+
+Professional disclaimer including allergy warning
+A proper legal disclaimer must be shown during registration AND accessible from the app at all times. Must cover: nutritional information is approximate and not a substitute for professional dietary advice, allergy information may not be complete or accurate — always check product labels, not suitable for medical dietary management. Requires a lawyer to draft or review. Currently the registration disclaimer is basic and does not cover allergy liability.
+NOTE: A user can currently register without seeing any allergy disclaimer at all — this is a legal risk before launch.
+
 --- App Store ---
 
 Custom app icon
@@ -194,6 +204,16 @@ One-time $25 fee.
 
 Fortnightly re-engagement email
 Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
+
+--- Navigation ---
+
+Navigation audit — back gestures and close buttons
+Some screens use X button (blocks swipe-back gesture), others rely on swipe-left. Needs a full audit before launch to ensure consistent behaviour across all screens. Swipe-back should work on all stack screens; modals should have X. Recipe detail, cooking mode, login modal, profile modals all need checking.
+
+--- Search ---
+
+Ingredient autocomplete in search
+When typing in the Ingredients field, query Spoonacular's autocomplete ingredient endpoint in real time and show suggestions below the input. Reduces typos and ensures ingredient names match Spoonacular's DB exactly, improving search results.
 
 
 ================================================================
@@ -232,6 +252,12 @@ Faster image delivery globally.
 
 Analytics
 Track searches, saves, completions, premium conversion, trial retention, meal plan usage, shopping list engagement.
+
+Sentry error monitoring
+Replace current manual error reporting with Sentry (sentry.io). Captures crashes, JS errors, API failures with full stack traces and session context. Currently errors are reported via a custom Resend email which is fragile. Sentry has a free tier sufficient for pre-launch. Evaluate vs current approach — if Sentry covers it better, replace entirely.
+
+AI recipe instruction enrichment
+Some Spoonacular recipes have only 50–70% of ingredients mentioned in the cooking steps (quality filter currently rejects below 50%). For recipes in the 50–70% range, pass the recipe to Claude Haiku to reconstruct/enrich the instructions to reference all ingredients. Cost tracking: log each enrichment call to DB (enrichment_calls table with recipe_id, timestamp, tokens_used) to monitor Claude costs. Current known costs: Spoonacular ~£30/mo, Claude vision scans + substitutes already running. Enrichment calls could add significant cost at scale — track before enabling broadly.
 
 
 ================================================================
@@ -310,10 +336,11 @@ Breaking points:
 - CORS error → route is being called client-side directly. Must always go through /api/recipes/* proxy.
 
 Claude (Anthropic)
-Used for: ingredient photo scanning (vision), substitute suggestions, future AI chat.
-API key: ANTHROPIC_API_KEY in .env.local (server-side only).
-Model: claude-haiku-4-5 for substitutes and scan. Upgrade to Sonnet for chat if needed.
-Proxied via: /api/recipes/analyze-image, /api/recipes/suggest-substitute.
+Used for: ingredient photo scanning (vision), substitute suggestions, AI filter suggestions.
+API key: ANTHROPIC_API_KEY in .env.local (server-side only). Must also be set in Amplify env vars.
+Model: claude-haiku-4-5-20251001 for all current calls. Use full model ID — short names like claude-haiku-4-5 will 404.
+Proxied via: /api/recipes/analyze-image, /api/recipes/suggest-substitute, /api/recipes/suggest-filters.
+Known costs: vision scan per image + substitute per request + filter suggestion per tap. Track usage.
 Breaking points:
 - 401 → API key missing or wrong. Check .env.local and Amplify environment variables.
 - 529 or 503 → Anthropic overloaded. Retry after a few seconds.

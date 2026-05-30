@@ -597,7 +597,7 @@ export default function SearchScreen() {
                 {/* Quick presets */}
                 <Text style={s.aiSubtitle}>Quick presets</Text>
                 <View style={s.aiChipsRow}>
-                  {["Bulking", "Shredding", "Endurance", "Weight Loss", "High Fibre", "Kids", "Quick Meal", "Recovery"].map(preset => (
+                  {["Kids", "Weight Loss", "Mass Gaining", "Endurance Sport", "High Intensity Sport"].map(preset => (
                     <TouchableOpacity
                       key={preset}
                       style={[s.aiChip, aiApplied === preset && s.aiChipActive]}
