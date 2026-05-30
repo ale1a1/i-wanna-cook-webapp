@@ -154,32 +154,32 @@ export default function ProfileScreen() {
             : 0
           if (isPremium && !trialActive) {
             return (
-              <View style={[s.card, { borderColor: colors.primary, backgroundColor: colors.primary + "18" }]}>
+              <View style={[s.card, s.premiumCard]}>
                 <View style={s.trialRow}>
-                  <Ionicons name="star" size={18} color={colors.primary} />
-                  <Text style={[s.trialTitle, { color: colors.primary }]}>Premium</Text>
+                  <Ionicons name="star" size={20} color="#fff" />
+                  <Text style={[s.trialTitle, { color: "#fff", fontSize: 17 }]}>Premium</Text>
                 </View>
-                <Text style={s.trialSub}>You have full access to all features.</Text>
+                <Text style={[s.trialSub, { color: "rgba(255,255,255,0.85)" }]}>Full access to all features.</Text>
               </View>
             )
           }
           if (trialActive) {
             return (
-              <View style={[s.card, { borderColor: colors.primary, backgroundColor: colors.primary + "18" }]}>
+              <View style={[s.card, { borderColor: colors.primary, backgroundColor: colors.primary + "22" }]}>
                 <View style={s.trialRow}>
-                  <Ionicons name="timer-outline" size={18} color={colors.primary} />
-                  <Text style={[s.trialTitle, { color: colors.primary }]}>Free Trial</Text>
+                  <Ionicons name="timer-outline" size={20} color={colors.primary} />
+                  <Text style={[s.trialTitle, { color: colors.primary, fontSize: 17 }]}>Free Trial</Text>
                   <View style={s.trialBadge}><Text style={s.trialBadgeText}>{daysLeft}d left</Text></View>
                 </View>
-                <Text style={s.trialSub}>Full premium access until your trial ends. No card required.</Text>
+                <Text style={s.trialSub}>Full premium access until your trial ends.</Text>
               </View>
             )
           }
           return (
-            <View style={[s.card, { borderColor: colors.destructive, backgroundColor: colors.destructive + "18" }]}>
+            <View style={[s.card, { borderColor: colors.border }]}>
               <View style={s.trialRow}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.destructive} />
-                <Text style={[s.trialTitle, { color: colors.text }]}>Free Plan</Text>
+                <Ionicons name="lock-closed-outline" size={20} color={colors.mutedForeground} />
+                <Text style={[s.trialTitle, { color: colors.text, fontSize: 17 }]}>Free Plan</Text>
               </View>
               <Text style={s.trialSub}>10 searches/week · 3 scans/week</Text>
               <TouchableOpacity style={s.upgradeBtn}>
@@ -378,4 +378,5 @@ const makeStyles = (colors: any) => StyleSheet.create({
   trialSub: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18 },
   upgradeBtn: { marginTop: 12, backgroundColor: colors.primary, paddingVertical: 11, borderRadius: radius.md, alignItems: "center" },
   upgradeBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  premiumCard: { borderColor: colors.primary, backgroundColor: colors.primary },
 })
