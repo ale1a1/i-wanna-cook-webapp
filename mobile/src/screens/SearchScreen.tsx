@@ -21,52 +21,67 @@ const PREP_TIMES = ["any", "under15", "under30", "under60", "over60"]
 const BUDGETS = ["any", "cheap", "moderate", "expensive"]
 const HEALTHINESS = ["any", "healthy", "veryHealthy", "indulgent"]
 const TASTES = ["any", "sweet", "salty", "spicy", "savory"]
-const CALORIE_GOALS = ["any", "under400", "under600", "under800", "over800"]
-const PROTEIN_GOALS = ["any", "over20", "over40", "over60"]
 const PREP_LABELS: Record<string, string> = { any: "Any time", under15: "< 15 min", under30: "< 30 min", under60: "< 1 hour", over60: "> 1 hour" }
 const BUDGET_LABELS: Record<string, string> = { any: "Any budget", cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium" }
 const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
 const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
-const CALORIE_LABELS: Record<string, string> = { any: "Any", under400: "< 400 kcal", under600: "< 600 kcal", under800: "< 800 kcal", over800: "> 800 kcal" }
 
-// extraParams are passed directly to Spoonacular complexSearch on top of the normal filter params
-const PRESETS: { key: string; label: string; icon: string; desc: string; filters: Partial<{ protein: string; calories: string; healthiness: string; diet: string }>; extraParams: Record<string, string> }[] = [
-  {
-    key: "bulking",
-    label: "Bulking",
-    icon: "barbell-outline",
-    desc: "High protein, high calorie",
-    filters: { protein: "over40", calories: "over800" },
-    extraParams: { minProtein: "40", minCalories: "600", sort: "protein", sortDirection: "desc" },
-  },
-  {
-    key: "shredding",
-    label: "Shredding",
-    icon: "flame-outline",
-    desc: "High protein, low calorie",
-    filters: { protein: "over40", calories: "under600", healthiness: "healthy" },
-    extraParams: { minProtein: "30", maxCalories: "600", maxFat: "20", sort: "calories", sortDirection: "asc" },
-  },
-  {
-    key: "endurance",
-    label: "Endurance",
-    icon: "bicycle-outline",
-    desc: "High carb, energy-dense",
-    filters: { calories: "over800", healthiness: "healthy" },
-    extraParams: { minCarbs: "60", minCalories: "500", sort: "carbohydrates", sortDirection: "desc" },
-  },
-  {
-    key: "kids",
-    label: "Kids meals",
-    icon: "happy-outline",
-    desc: "Simple, allergen-safe",
-    filters: { calories: "under600", healthiness: "healthy" },
-    extraParams: { maxCalories: "500", maxSugar: "15", maxSodium: "600", maxReadyTime: "30", sort: "time", sortDirection: "asc" },
-  },
+const SORT_OPTIONS = [
+  { value: "popularity", label: "Popularity" },
+  { value: "healthiness", label: "Healthiness" },
+  { value: "time", label: "Prep time" },
+  { value: "calories", label: "Calories" },
+  { value: "protein", label: "Protein" },
+  { value: "carbohydrates", label: "Carbs" },
+  { value: "fat", label: "Fat" },
+  { value: "price", label: "Price" },
 ]
-const PROTEIN_LABELS: Record<string, string> = { any: "Any", over20: "> 20g", over40: "> 40g", over60: "> 60g" }
 
-function buildSearchParams(f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[]; calories: string; protein: string }, extraParams?: Record<string, string>): URLSearchParams {
+// min/max nutrition inputs — passed directly as Spoonacular params
+type NutritionFilters = {
+  minCalories: string; maxCalories: string
+  minProtein: string; maxProtein: string
+  minCarbs: string; maxCarbs: string
+  minFat: string; maxFat: string
+  minSaturatedFat: string; maxSaturatedFat: string
+  minFiber: string; maxFiber: string
+  minSugar: string; maxSugar: string
+  minCholesterol: string; maxCholesterol: string
+  minSodium: string; maxSodium: string
+  minIron: string; maxIron: string
+  minCalcium: string; maxCalcium: string
+  minZinc: string; maxZinc: string
+  minMagnesium: string; maxMagnesium: string
+  minPotassium: string; maxPotassium: string
+  minVitaminA: string; maxVitaminA: string
+  minVitaminC: string; maxVitaminC: string
+  minVitaminD: string; maxVitaminD: string
+  minVitaminB12: string; maxVitaminB12: string
+  minVitaminB6: string; maxVitaminB6: string
+  minAlcohol: string; maxAlcohol: string
+  minCaffeine: string; maxCaffeine: string
+}
+
+const defaultNutrition: NutritionFilters = {
+  minCalories: "", maxCalories: "", minProtein: "", maxProtein: "",
+  minCarbs: "", maxCarbs: "", minFat: "", maxFat: "",
+  minSaturatedFat: "", maxSaturatedFat: "", minFiber: "", maxFiber: "",
+  minSugar: "", maxSugar: "", minCholesterol: "", maxCholesterol: "",
+  minSodium: "", maxSodium: "", minIron: "", maxIron: "",
+  minCalcium: "", maxCalcium: "", minZinc: "", maxZinc: "",
+  minMagnesium: "", maxMagnesium: "", minPotassium: "", maxPotassium: "",
+  minVitaminA: "", maxVitaminA: "", minVitaminC: "", maxVitaminC: "",
+  minVitaminD: "", maxVitaminD: "", minVitaminB12: "", maxVitaminB12: "",
+  minVitaminB6: "", maxVitaminB6: "", minAlcohol: "", maxAlcohol: "",
+  minCaffeine: "", maxCaffeine: "",
+}
+
+function buildSearchParams(
+  f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[] },
+  nutrition: NutritionFilters,
+  sort: string,
+  sortDirection: string,
+): URLSearchParams {
   const params = new URLSearchParams()
 
   switch (f.prepTime) {
@@ -78,7 +93,6 @@ function buildSearchParams(f: { prepTime: string; budget: string; diet: string; 
 
   const dietMap: Record<string, string> = { vegetarian: "vegetarian", vegan: "vegan", glutenFree: "gluten free", keto: "ketogenic", paleo: "paleo" }
   if (f.diet !== "any" && dietMap[f.diet]) params.set("diet", dietMap[f.diet])
-
   if (f.cuisine !== "any") params.set("cuisine", f.cuisine)
 
   switch (f.budget) {
@@ -102,22 +116,14 @@ function buildSearchParams(f: { prepTime: string; budget: string; diet: string; 
 
   if (f.ingredients.length) params.set("includeIngredients", f.ingredients.join(","))
 
-  switch (f.calories) {
-    case "under400": params.set("maxCalories", "400"); break
-    case "under600": params.set("maxCalories", "600"); break
-    case "under800": params.set("maxCalories", "800"); break
-    case "over800": params.set("minCalories", "800"); break
-  }
+  // nutrition — only set if user entered a value
+  Object.entries(nutrition).forEach(([key, val]) => {
+    if (val.trim() !== "") params.set(key, val.trim())
+  })
 
-  switch (f.protein) {
-    case "over20": params.set("minProtein", "20"); break
-    case "over40": params.set("minProtein", "40"); break
-    case "over60": params.set("minProtein", "60"); break
-  }
-
-  // preset extra params override/extend filter params
-  if (extraParams) {
-    Object.entries(extraParams).forEach(([k, v]) => params.set(k, v))
+  if (sort !== "none") {
+    params.set("sort", sort)
+    params.set("sortDirection", sortDirection)
   }
 
   return params
@@ -141,11 +147,17 @@ export default function SearchScreen() {
   const { isPremium } = useSubscription()
   const { user } = useAuth()
   const [showPaywall, setShowPaywall] = useState(false)
-  const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[], calories: "any", protein: "any" }
+
+  const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[] }
   const [filters, setFilters] = useState(defaultFilters)
-  const [activePreset, setActivePreset] = useState<string | null>(null)
+  const [nutrition, setNutrition] = useState<NutritionFilters>(defaultNutrition)
+  const [sort, setSort] = useState("none")
+  const [sortDirection, setSortDirection] = useState("desc")
   const [ingredientMode, setIngredientMode] = useState<"all" | "some">("all")
   const [fromScan, setFromScan] = useState(false)
+
+  // collapsible sections
+  const [openSection, setOpenSection] = useState<string | null>("recipe")
 
   useEffect(() => {
     if (route.params?.scannedIngredients?.length) {
@@ -189,10 +201,9 @@ export default function SearchScreen() {
 
   const searchWithFallback = async (f: typeof filters, mode: "all" | "some", offset: number): Promise<{ results: any[]; nextOffset: number | null; totalResults: number }> => {
     const ingredients = f.ingredients
-    const presetExtra = activePreset ? (PRESETS.find(p => p.key === activePreset)?.extraParams ?? {}) : {}
 
     const doFetch = async (extraParams: Record<string, string>, off: number) => {
-      const params = buildSearchParams({ ...f, ingredients: [] }, presetExtra)
+      const params = buildSearchParams({ ...f, ingredients: [] }, nutrition, sort, sortDirection)
       params.set("offset", String(off))
       Object.entries(extraParams).forEach(([k, v]) => params.set(k, v))
       const res = await apiFetch(`/api/recipes/search?${params.toString()}`, { screen: "Search" })
@@ -206,7 +217,6 @@ export default function SearchScreen() {
       return { results: data.results || [], nextOffset: data.nextOffset ?? null, totalResults: data.totalResults ?? 0 }
     }
 
-    // Build fallback tiers per ingredient
     const lastWord = (ing: string) => ing.trim().split(/\s+/).at(-1)!
     const attempts: Record<string, string>[] = [
       { includeIngredients: ingredients.join(","), ...(mode === "some" ? { sort: "max-used-ingredients", ignorePantry: "false" } : {}) },
@@ -235,7 +245,8 @@ export default function SearchScreen() {
     if (route.params?.surprise) fetchRecipes(defaultFilters)
   }, [route.params?.surprise])
 
-  const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.ingredients.length > 0 || filters.calories !== "any" || filters.protein !== "any"
+  const hasNutritionFilters = Object.values(nutrition).some(v => v.trim() !== "")
+  const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.ingredients.length > 0 || hasNutritionFilters || sort !== "none"
 
   const addIngredient = () => {
     if (ingredientInput.trim()) { setFilters(f => ({ ...f, ingredients: [...f.ingredients, ingredientInput.trim()] })); setIngredientInput("") }
@@ -255,9 +266,7 @@ export default function SearchScreen() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
     if (status !== "granted") { Alert.alert("Permission needed", "Please allow camera access."); return }
     const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
-    if (!result.canceled && result.assets.length > 0) {
-      setCapturedAssets(prev => [...prev, ...result.assets])
-    }
+    if (!result.canceled && result.assets.length > 0) setCapturedAssets(prev => [...prev, ...result.assets])
   }, [capturedAssets.length])
 
   const openLibraryForScan = useCallback(async () => {
@@ -265,62 +274,36 @@ export default function SearchScreen() {
     if (remaining <= 0) return
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (status !== "granted") { Alert.alert("Permission needed", "Please allow photo library access."); return }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: remaining,
-      base64: true,
-      quality: 0.6,
-    })
-    if (!result.canceled && result.assets.length > 0) {
-      setCapturedAssets(prev => [...prev, ...result.assets])
-    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsMultipleSelection: true, selectionLimit: remaining, base64: true, quality: 0.6 })
+    if (!result.canceled && result.assets.length > 0) setCapturedAssets(prev => [...prev, ...result.assets])
   }, [capturedAssets.length])
 
   const analyzeAssets = useCallback(async () => {
     if (capturedAssets.length === 0) return
-    setScannerOpen(false)
-    setAnalyzingImages(true)
-    setFiltersOpen(false)
+    setScannerOpen(false); setAnalyzingImages(true); setFiltersOpen(false)
     const detected: string[] = []
-
     try {
-      await Promise.all(
-        capturedAssets.map(async (asset) => {
-          if (!asset.base64) return
-          const res = await fetch(`${API_BASE_URL}/api/recipes/analyze-image`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg", userId: user?.id, isPremium }),
-          })
-          const data = await res.json()
-          if (!res.ok) {
-            if (data.code === "SCAN_LIMIT") throw new Error(`You've used all ${data.limit} free scans this week. Upgrade to Premium for unlimited scans.`)
-            throw new Error(data.error ?? `Error ${res.status}`)
-          }
-          if (data.all?.length) detected.push(...data.all)
-          else if (data.ingredient) detected.push(data.ingredient)
-        })
-      )
+      await Promise.all(capturedAssets.map(async (asset) => {
+        if (!asset.base64) return
+        const res = await fetch(`${API_BASE_URL}/api/recipes/analyze-image`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ base64: asset.base64, mimeType: asset.mimeType ?? "image/jpeg", userId: user?.id, isPremium }) })
+        const data = await res.json()
+        if (!res.ok) {
+          if (data.code === "SCAN_LIMIT") throw new Error(`You've used all ${data.limit} free scans this week. Upgrade to Premium for unlimited scans.`)
+          throw new Error(data.error ?? `Error ${res.status}`)
+        }
+        if (data.all?.length) detected.push(...data.all)
+        else if (data.ingredient) detected.push(data.ingredient)
+      }))
     } catch (e: any) {
       setAnalyzingImages(false)
       const msg = e?.message ?? "Network error — couldn't reach the server."
-      if (!msg.includes("No ingredients detected")) {
-        reportError(msg, "Scan Ingredients")
-      }
+      if (!msg.includes("No ingredients detected")) reportError(msg, "Scan Ingredients")
       showError(msg, "Scan Ingredients")
       setCapturedAssets([])
       return
     }
-
-    setAnalyzingImages(false)
-    setCapturedAssets([])
-
-    if (detected.length === 0) {
-      showError("Couldn't identify any ingredients. Try closer photos of individual ingredients.", "Scan Ingredients")
-      return
-    }
-
+    setAnalyzingImages(false); setCapturedAssets([])
+    if (detected.length === 0) { showError("Couldn't identify any ingredients. Try closer photos of individual ingredients.", "Scan Ingredients"); return }
     setFilters(f => {
       const existing = new Set(f.ingredients.map(i => i.toLowerCase()))
       const newOnes = detected.filter(d => !existing.has(d.toLowerCase()))
@@ -329,22 +312,70 @@ export default function SearchScreen() {
     setFiltersOpen(true)
   }, [capturedAssets, showError])
 
-  const pickAndAnalyzeImages = useCallback(() => {
-    setCapturedAssets([])
-    setScannerOpen(true)
-  }, [])
+  const pickAndAnalyzeImages = useCallback(() => { setCapturedAssets([]); setScannerOpen(true) }, [])
 
   const FilterPicker = ({ label, values, labelMap, field }: { label: string; values: string[]; labelMap: Record<string, string>; field: keyof typeof filters }) => (
-    <View style={s.filterGroup}>
-      <Text style={s.filterLabel}>{label}</Text>
+    <View style={s.filterRow}>
+      <Text style={s.filterRowLabel}>{label}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {values.map(v => (
-          <TouchableOpacity key={v} style={[s.pill, filters[field] === v && s.pillActive]} onPress={() => setFilters(f => ({ ...f, [field]: v }))}>
-            <Text style={[s.pillText, filters[field] === v && s.pillTextActive]}>{labelMap[v] ?? v.charAt(0).toUpperCase() + v.slice(1)}</Text>
+          <TouchableOpacity key={v} style={[s.pill, (filters as any)[field] === v && s.pillActive]} onPress={() => setFilters(f => ({ ...f, [field]: v }))}>
+            <Text style={[s.pillText, (filters as any)[field] === v && s.pillTextActive]}>{labelMap[v] ?? v.charAt(0).toUpperCase() + v.slice(1)}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
     </View>
+  )
+
+  const NutritionInput = ({ label, minKey, maxKey, unit, premium }: { label: string; minKey: keyof NutritionFilters; maxKey: keyof NutritionFilters; unit: string; premium?: boolean }) => (
+    <View style={s.nutritionRow}>
+      <View style={s.nutritionLabelRow}>
+        <Text style={s.nutritionLabel}>{label}</Text>
+        {premium && <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>}
+      </View>
+      <View style={s.nutritionInputs}>
+        <View style={s.nutritionField}>
+          <Text style={s.nutritionFieldLabel}>Min</Text>
+          <TextInput
+            style={s.nutritionInput}
+            value={nutrition[minKey]}
+            onChangeText={v => {
+              if (premium && !isPremium) { setShowPaywall(true); return }
+              setNutrition(n => ({ ...n, [minKey]: v.replace(/[^0-9]/g, "") }))
+            }}
+            placeholder="—"
+            placeholderTextColor={colors.muted}
+            keyboardType="numeric"
+          />
+          <Text style={s.nutritionUnit}>{unit}</Text>
+        </View>
+        <View style={s.nutritionField}>
+          <Text style={s.nutritionFieldLabel}>Max</Text>
+          <TextInput
+            style={s.nutritionInput}
+            value={nutrition[maxKey]}
+            onChangeText={v => {
+              if (premium && !isPremium) { setShowPaywall(true); return }
+              setNutrition(n => ({ ...n, [maxKey]: v.replace(/[^0-9]/g, "") }))
+            }}
+            placeholder="—"
+            placeholderTextColor={colors.muted}
+            keyboardType="numeric"
+          />
+          <Text style={s.nutritionUnit}>{unit}</Text>
+        </View>
+      </View>
+    </View>
+  )
+
+  const SectionHeader = ({ title, sectionKey, badge }: { title: string; sectionKey: string; badge?: string }) => (
+    <TouchableOpacity style={s.sectionHeader} onPress={() => setOpenSection(openSection === sectionKey ? null : sectionKey)} activeOpacity={0.7}>
+      <Text style={s.sectionTitle}>{title}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {badge && <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>{badge}</Text></View>}
+        <Ionicons name={openSection === sectionKey ? "chevron-up" : "chevron-down"} size={18} color={colors.mutedForeground} />
+      </View>
+    </TouchableOpacity>
   )
 
   const filterSummary = (() => {
@@ -353,11 +384,8 @@ export default function SearchScreen() {
     if (filters.diet !== "any") parts.push({ vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }[filters.diet] ?? filters.diet)
     if (filters.cuisine !== "any") parts.push(filters.cuisine.charAt(0).toUpperCase() + filters.cuisine.slice(1))
     if (filters.prepTime !== "any") parts.push(PREP_LABELS[filters.prepTime])
-    if (filters.budget !== "any") parts.push(BUDGET_LABELS[filters.budget])
-    if (filters.healthiness !== "any") parts.push(HEALTH_LABELS[filters.healthiness])
-    if (filters.taste !== "any") parts.push(TASTE_LABELS[filters.taste])
-    if (filters.calories !== "any") parts.push(CALORIE_LABELS[filters.calories])
-    if (filters.protein !== "any") parts.push(`Protein ${PROTEIN_LABELS[filters.protein]}`)
+    if (hasNutritionFilters) parts.push("Nutrition filters")
+    if (sort !== "none") parts.push(`Sort: ${SORT_OPTIONS.find(o => o.value === sort)?.label}`)
     return parts.join(" · ") || "All recipes"
   })()
 
@@ -392,109 +420,126 @@ export default function SearchScreen() {
             <Text style={s.modalTitle}>Filter Recipes</Text>
             <View style={{ width: 24 }} />
           </View>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md, paddingBottom: 40 }}>
-            <View style={s.filterGroup}>
-              <View style={s.premiumLabelRow}>
-                <Text style={s.filterLabel}>Goal Presets</Text>
-                <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>
-              </View>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {PRESETS.map(p => {
-                  const active = activePreset === p.key
-                  return (
-                    <TouchableOpacity
-                      key={p.key}
-                      style={[s.presetCard, active && s.presetCardActive]}
-                      onPress={() => {
-                        if (!isPremium) { setShowPaywall(true); return }
-                        if (active) {
-                          setActivePreset(null)
-                          setFilters(f => ({ ...f, protein: "any", calories: "any", healthiness: "any" }))
-                        } else {
-                          setActivePreset(p.key)
-                          setFilters(f => ({ ...f, ...p.filters }))
-                        }
-                      }}
-                    >
-                      <Ionicons name={p.icon as any} size={20} color={active ? "#fff" : colors.primary} />
-                      <Text style={[s.presetLabel, active && { color: "#fff" }]}>{p.label}</Text>
-                      <Text style={[s.presetDesc, active && { color: "rgba(255,255,255,0.8)" }]}>{p.desc}</Text>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+
+            {/* ── RECIPE ── */}
+            <SectionHeader title="Recipe" sectionKey="recipe" />
+            {openSection === "recipe" && (
+              <View style={s.sectionBody}>
+                <FilterPicker label="Prep Time" values={PREP_TIMES} labelMap={PREP_LABELS} field="prepTime" />
+                <FilterPicker label="Budget" values={BUDGETS} labelMap={BUDGET_LABELS} field="budget" />
+                <FilterPicker label="Diet" values={DIETS} labelMap={{ any: "Any diet", vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }} field="diet" />
+                <FilterPicker label="Cuisine" values={CUISINES} labelMap={{ any: "Any cuisine", italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese", french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek" }} field="cuisine" />
+                <FilterPicker label="Healthiness" values={HEALTHINESS} labelMap={HEALTH_LABELS} field="healthiness" />
+                <FilterPicker label="Taste" values={TASTES} labelMap={TASTE_LABELS} field="taste" />
+                <View style={s.filterRow}>
+                  <Text style={s.filterRowLabel}>Ingredients</Text>
+                  <View style={s.ingredientRow}>
+                    <TextInput style={s.ingredientInput} value={ingredientInput} onChangeText={setIngredientInput} placeholder="e.g. chicken, garlic..." placeholderTextColor={colors.muted} onSubmitEditing={addIngredient} returnKeyType="done" />
+                    <TouchableOpacity style={[s.addBtn, !ingredientInput.trim() && s.btnDisabled]} onPress={addIngredient} disabled={!ingredientInput.trim()}>
+                      <Text style={s.addBtnText}>Add</Text>
                     </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </View>
-            <FilterPicker label="Prep Time" values={PREP_TIMES} labelMap={PREP_LABELS} field="prepTime" />
-            <FilterPicker label="Budget" values={BUDGETS} labelMap={BUDGET_LABELS} field="budget" />
-            <FilterPicker label="Diet" values={DIETS} labelMap={{ any: "Any diet", vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }} field="diet" />
-            <FilterPicker label="Cuisine" values={CUISINES} labelMap={{ any: "Any cuisine", italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese", french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek" }} field="cuisine" />
-            <FilterPicker label="Healthiness" values={HEALTHINESS} labelMap={HEALTH_LABELS} field="healthiness" />
-            <FilterPicker label="Taste" values={TASTES} labelMap={TASTE_LABELS} field="taste" />
-            <View style={s.filterGroup}>
-              <View style={s.premiumLabelRow}>
-                <Text style={s.filterLabel}>Calories per serving</Text>
-                <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {CALORIE_GOALS.map(v => (
-                  <TouchableOpacity key={v} style={[s.pill, filters.calories === v && s.pillActive]}
-                    onPress={() => { if (!isPremium && v !== "any") { setShowPaywall(true); return } setFilters(f => ({ ...f, calories: v })) }}>
-                    <Text style={[s.pillText, filters.calories === v && s.pillTextActive]}>{CALORIE_LABELS[v]}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={s.filterGroup}>
-              <View style={s.premiumLabelRow}>
-                <Text style={s.filterLabel}>Protein per serving</Text>
-                <View style={s.premiumBadge}><Text style={s.premiumBadgeText}>Premium</Text></View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {PROTEIN_GOALS.map(v => (
-                  <TouchableOpacity key={v} style={[s.pill, filters.protein === v && s.pillActive]}
-                    onPress={() => { if (!isPremium && v !== "any") { setShowPaywall(true); return } setFilters(f => ({ ...f, protein: v })) }}>
-                    <Text style={[s.pillText, filters.protein === v && s.pillTextActive]}>{PROTEIN_LABELS[v]}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-            <View style={s.filterGroup}>
-              <Text style={s.filterLabel}>Ingredients</Text>
-              <View style={s.ingredientRow}>
-                <TextInput style={s.ingredientInput} value={ingredientInput} onChangeText={setIngredientInput} placeholder="e.g. chicken, garlic..." placeholderTextColor={colors.muted} onSubmitEditing={addIngredient} returnKeyType="done" />
-                <TouchableOpacity style={[s.addBtn, !ingredientInput.trim() && s.btnDisabled]} onPress={addIngredient} disabled={!ingredientInput.trim()}>
-                  <Text style={s.addBtnText}>Add</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.cameraBtn} onPress={pickAndAnalyzeImages} disabled={analyzingImages}>
-                  {analyzingImages
-                    ? <ActivityIndicator size="small" color="#fff" />
-                    : <Ionicons name="camera" size={20} color="#fff" />}
-                </TouchableOpacity>
-              </View>
-              {filters.ingredients.length > 0 && (
-                <View style={s.tagsRow}>
-                  {filters.ingredients.map(ing => (
-                    <TouchableOpacity key={ing} style={s.tag} onPress={() => setFilters(f => ({ ...f, ingredients: f.ingredients.filter(i => i !== ing) }))}>
-                      <Text style={s.tagText}>{ing}</Text>
-                      <Ionicons name="close" size={12} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
+                    <TouchableOpacity style={s.cameraBtn} onPress={pickAndAnalyzeImages} disabled={analyzingImages}>
+                      {analyzingImages ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="camera" size={20} color="#fff" />}
                     </TouchableOpacity>
-                  ))}
+                  </View>
+                  {filters.ingredients.length > 0 && (
+                    <View style={s.tagsRow}>
+                      {filters.ingredients.map(ing => (
+                        <TouchableOpacity key={ing} style={s.tag} onPress={() => setFilters(f => ({ ...f, ingredients: f.ingredients.filter(i => i !== ing) }))}>
+                          <Text style={s.tagText}>{ing}</Text>
+                          <Ionicons name="close" size={12} color={colors.mutedForeground} style={{ marginLeft: 4 }} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  {filters.ingredients.length > 1 && (
+                    <View style={s.modeToggleRow}>
+                      <TouchableOpacity style={[s.modeToggleBtn, ingredientMode === "all" && s.modeToggleBtnActive]} onPress={() => setIngredientMode("all")}>
+                        <Text style={[s.modeToggleText, ingredientMode === "all" && s.modeToggleTextActive]}>Match all</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[s.modeToggleBtn, ingredientMode === "some" && s.modeToggleBtnActive]} onPress={() => setIngredientMode("some")}>
+                        <Text style={[s.modeToggleText, ingredientMode === "some" && s.modeToggleTextActive]}>Match some</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
-              )}
-              {filters.ingredients.length > 1 && (
-                <View style={s.modeToggleRow}>
-                  <TouchableOpacity style={[s.modeToggleBtn, ingredientMode === "all" && s.modeToggleBtnActive]} onPress={() => setIngredientMode("all")}>
-                    <Text style={[s.modeToggleText, ingredientMode === "all" && s.modeToggleTextActive]}>Match all</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[s.modeToggleBtn, ingredientMode === "some" && s.modeToggleBtnActive]} onPress={() => setIngredientMode("some")}>
-                    <Text style={[s.modeToggleText, ingredientMode === "some" && s.modeToggleTextActive]}>Match some</Text>
-                  </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ── MACROS ── */}
+            <SectionHeader title="Macronutrients" sectionKey="macros" badge="Premium" />
+            {openSection === "macros" && (
+              <View style={s.sectionBody}>
+                <NutritionInput label="Calories" minKey="minCalories" maxKey="maxCalories" unit="kcal" premium />
+                <NutritionInput label="Protein" minKey="minProtein" maxKey="maxProtein" unit="g" premium />
+                <NutritionInput label="Carbohydrates" minKey="minCarbs" maxKey="maxCarbs" unit="g" premium />
+                <NutritionInput label="Fat" minKey="minFat" maxKey="maxFat" unit="g" premium />
+                <NutritionInput label="Saturated Fat" minKey="minSaturatedFat" maxKey="maxSaturatedFat" unit="g" premium />
+                <NutritionInput label="Fiber" minKey="minFiber" maxKey="maxFiber" unit="g" premium />
+                <NutritionInput label="Sugar" minKey="minSugar" maxKey="maxSugar" unit="g" premium />
+                <NutritionInput label="Cholesterol" minKey="minCholesterol" maxKey="maxCholesterol" unit="mg" premium />
+                <NutritionInput label="Sodium" minKey="minSodium" maxKey="maxSodium" unit="mg" premium />
+                <NutritionInput label="Alcohol" minKey="minAlcohol" maxKey="maxAlcohol" unit="g" premium />
+                <NutritionInput label="Caffeine" minKey="minCaffeine" maxKey="maxCaffeine" unit="mg" premium />
+              </View>
+            )}
+
+            {/* ── MICRONUTRIENTS ── */}
+            <SectionHeader title="Micronutrients" sectionKey="micros" badge="Premium" />
+            {openSection === "micros" && (
+              <View style={s.sectionBody}>
+                <Text style={s.microSubtitle}>Vitamins</Text>
+                <NutritionInput label="Vitamin A" minKey="minVitaminA" maxKey="maxVitaminA" unit="IU" premium />
+                <NutritionInput label="Vitamin C" minKey="minVitaminC" maxKey="maxVitaminC" unit="mg" premium />
+                <NutritionInput label="Vitamin D" minKey="minVitaminD" maxKey="maxVitaminD" unit="µg" premium />
+                <NutritionInput label="Vitamin B6" minKey="minVitaminB6" maxKey="maxVitaminB6" unit="mg" premium />
+                <NutritionInput label="Vitamin B12" minKey="minVitaminB12" maxKey="maxVitaminB12" unit="µg" premium />
+                <Text style={[s.microSubtitle, { marginTop: 8 }]}>Minerals</Text>
+                <NutritionInput label="Calcium" minKey="minCalcium" maxKey="maxCalcium" unit="mg" premium />
+                <NutritionInput label="Iron" minKey="minIron" maxKey="maxIron" unit="mg" premium />
+                <NutritionInput label="Magnesium" minKey="minMagnesium" maxKey="maxMagnesium" unit="mg" premium />
+                <NutritionInput label="Potassium" minKey="minPotassium" maxKey="maxPotassium" unit="mg" premium />
+                <NutritionInput label="Zinc" minKey="minZinc" maxKey="maxZinc" unit="mg" premium />
+              </View>
+            )}
+
+            {/* ── SORT ── */}
+            <SectionHeader title="Sort" sectionKey="sort" />
+            {openSection === "sort" && (
+              <View style={s.sectionBody}>
+                <View style={s.filterRow}>
+                  <Text style={s.filterRowLabel}>Sort by</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                    <TouchableOpacity style={[s.pill, sort === "none" && s.pillActive]} onPress={() => setSort("none")}>
+                      <Text style={[s.pillText, sort === "none" && s.pillTextActive]}>None</Text>
+                    </TouchableOpacity>
+                    {SORT_OPTIONS.map(o => (
+                      <TouchableOpacity key={o.value} style={[s.pill, sort === o.value && s.pillActive]} onPress={() => setSort(o.value)}>
+                        <Text style={[s.pillText, sort === o.value && s.pillTextActive]}>{o.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              )}
-            </View>
+                {sort !== "none" && (
+                  <View style={s.filterRow}>
+                    <Text style={s.filterRowLabel}>Direction</Text>
+                    <View style={s.modeToggleRow}>
+                      <TouchableOpacity style={[s.modeToggleBtn, sortDirection === "asc" && s.modeToggleBtnActive]} onPress={() => setSortDirection("asc")}>
+                        <Text style={[s.modeToggleText, sortDirection === "asc" && s.modeToggleTextActive]}>Ascending</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[s.modeToggleBtn, sortDirection === "desc" && s.modeToggleBtnActive]} onPress={() => setSortDirection("desc")}>
+                        <Text style={[s.modeToggleText, sortDirection === "desc" && s.modeToggleTextActive]}>Descending</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
           </ScrollView>
           <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setSearched(false); setActivePreset(null) }} disabled={!hasActiveFilters && !searched}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setNutrition(defaultNutrition); setSort("none"); setSortDirection("desc"); setSearched(false) }} disabled={!hasActiveFilters && !searched}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
@@ -533,16 +578,14 @@ export default function SearchScreen() {
           )}
           ListFooterComponent={nextOffset ? (
             <TouchableOpacity style={s.loadMoreBtn} onPress={loadMore} disabled={loadingMore}>
-              {loadingMore
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Text style={s.loadMoreText}>Load more recipes</Text>
-              }
+              {loadingMore ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={s.loadMoreText}>Load more recipes</Text>}
             </TouchableOpacity>
           ) : null}
         />
       )}
 
     </SafeAreaView>
+
     {/* AI Scanner Modal */}
     <Modal visible={scannerOpen} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={s.scannerContainer} edges={["top"]}>
@@ -551,48 +594,40 @@ export default function SearchScreen() {
             <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
-
         <View style={s.scannerCapture}>
-            <Text style={s.scannerCaptureTitle}>
-              {capturedAssets.length === 0 ? "Snap or pick your photos" : `${capturedAssets.length} photo${capturedAssets.length > 1 ? "s" : ""} added`}
-            </Text>
-            <Text style={s.scannerCaptureSubtitle}>
-              {capturedAssets.length === 0 ? "Fridge, counter, anything — AI will find the ingredients" : `${10 - capturedAssets.length} more allowed`}
-            </Text>
-
-            <View style={s.scannerBtns}>
-              <TouchableOpacity style={s.scannerActionBtn} onPress={openCameraForScan} disabled={capturedAssets.length >= 10}>
-                <Ionicons name="camera" size={28} color={colors.primary} />
-                <Text style={s.scannerActionBtnText}>Take photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.scannerActionBtn} onPress={openLibraryForScan} disabled={capturedAssets.length >= 10}>
-                <Ionicons name="images" size={28} color={colors.primary} />
-                <Text style={s.scannerActionBtnText}>From library</Text>
-              </TouchableOpacity>
-            </View>
-
-            {capturedAssets.length > 0 && (
-              <View style={s.scannerThumbsRow}>
-                {capturedAssets.map((a, i) => (
-                  <View key={i} style={s.scannerThumb}>
-                    <Image source={{ uri: a.uri }} style={s.scannerThumbImg} />
-                    <TouchableOpacity style={s.scannerThumbRemove} onPress={() => setCapturedAssets(prev => prev.filter((_, idx) => idx !== i))}>
-                      <Ionicons name="close-circle" size={18} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <View style={s.scannerFooter}>
-              {capturedAssets.length > 0 && (
-                <TouchableOpacity style={s.scanNowBtn} onPress={analyzeAssets}>
-                  <Ionicons name="flash" size={18} color="#fff" style={{ marginRight: 8 }} />
-                  <Text style={s.scanNowBtnText}>Scan now ({capturedAssets.length})</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+          <Text style={s.scannerCaptureTitle}>{capturedAssets.length === 0 ? "Snap or pick your photos" : `${capturedAssets.length} photo${capturedAssets.length > 1 ? "s" : ""} added`}</Text>
+          <Text style={s.scannerCaptureSubtitle}>{capturedAssets.length === 0 ? "Fridge, counter, anything — AI will find the ingredients" : `${10 - capturedAssets.length} more allowed`}</Text>
+          <View style={s.scannerBtns}>
+            <TouchableOpacity style={s.scannerActionBtn} onPress={openCameraForScan} disabled={capturedAssets.length >= 10}>
+              <Ionicons name="camera" size={28} color={colors.primary} />
+              <Text style={s.scannerActionBtnText}>Take photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.scannerActionBtn} onPress={openLibraryForScan} disabled={capturedAssets.length >= 10}>
+              <Ionicons name="images" size={28} color={colors.primary} />
+              <Text style={s.scannerActionBtnText}>From library</Text>
+            </TouchableOpacity>
           </View>
+          {capturedAssets.length > 0 && (
+            <View style={s.scannerThumbsRow}>
+              {capturedAssets.map((a, i) => (
+                <View key={i} style={s.scannerThumb}>
+                  <Image source={{ uri: a.uri }} style={s.scannerThumbImg} />
+                  <TouchableOpacity style={s.scannerThumbRemove} onPress={() => setCapturedAssets(prev => prev.filter((_, idx) => idx !== i))}>
+                    <Ionicons name="close-circle" size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={s.scannerFooter}>
+            {capturedAssets.length > 0 && (
+              <TouchableOpacity style={s.scanNowBtn} onPress={analyzeAssets}>
+                <Ionicons name="flash" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={s.scanNowBtnText}>Scan now ({capturedAssets.length})</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
       </SafeAreaView>
     </Modal>
 
@@ -603,7 +638,7 @@ export default function SearchScreen() {
         <Text style={s.aiText}>AI reading pictures…</Text>
       </View>
     </Modal>
-    <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Nutrition Goals" />
+    <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Nutrition Filters" />
     </>
   )
 }
@@ -640,8 +675,13 @@ const makeStyles = (colors: any) => StyleSheet.create({
   modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   modalTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   modalFooter: { flexDirection: "row", gap: 12, padding: spacing.md, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.3)" },
-  filterGroup: { marginBottom: spacing.lg },
-  filterLabel: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
+  // sections
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.md, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
+  sectionBody: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: 4 },
+  // filter rows
+  filterRow: { marginBottom: spacing.md },
+  filterRowLabel: { fontSize: 12, fontWeight: "600", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
   pillActive: { borderColor: colors.primary, backgroundColor: colors.primary + "22" },
   pillText: { fontSize: 14, color: colors.mutedForeground },
@@ -654,17 +694,30 @@ const makeStyles = (colors: any) => StyleSheet.create({
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   tag: { flexDirection: "row", alignItems: "center", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 99 },
   tagText: { fontSize: 13, color: colors.text },
+  modeToggleRow: { flexDirection: "row", marginTop: 12, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, overflow: "hidden" },
+  modeToggleBtn: { flex: 1, paddingVertical: 8, alignItems: "center", backgroundColor: colors.card },
+  modeToggleBtnActive: { backgroundColor: colors.primary },
+  modeToggleText: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground },
+  modeToggleTextActive: { color: "#fff" },
+  // nutrition
+  nutritionRow: { marginBottom: 14 },
+  nutritionLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  nutritionLabel: { fontSize: 13, fontWeight: "600", color: colors.text },
+  nutritionInputs: { flexDirection: "row", gap: 12 },
+  nutritionField: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 10, paddingVertical: 8 },
+  nutritionFieldLabel: { fontSize: 11, color: colors.muted, fontWeight: "600", width: 24 },
+  nutritionInput: { flex: 1, color: colors.text, fontSize: 14, padding: 0 },
+  nutritionUnit: { fontSize: 11, color: colors.muted },
+  microSubtitle: { fontSize: 12, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
+  // premium
+  premiumBadge: { backgroundColor: "#f59e0b22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
+  premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
+  // reset/apply
   resetBtn: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, paddingVertical: 12, borderRadius: radius.md },
   resetBtnText: { color: colors.text, fontWeight: "500" },
   applyBtnLarge: { flex: 1, backgroundColor: colors.primary, paddingVertical: 12, borderRadius: radius.md, alignItems: "center" },
   btnDisabled: { opacity: 0.4 },
-  premiumLabelRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  premiumBadge: { backgroundColor: "#f59e0b22", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99 },
-  premiumBadgeText: { fontSize: 10, fontWeight: "700", color: "#f59e0b", textTransform: "uppercase" },
-  presetCard: { width: "47%", borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, padding: 12, gap: 4 },
-  presetCardActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  presetLabel: { fontSize: 13, fontWeight: "700", color: colors.primary },
-  presetDesc: { fontSize: 11, color: colors.mutedForeground },
+  // scanner
   scannerContainer: { flex: 1, backgroundColor: colors.background },
   scannerHeader: { padding: spacing.md, alignItems: "flex-end" },
   scannerCapture: { flex: 1, padding: spacing.md, gap: 20 },
@@ -680,9 +733,4 @@ const makeStyles = (colors: any) => StyleSheet.create({
   scannerFooter: { marginTop: "auto" },
   scanNowBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.primary, paddingVertical: 16, borderRadius: radius.lg },
   scanNowBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  modeToggleRow: { flexDirection: "row", marginTop: 12, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, overflow: "hidden" },
-  modeToggleBtn: { flex: 1, paddingVertical: 8, alignItems: "center", backgroundColor: colors.card },
-  modeToggleBtnActive: { backgroundColor: colors.primary },
-  modeToggleText: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground },
-  modeToggleTextActive: { color: "#fff" },
 })
