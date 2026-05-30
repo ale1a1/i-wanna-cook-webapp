@@ -30,7 +30,7 @@ Tried recipes history
 Log recipes tried.
 
 User accounts (mobile)
-Register, login, email verify (inline verification code screen), forgot password, change password, delete account. All flows handled inside the app — no browser redirect.
+Register, login, email verify (inline verification code screen), forgot password (inline 2-step: email → code + new password), change password, delete account. All flows handled inside the app — no browser redirect.
 
 Light / dark theme
 
@@ -125,6 +125,15 @@ Subject: "Your What Should I Cook verification code". HTML body with app name he
 
 Trial days remaining on profile screen ✅ DONE
 Profile screen shows a trial status card: days remaining with badge, expired/free plan state with upgrade button, or Premium badge. trialExpiresAt/trialActive/isPremium stored in AuthContext and AsyncStorage on login.
+
+Trial countdown banner on Home screen ✅ DONE
+Primary-colored banner at top of Home screen shown only to trial users. Displays days remaining. Tapping navigates to Profile. Hidden for free and premium users.
+
+Forgot password flow on mobile ✅ DONE
+Inline two-step flow: enter email → receive code → enter code + new password with strength checker. "Forgot password?" link on login tab pre-fills email if already typed. On success returns to login with green banner and email pre-filled.
+
+Trial expiry modal — 1-2 days warning
+When trial is 1-2 days from expiring, show a one-time modal on app open prompting user to upgrade. Fire once per account, not every session.
 
 
 ================================================================
