@@ -47,7 +47,7 @@ export default function LoginScreen() {
       const res = await apiFetch("/api/auth/login", { method: "POST", body: JSON.stringify(loginForm) })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Login failed"); return }
-      await login({ id: data.user.id, email: data.user.email, username: data.user.username, accessToken: data.tokens?.accessToken })
+      await login({ id: data.user.id, email: data.user.email, username: data.user.username, accessToken: data.tokens?.accessToken, trialExpiresAt: data.user.trialExpiresAt, trialActive: data.user.trialActive, isPremium: data.user.isPremium })
       navigation.goBack()
     } catch { setError("Something went wrong. Please try again.") }
     finally { setLoading(false) }

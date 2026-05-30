@@ -6,6 +6,9 @@ type User = {
   email: string
   username: string
   accessToken?: string
+  trialExpiresAt?: string | null
+  trialActive?: boolean
+  isPremium?: boolean
 }
 
 type AuthContextType = {

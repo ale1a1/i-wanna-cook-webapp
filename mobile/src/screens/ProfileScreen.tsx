@@ -144,6 +144,49 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Trial / subscription card */}
+        {(() => {
+          const { isPremium, trialActive, trialExpiresAt } = user as any
+          const daysLeft = trialExpiresAt
+            ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+            : 0
+          if (isPremium && !trialActive) {
+            return (
+              <View style={[s.card, { borderColor: colors.primary }]}>
+                <View style={s.trialRow}>
+                  <Ionicons name="star" size={18} color={colors.primary} />
+                  <Text style={[s.trialTitle, { color: colors.primary }]}>Premium</Text>
+                </View>
+                <Text style={s.trialSub}>You have full access to all features.</Text>
+              </View>
+            )
+          }
+          if (trialActive && daysLeft > 0) {
+            return (
+              <View style={[s.card, { borderColor: colors.primary }]}>
+                <View style={s.trialRow}>
+                  <Ionicons name="timer-outline" size={18} color={colors.primary} />
+                  <Text style={[s.trialTitle, { color: colors.primary }]}>Free Trial</Text>
+                  <View style={s.trialBadge}><Text style={s.trialBadgeText}>{daysLeft}d left</Text></View>
+                </View>
+                <Text style={s.trialSub}>Full premium access until your trial ends. No card required.</Text>
+              </View>
+            )
+          }
+          return (
+            <View style={[s.card, { borderColor: colors.border }]}>
+              <View style={s.trialRow}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.mutedForeground} />
+                <Text style={[s.trialTitle, { color: colors.text }]}>Free Plan</Text>
+              </View>
+              <Text style={s.trialSub}>10 searches/week · 3 scans/week</Text>
+              <TouchableOpacity style={s.upgradeBtn}>
+                <Text style={s.upgradeBtnText}>Upgrade to Premium — $2.49/mo</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        })()}
+
         {/* Stats */}
         <View style={s.card}>
           <Text style={s.sectionTitle}>Stats</Text>
@@ -326,4 +369,11 @@ const makeStyles = (colors: any) => StyleSheet.create({
   disabledBtn: { opacity: 0.4 },
   submitBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   deleteConfirmBtn: { backgroundColor: colors.destructive, paddingVertical: 14, borderRadius: radius.md, alignItems: "center" },
+  trialRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  trialTitle: { fontSize: 15, fontWeight: "700" },
+  trialBadge: { backgroundColor: colors.primary + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  trialBadgeText: { fontSize: 12, fontWeight: "700", color: colors.primary },
+  trialSub: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18 },
+  upgradeBtn: { marginTop: 12, backgroundColor: colors.primary, paddingVertical: 11, borderRadius: radius.md, alignItems: "center" },
+  upgradeBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 })
