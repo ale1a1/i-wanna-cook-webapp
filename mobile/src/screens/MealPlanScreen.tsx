@@ -94,6 +94,8 @@ export default function MealPlanScreen() {
   const [plansLoading, setPlansLoading] = useState(false)
   const [openFolder, setOpenFolder] = useState<string | null>(null)
 
+  const [showCreateOptions, setShowCreateOptions] = useState(false)
+
   // replace state
   const [replaceDay, setReplaceDay] = useState<string | null>(null)
   const [replaceMealIndex, setReplaceMealIndex] = useState<number | null>(null)
@@ -412,6 +414,7 @@ export default function MealPlanScreen() {
       setPlanId(null)
       setPath(p ?? null)
       setCustomStep("nutrition")
+      setShowCreateOptions(false)
       setAiPreset(""); setAiGoal(""); setAiError("")
       if (p !== null) setModalOpen(true)
     }
@@ -501,52 +504,51 @@ export default function MealPlanScreen() {
         )}
       </View>
 
-      {/* Home — two clear sections */}
-      {!plan && !loading && (
+      {/* Home */}
+      {!plan && !loading && !showCreateOptions && (
+        <View style={s.homeContent}>
+          <Text style={s.homeTitle}>Meal Plan</Text>
+          <Text style={s.homeSub}>What would you like to do?</Text>
+          <TouchableOpacity style={s.bigBtn} onPress={() => setShowCreateOptions(true)} activeOpacity={0.85}>
+            <Ionicons name="add-circle-outline" size={28} color="#fff" />
+            <Text style={s.bigBtnText}>Create Plan</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[s.bigBtn, s.bigBtnSecondary]} onPress={openSavedPlans} activeOpacity={0.85}>
+            <Ionicons name="folder-open-outline" size={28} color={colors.primary} />
+            <Text style={[s.bigBtnText, { color: colors.primary }]}>Browse Saved Plans</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Create Plan options */}
+      {!plan && !loading && showCreateOptions && (
         <ScrollView contentContainerStyle={s.homeContent}>
-
-          {/* A — Create Plan */}
-          <View style={s.homeSection}>
-            <Text style={s.homeSectionLabel}>A  —  Create Plan</Text>
-            <TouchableOpacity style={s.pathCard} onPress={() => openPath("ai")} activeOpacity={0.85}>
-              <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
-                <Ionicons name="sparkles" size={28} color={colors.primary} />
-              </View>
-              <View style={s.pathInfo}>
-                <Text style={s.pathTitle}>AI Goal</Text>
-                <Text style={s.pathDesc}>Tell the AI your goal — bulking, weight loss, endurance — and it builds the plan for you.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.pathCard} onPress={() => openPath("custom")} activeOpacity={0.85}>
-              <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
-                <Ionicons name="options-outline" size={28} color={colors.primary} />
-              </View>
-              <View style={s.pathInfo}>
-                <Text style={s.pathTitle}>Customise</Text>
-                <Text style={s.pathDesc}>Set your calories, diet, cuisine, intolerances and nutrients step by step.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={s.homeDivider} />
-
-          {/* B — Saved Plans */}
-          <View style={s.homeSection}>
-            <Text style={s.homeSectionLabel}>B  —  Saved Plans</Text>
-            <TouchableOpacity style={s.pathCard} onPress={openSavedPlans} activeOpacity={0.85}>
-              <View style={[s.pathIconBg, { backgroundColor: colors.mutedForeground + "22" }]}>
-                <Ionicons name="folder-open-outline" size={28} color={colors.mutedForeground} />
-              </View>
-              <View style={s.pathInfo}>
-                <Text style={s.pathTitle}>Browse Saved Plans</Text>
-                <Text style={s.pathDesc}>View your saved plans organised by folder. Tap any plan to load it.</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-            </TouchableOpacity>
-          </View>
-
+          <TouchableOpacity onPress={() => setShowCreateOptions(false)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <Ionicons name="arrow-back" size={18} color={colors.mutedForeground} />
+            <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Back</Text>
+          </TouchableOpacity>
+          <Text style={s.homeTitle}>Create Plan</Text>
+          <Text style={s.homeSub}>Choose how you want to build your week.</Text>
+          <TouchableOpacity style={s.pathCard} onPress={() => openPath("ai")} activeOpacity={0.85}>
+            <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
+              <Ionicons name="sparkles" size={28} color={colors.primary} />
+            </View>
+            <View style={s.pathInfo}>
+              <Text style={s.pathTitle}>AI Goal</Text>
+              <Text style={s.pathDesc}>Tell the AI your goal — bulking, weight loss, endurance — and it builds the plan for you.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={s.pathCard} onPress={() => openPath("custom")} activeOpacity={0.85}>
+            <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
+              <Ionicons name="options-outline" size={28} color={colors.primary} />
+            </View>
+            <View style={s.pathInfo}>
+              <Text style={s.pathTitle}>Customise</Text>
+              <Text style={s.pathDesc}>Set your calories, diet, cuisine, intolerances and nutrients step by step.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+          </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -974,12 +976,15 @@ const makeStyles = (colors: any) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
   emptyEmoji: { fontSize: 48 },
   emptySubText: { fontSize: 14, color: colors.mutedForeground },
-  homeContent: { padding: spacing.md, paddingTop: 32, gap: 16 },
-  homeTitle: { fontSize: 22, fontWeight: "800", color: colors.text },
+  homeContent: { flex: 1, padding: spacing.md, paddingTop: 48, gap: 16 },
+  homeTitle: { fontSize: 26, fontWeight: "800", color: colors.text },
   homeSub: { fontSize: 14, color: colors.mutedForeground, lineHeight: 20, marginTop: -8 },
   homeSection: { gap: 12 },
   homeSectionLabel: { fontSize: 11, fontWeight: "800", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 1.2 },
   homeDivider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
+  bigBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 18 },
+  bigBtnSecondary: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.primary },
+  bigBtnText: { fontSize: 17, fontWeight: "800", color: "#fff" },
   pathCard: { flexDirection: "row", alignItems: "center", gap: 16, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md },
   pathIconBg: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   pathInfo: { flex: 1 },
