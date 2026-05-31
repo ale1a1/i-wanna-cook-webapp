@@ -104,3 +104,9 @@ CREATE TABLE IF NOT EXISTS scan_usage (
   count INTEGER NOT NULL DEFAULT 0,
   UNIQUE(user_id, week_start)
 );
+
+-- Migration: meal plan naming, folders, filters, and drift tracking
+ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS folder TEXT;
+ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS filters_json JSONB;
+ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS is_modified BOOLEAN NOT NULL DEFAULT FALSE;
