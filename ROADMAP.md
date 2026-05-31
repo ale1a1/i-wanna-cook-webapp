@@ -160,8 +160,51 @@ When trial ends, account drops to free tier automatically. No features deleted �
 
 --- Meal & Nutrition ---
 
-Meal Planner v2 — more filters before generating
-More options: number of people, meals per day (2/3/4), max prep time, budget, cuisine, exclude ingredients, intolerances, healthiness, sport/fitness goal. Settings saved per user. Premium feature.
+Meal Planner v2 — two-path generation ✅ DONE
+Two paths: AI Goal (preset chips + free text + voice → Claude interprets → generates instantly) and Customise (4-step wizard: Nutrition → Diet & Cuisine → Macronutrients → Micronutrients). Both paths end with a shared "Meals per Day" picker (3/4/5/6 meals). Macros/Micros use same min/max input style as search filter panel. AI Goal path auto-suggests a meals/day default based on the interpreted goal (e.g. Mass Gaining → 5). Backend calls Spoonacular twice when >3 meals/day and stitches + deduplicates results per day with pro-rated nutrients.
+
+Meal Plan — Replace meal / Replace full day ⚠️ IN PROGRESS
+
+NUTRITION MODEL (important — defines all replace logic):
+All nutrition limits (calories, macros, micros) set during plan generation are PER DAY targets, not per meal.
+Spoonacular already works this way — targetCalories is a daily total distributed across meals.
+The macros/micros wizard inputs are also daily min/max.
+This means: when replacing a single meal, the system must calculate how much budget remains for that meal slot
+(daily target minus the sum of the other meals staying in place) and find a recipe that fits within that remainder.
+
+REPLACE FULL DAY:
+- Re-call Spoonacular mealplanner/generate with the exact same filters (calories, diet, exclude, macros, mealsPerDay) used to generate the original plan.
+- Replace the entire day with the new result.
+- If Spoonacular returns no usable result, duplicate the closest other day in the plan (by nutrient similarity).
+- No filter changes allowed — filters are locked once the plan is generated.
+
+REPLACE SINGLE MEAL:
+- Step 1 — fetch full nutrition for all meals in that day via Spoonacular's bulk recipe info endpoint
+  (needed because mealplanner/generate only returns recipe IDs, not full nutrition breakdowns).
+- Step 2 — calculate remaining budget per nutrient: dailyTarget minus sum of that nutrient across
+  the other meals staying in place. Applies to ALL constraints set in the wizard:
+  calories, protein, carbs, fat, saturated fat, fiber, sugar, cholesterol, sodium,
+  vitamins (A/C/D/B6/B12), minerals (calcium, iron, magnesium, potassium, zinc).
+- Step 3 — call Spoonacular complexSearch using remaining windows as filters (maxCalories, maxProtein, etc.)
+  plus the same diet, cuisine, intolerances, and excluded ingredients from the original plan.
+- Step 4 — return list of candidates to the user.
+- Step 5 — Claude validates the chosen candidate fits within ±10% tolerance across all active constraints.
+- If validation passes: swap silently.
+- If validation fails: show closest option with warning ("This adds ~X kcal over your daily target — still replace?"). User can override.
+- Filters are read-only during the replace flow — user cannot change any filter to force a result.
+- NOTE: Spoonacular nutrition is per-serving — validation must use per-serving value × servings for actual daily contribution.
+
+PREREQUISITE: Store filters_json alongside the plan in DB so the replace flow always has the original constraints available.
+
+UI:
+- Expanded day view: each meal row has a "Replace" button (icon or small text).
+- Tapping shows a bottom sheet: "Replace this meal" / "Replace full day".
+- Replace meal: shows a loading spinner while Spoonacular is queried, then a list of alternatives to pick from.
+- Replace day: shows a loading spinner, then swaps the day silently and collapses back.
+- Premium feature.
+
+Meal Plan saved plans & history
+When a plan is generated, user can name and save it (e.g. "Bulk Week 1", "Cut Phase"). Up to 10 saved plans. Each saved plan stores: name, filters used (calories, diet, cuisine, macros, AI goal), and meal titles as a lightweight preview. No full recipe data stored. Opening a saved plan shows the preview; "Regenerate" re-calls Spoonacular with the original filters for fresh recipes. Plans can be organised into categories/folders (e.g. "Bulking", "Weight Loss", "Family"). Premium feature. DB: extend meal_plans table with name, filters_json, category columns.
 
 Macro and nutrition tracking
 Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium.
@@ -212,8 +255,8 @@ Some screens use X button (blocks swipe-back gesture), others rely on swipe-left
 
 --- Search ---
 
-Ingredient autocomplete in search
-When typing in the Ingredients field, query Spoonacular's autocomplete ingredient endpoint in real time and show suggestions below the input. Reduces typos and ensures ingredient names match Spoonacular's DB exactly, improving search results.
+Ingredient autocomplete — search & meal planner
+When typing in the Ingredients field (search) or the Exclude Ingredients field (meal planner), query Spoonacular's autocomplete ingredient endpoint in real time and show suggestions below the input. Reduces typos and ensures ingredient names match Spoonacular's DB exactly, improving search results and meal plan exclusions. Applies to both screens — build as a shared reusable component. Spoonacular endpoint: GET /food/ingredients/autocomplete?query=&number=5.
 
 
 ================================================================
