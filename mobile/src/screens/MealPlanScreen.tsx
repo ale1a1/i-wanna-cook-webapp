@@ -19,7 +19,7 @@ try {
 
 const DIETS = ["none", "vegetarian", "vegan", "ketogenic", "paleo", "gluten free"]
 const DIET_LABELS: Record<string, string> = { none: "Any", vegetarian: "Vegetarian", vegan: "Vegan", ketogenic: "Keto", paleo: "Paleo", "gluten free": "Gluten-free" }
-const CALORIES = ["1500", "1800", "2000", "2200", "2500", "3000"]
+const CALORIES = ["1500", "1800", "2000", "2200", "2500", "3000", "3500", "4000", "4500", "5000"]
 const MEALS_PER_DAY_OPTIONS = [
   { value: "3", label: "3 meals", desc: "Breakfast · Lunch · Dinner" },
   { value: "4", label: "4 meals", desc: "Adds a morning snack" },
@@ -152,7 +152,7 @@ export default function MealPlanScreen() {
       const p = data.params
       const dietMap: Record<string, string> = { vegetarian: "vegetarian", vegan: "vegan", "gluten free": "gluten free", ketogenic: "ketogenic", paleo: "paleo" }
       const resolvedDiet = p.diet ? (Object.entries(dietMap).find(([k]) => p.diet.includes(k))?.[1] ?? "none") : diet
-      const resolvedCalories = p.minCalories ? String(Math.min(3000, Math.max(1500, Math.round(parseInt(p.minCalories) / 100) * 100))) : calories
+      const resolvedCalories = p.minCalories ? String(Math.min(5000, Math.max(1500, Math.round(parseInt(p.minCalories) / 100) * 100))) : calories
       return { calories: resolvedCalories, diet: resolvedDiet, exclude }
     } catch { return { calories, diet, exclude } }
   }
@@ -217,8 +217,7 @@ export default function MealPlanScreen() {
           if (saved?.plan?.id) setPlanId(saved.plan.id)
         }
 
-        // Prompt to name/folder the plan and add to shopping list
-        setShowSaveModal(true)
+        // Save button shown in top bar — user initiates when ready
       }
     } catch (e: any) {
       showError(e?.message ?? "Network error", "Meal Plan")
@@ -226,38 +225,24 @@ export default function MealPlanScreen() {
   }, [isPremium, user?.id, showError, cuisine, intolerances, nutrition])
 
   const handleSavePlan = async () => {
-    if (!user?.id || !planId) return
+    if (!user?.id || !plan) return
     setSaving(true)
     const folder = saveFolder === "Custom" ? saveFolderCustom.trim() : saveFolder
     try {
-      await apiFetch("/api/meal-plan", {
-        method: "PATCH",
-        body: JSON.stringify({ userId: user.id, planId, planData: plan, isModified: false }),
-      })
-      // Also update name/folder via a second PATCH — simplest given current API shape
-      // We piggyback by re-POSTing with the week key — the ON CONFLICT updates name/folder
       const weekStart = new Date()
       weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1)
-      await fetch(`${API_BASE_URL}/api/meal-plan`, {
+      const res = await fetch(`${API_BASE_URL}/api/meal-plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.id, weekStart: weekStart.toISOString().split("T")[0], planData: plan, name: saveName.trim() || null, folder: folder || null, filtersJson }),
-      }).catch(() => {})
+      })
+      if (res.ok) {
+        const saved = await res.json().catch(() => null)
+        if (saved?.plan?.id) setPlanId(saved.plan.id)
+      }
     } catch { /* non-fatal */ }
     setSaving(false)
     setShowSaveModal(false)
-
-    Alert.alert("Add to Shopping List?", "Add all this week's ingredients to your shopping list?", [
-      { text: "Not now", style: "cancel" },
-      { text: "Yes, add all", onPress: async () => {
-        if (!plan) return
-        const allMeals: any[] = Object.values(plan.week).flatMap((day: any) => day.meals ?? [])
-        await Promise.all(allMeals.map((meal: any) =>
-          apiFetch("/api/shopping-list", { method: "POST", body: JSON.stringify({ userId: user!.id, recipeId: String(meal.id), recipeTitle: meal.title, ingredients: [{ name: meal.title, amount: "see recipe" }] }) }).catch(() => {})
-        ))
-        Alert.alert("Done!", "All meals added to your shopping list.")
-      }},
-    ])
   }
 
   const handleAiGenerate = async () => {
@@ -370,11 +355,27 @@ export default function MealPlanScreen() {
   }
 
   const openPath = (p: Path) => {
-    setPlan(null)
-    setPath(p ?? null)
-    setCustomStep("nutrition")
-    setAiPreset(""); setAiGoal(""); setAiError("")
-    if (p !== null) setModalOpen(true)
+    const doOpen = () => {
+      setPlan(null)
+      setPlanId(null)
+      setPath(p ?? null)
+      setCustomStep("nutrition")
+      setAiPreset(""); setAiGoal(""); setAiError("")
+      if (p !== null) setModalOpen(true)
+    }
+    if (plan) {
+      Alert.alert(
+        "Generate new plan?",
+        "Your current plan will be replaced. Save it first?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Save first", onPress: () => setShowSaveModal(true) },
+          { text: "Discard", style: "destructive", onPress: doOpen },
+        ]
+      )
+    } else {
+      doOpen()
+    }
   }
 
   const DropdownRow = ({ label, pickerId, value, displayValue, options, onSelect }: {
@@ -435,10 +436,16 @@ export default function MealPlanScreen() {
       <View style={s.topBar}>
         <Text style={s.title}>Meal Plan</Text>
         {plan && !loading && (
-          <TouchableOpacity style={s.regenBtn} onPress={() => openPath(null)}>
-            <Ionicons name="refresh" size={16} color={colors.primary} />
-            <Text style={s.regenBtnText}>New plan</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity style={s.regenBtn} onPress={() => setShowSaveModal(true)}>
+              <Ionicons name="bookmark-outline" size={16} color={colors.primary} />
+              <Text style={s.regenBtnText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.regenBtn} onPress={() => openPath(null)}>
+              <Ionicons name="refresh" size={16} color={colors.primary} />
+              <Text style={s.regenBtnText}>New plan</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
