@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import pool from "@/lib/db"
+import { checkClaudeError } from "@/lib/alertOwner"
 
 const FREE_SCAN_LIMIT = 3
 
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
 
     const data = await res.json()
     if (!res.ok) {
+      await checkClaudeError(res.status, "/api/recipes/analyze-image")
       return NextResponse.json({ error: data.error?.message ?? "AI error" }, { status: res.status })
     }
 

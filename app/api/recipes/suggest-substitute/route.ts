@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { checkClaudeError } from "@/lib/alertOwner"
 
 export async function POST(request: NextRequest) {
   let body: { ingredient: string; amount?: string; recipeTitle?: string }
@@ -39,6 +40,7 @@ No extra text.`,
 
     const data = await res.json()
     if (!res.ok) {
+      await checkClaudeError(res.status, "/api/recipes/suggest-substitute")
       return NextResponse.json({ error: data.error?.message ?? "AI error" }, { status: res.status })
     }
 
