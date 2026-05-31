@@ -20,8 +20,7 @@ import SearchScreen from "./src/screens/SearchScreen"
 import ScanScreen from "./src/screens/ScanScreen"
 import RecipeDetailScreen from "./src/screens/RecipeDetailScreen"
 import ShoppingListScreen from "./src/screens/ShoppingListScreen"
-import FavouritesScreen from "./src/screens/FavouritesScreen"
-import TriedRecipesScreen from "./src/screens/TriedRecipesScreen"
+import MyRecipesScreen from "./src/screens/MyRecipesScreen"
 import ProfileScreen from "./src/screens/ProfileScreen"
 import LoginScreen from "./src/screens/LoginScreen"
 import CookingModeScreen from "./src/screens/CookingModeScreen"
@@ -51,8 +50,7 @@ const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
 const OVERFLOW_ITEMS_DEFAULT = [
-  { name: "Favourites", icon: "heart-outline" as const, label: "Favourites" },
-  { name: "Tried", icon: "clipboard-outline" as const, label: "Tried" },
+  { name: "MyRecipes", icon: "bookmark-outline" as const, label: "My Recipes" },
   { name: "MealPlan", icon: "calendar-outline" as const, label: "Meal Plan" },
   { name: "Profile", icon: "person-outline" as const, label: "Profile" },
 ]
@@ -243,8 +241,7 @@ function AppNavigator() {
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={({ route }: any) => ({ title: route.params?.title ?? "Recipe", headerBackTitle: "Back" })} />
       <Stack.Screen name="CookingMode" component={CookingModeScreen} options={{ headerShown: false, presentation: "fullScreenModal" }} />
       <Stack.Screen name="Login" component={LoginScreen} options={({ navigation }: any) => ({ title: "Sign in", presentation: "modal", headerLeft: () => ( <TouchableOpacity onPress={() => navigation.navigate("Tabs")} style={{ paddingHorizontal: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity> ) })} />
-      <Stack.Screen name="Favourites" component={FavouritesScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Tried" component={TriedRecipesScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="MyRecipes" component={MyRecipesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="MealPlan" component={MealPlanScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="QuickShoppingList" component={QuickShoppingListScreen} options={{ headerShown: false }} />
