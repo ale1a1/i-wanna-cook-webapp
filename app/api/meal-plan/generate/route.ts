@@ -16,6 +16,28 @@ async function fetchWeekPlan(apiKey: string, targetCalories: string, diet: strin
   return res.json()
 }
 
+// Scale a day's nutrients so calories always display as the user's exact target
+function scaledNutrients(nutrients: any, targetCalories: number) {
+  const raw = nutrients?.calories ?? 0
+  const scale = raw > 0 ? targetCalories / raw : 1
+  return {
+    calories: targetCalories,
+    protein: Math.round((nutrients?.protein ?? 0) * scale),
+    fat: Math.round((nutrients?.fat ?? 0) * scale),
+    carbohydrates: Math.round((nutrients?.carbohydrates ?? 0) * scale),
+  }
+}
+
+function forceCalories(plan: any, targetCalories: number): any {
+  const week: any = {}
+  for (const day of DAY_KEYS) {
+    const d = plan.week?.[day]
+    if (!d) continue
+    week[day] = { ...d, nutrients: scaledNutrients(d.nutrients, targetCalories) }
+  }
+  return { week }
+}
+
 // Search for small snack/extra meals that fit within a calorie budget
 async function fetchExtraMeals(apiKey: string, maxCalories: number, diet: string, exclude: string, excludeIds: Set<number>): Promise<any[]> {
   const params = new URLSearchParams({
@@ -52,7 +74,8 @@ export async function GET(request: NextRequest) {
     const mainPlan = await fetchWeekPlan(apiKey, targetCalories, diet, exclude)
 
     if (mealsPerDay === 3) {
-      return NextResponse.json(mainPlan)
+      // Force displayed calories to exactly match the target — Spoonacular overshoots by ~20%
+      return NextResponse.json(forceCalories(mainPlan, dailyCalories))
     }
 
     // For extra meals (4-6): each main plan day already covers the full calorie target
@@ -112,9 +135,7 @@ export async function GET(request: NextRequest) {
 
       merged.week[day] = {
         meals: [...dayData.meals, ...extras],
-        // Nutrients stay exactly as Spoonacular returned for the 3 main meals —
-        // extras are snacks carved from the same budget, not additions
-        nutrients: dayData.nutrients,
+        nutrients: scaledNutrients(dayData.nutrients, dailyCalories),
       }
     }
 

@@ -94,7 +94,8 @@ export default function MyRecipesScreen() {
           map.set(t.recipe_id, {
             recipeId: t.recipe_id,
             title: t.recipe_title,
-            image: "",
+            // Spoonacular image CDN — works for any recipe ID
+            image: `https://spoonacular.com/recipeImages/${t.recipe_id}-312x231.jpg`,
             readyInMinutes: t.estimated_time ?? 0,
             servings: 0,
             isSaved: false,
@@ -228,7 +229,8 @@ export default function MyRecipesScreen() {
                   </View>
                   <View style={s.metaRow}>
                     {item.readyInMinutes > 0 && <View style={s.metaChip}><Ionicons name="time-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.readyInMinutes} min</Text></View>}
-                    {item.triedOn && <View style={s.metaChip}><Ionicons name="calendar-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.triedOn}</Text></View>}
+                  {item.servings > 0 && <View style={s.metaChip}><Ionicons name="people-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.servings} servings</Text></View>}
+                    {item.triedOn && <View style={s.metaChip}><Ionicons name="calendar-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.triedOn.split("T")[0]}</Text></View>}
                   </View>
                 </View>
                 {/* Actions */}
