@@ -15,6 +15,7 @@
     ]
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
     "@aws-sdk/client-cognito-identity-provider": "^3.1045.0",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.2",
