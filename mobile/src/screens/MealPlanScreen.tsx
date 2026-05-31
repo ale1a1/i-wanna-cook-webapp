@@ -205,12 +205,15 @@ export default function MealPlanScreen() {
       setExpandedDay(null)
 
       if (user?.id) {
-        const weekStart = new Date()
-        weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1)
+        const today = new Date()
+        const day = today.getDay() === 0 ? 7 : today.getDay()
+        const weekStart = new Date(today)
+        weekStart.setDate(today.getDate() - day + 1)
+        const weekStartStr = weekStart.toISOString().split("T")[0]
         const saveRes = await fetch(`${API_BASE_URL}/api/meal-plan`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id, weekStart: weekStart.toISOString().split("T")[0], planData: data, filtersJson: filters }),
+          body: JSON.stringify({ userId: user.id, weekStart: weekStartStr, planData: data, filtersJson: filters }),
         }).catch(() => null)
         if (saveRes?.ok) {
           const saved = await saveRes.json().catch(() => null)
@@ -229,20 +232,37 @@ export default function MealPlanScreen() {
     setSaving(true)
     const folder = saveFolder === "Custom" ? saveFolderCustom.trim() : saveFolder
     try {
-      const weekStart = new Date()
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1)
+      // Monday of current week — getDay() returns 0 for Sunday, so treat Sunday as day 7
+      const today = new Date()
+      const day = today.getDay() === 0 ? 7 : today.getDay()
+      const weekStart = new Date(today)
+      weekStart.setDate(today.getDate() - day + 1)
+      const weekStartStr = weekStart.toISOString().split("T")[0]
+
       const res = await fetch(`${API_BASE_URL}/api/meal-plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, weekStart: weekStart.toISOString().split("T")[0], planData: plan, name: saveName.trim() || null, folder: folder || null, filtersJson }),
+        body: JSON.stringify({
+          userId: user.id,
+          weekStart: weekStartStr,
+          planData: plan,
+          name: saveName.trim() || null,
+          folder: folder || null,
+          filtersJson,
+        }),
       })
       if (res.ok) {
         const saved = await res.json().catch(() => null)
         if (saved?.plan?.id) setPlanId(saved.plan.id)
+        setSaving(false)
+        setShowSaveModal(false)
+        Alert.alert("Saved!", saveName.trim() ? `"${saveName.trim()}" saved to your plans.` : "Plan saved.")
+        return
       }
     } catch { /* non-fatal */ }
     setSaving(false)
     setShowSaveModal(false)
+    Alert.alert("Save failed", "Could not save the plan. Please try again.")
   }
 
   const handleAiGenerate = async () => {
