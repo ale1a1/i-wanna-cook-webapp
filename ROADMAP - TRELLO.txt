@@ -163,7 +163,7 @@ When trial ends, account drops to free tier automatically. No features deleted �
 Meal Planner v2 — two-path generation ✅ DONE
 Two paths: AI Goal (preset chips + free text + voice → Claude interprets → generates instantly) and Customise (4-step wizard: Nutrition → Diet & Cuisine → Macronutrients → Micronutrients). Both paths end with a shared "Meals per Day" picker (3/4/5/6 meals). Macros/Micros use same min/max input style as search filter panel. AI Goal path auto-suggests a meals/day default based on the interpreted goal (e.g. Mass Gaining → 5). Backend calls Spoonacular twice when >3 meals/day and stitches + deduplicates results per day with pro-rated nutrients.
 
-Meal Plan — Replace meal / Replace full day ⚠️ IN PROGRESS
+Meal Plan — Replace meal / Replace full day ✅ DONE
 
 NUTRITION MODEL:
 All nutrition limits (calories, macros, micros — including all vitamins and minerals set in the wizard) are PER DAY targets.
@@ -196,7 +196,7 @@ UI:
 - Bottom sheet: "Replace this meal" / "Replace full day".
 - Premium feature.
 
-Meal Plan — Saved plans, folders, and filter drift warning
+Meal Plan — Saved plans, folders, and filter drift warning ✅ DONE
 
 SAVING & FOLDERS:
 - User can name and save a generated plan (e.g. "Bulk Week 1", "Cut Phase").

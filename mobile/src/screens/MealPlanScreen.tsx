@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react"
+import React, { useState, useCallback, useEffect } from "react"
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert, TextInput } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -29,10 +29,10 @@ const MEALS_PER_DAY_OPTIONS = [
 const CUISINES = ["any", "italian", "mexican", "thai", "indian", "chinese", "french", "japanese", "mediterranean", "american", "greek"]
 const INTOLERANCES = ["dairy", "egg", "gluten", "peanut", "seafood", "sesame", "shellfish", "soy", "tree nut", "wheat"]
 const AI_PRESETS = ["Kids", "Weight Loss", "Mass Gaining", "Endurance Sport", "High Intensity Sport"]
-
+const MEAL_LABELS = ["Breakfast", "Lunch", "Dinner", "Snack", "Extra", "Extra 2"]
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+const SUGGESTED_FOLDERS = ["Bulking", "Weight Loss", "Maintenance", "Family", "Endurance", "Custom"]
 
-// Suggest a sensible default meals/day based on goal text or preset
 function suggestMeals(goal: string): string {
   const lower = goal.toLowerCase()
   if (/mass|bulk|gain|muscle|high intensity|endurance|sport/.test(lower)) return "5"
@@ -43,6 +43,7 @@ function suggestMeals(goal: string): string {
 type Meal = { id: number; title: string; readyInMinutes: number; servings: number }
 type DayPlan = { meals: Meal[]; nutrients: { calories: number; protein: number; fat: number; carbohydrates: number } }
 type WeekPlan = { week: Record<string, DayPlan> }
+type FiltersJson = Record<string, any>
 type Path = null | "ai" | "custom"
 type CustomStep = "nutrition" | "diet" | "macros" | "micros"
 
@@ -57,6 +58,9 @@ export default function MealPlanScreen() {
   const [showPaywall, setShowPaywall] = useState(false)
   const [loading, setLoading] = useState(false)
   const [plan, setPlan] = useState<WeekPlan | null>(null)
+  const [planId, setPlanId] = useState<string | null>(null)
+  const [filtersJson, setFiltersJson] = useState<FiltersJson | null>(null)
+  const [isModified, setIsModified] = useState(false)
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -72,10 +76,27 @@ export default function MealPlanScreen() {
   const [cuisine, setCuisine] = useState("any")
   const [intolerances, setIntolerances] = useState<string[]>([])
 
-  // meals-per-day modal state
+  // meals-per-day modal
   const [showMealsModal, setShowMealsModal] = useState(false)
   const [mealsPerDay, setMealsPerDay] = useState("3")
   const [pendingParams, setPendingParams] = useState<{ calories: string; diet: string; exclude: string } | null>(null)
+
+  // save plan modal
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [saveName, setSaveName] = useState("")
+  const [saveFolder, setSaveFolder] = useState("")
+  const [saveFolderCustom, setSaveFolderCustom] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  // replace state
+  const [replaceDay, setReplaceDay] = useState<string | null>(null)
+  const [replaceMealIndex, setReplaceMealIndex] = useState<number | null>(null)
+  const [showReplaceSheet, setShowReplaceSheet] = useState(false)
+  const [replacingDay, setReplacingDay] = useState(false)
+  const [replacingMeal, setReplacingMeal] = useState(false)
+  const [replaceCandidates, setReplaceCandidates] = useState<any[]>([])
+  const [showCandidates, setShowCandidates] = useState(false)
+  const [replaceMessage, setReplaceMessage] = useState("")
 
   // nutrition state
   const defaultNutrition = {
@@ -136,11 +157,40 @@ export default function MealPlanScreen() {
     } catch { return { calories, diet, exclude } }
   }
 
+  const buildFiltersJson = (params: { calories: string; diet: string; exclude: string }, meals: string): FiltersJson => ({
+    calories: params.calories,
+    diet: params.diet,
+    exclude: params.exclude,
+    cuisine,
+    intolerances,
+    mealsPerDay: meals,
+    // macros/micros from nutrition state
+    maxProtein: nutrition.maxProtein || undefined,
+    maxCarbs: nutrition.maxCarbs || undefined,
+    maxFat: nutrition.maxFat || undefined,
+    maxSaturatedFat: nutrition.maxSaturatedFat || undefined,
+    maxFiber: nutrition.maxFiber || undefined,
+    maxSugar: nutrition.maxSugar || undefined,
+    maxCholesterol: nutrition.maxCholesterol || undefined,
+    maxSodium: nutrition.maxSodium || undefined,
+    maxVitaminA: nutrition.maxVitaminA || undefined,
+    maxVitaminC: nutrition.maxVitaminC || undefined,
+    maxVitaminD: nutrition.maxVitaminD || undefined,
+    maxVitaminB6: nutrition.maxVitaminB6 || undefined,
+    maxVitaminB12: nutrition.maxVitaminB12 || undefined,
+    maxCalcium: nutrition.maxCalcium || undefined,
+    maxIron: nutrition.maxIron || undefined,
+    maxMagnesium: nutrition.maxMagnesium || undefined,
+    maxPotassium: nutrition.maxPotassium || undefined,
+    maxZinc: nutrition.maxZinc || undefined,
+  })
+
   const generatePlan = useCallback(async (params: { calories: string; diet: string; exclude: string }, meals: string) => {
     if (!isPremium) { setShowPaywall(true); return }
     setLoading(true)
     setShowMealsModal(false)
     setModalOpen(false)
+    const filters = buildFiltersJson(params, meals)
     try {
       const urlParams = new URLSearchParams({ targetCalories: params.calories, timeFrame: "week", mealsPerDay: meals })
       if (params.diet !== "none") urlParams.set("diet", params.diet)
@@ -149,34 +199,67 @@ export default function MealPlanScreen() {
       const data = await res.json()
       if (!res.ok) { showError(data.error ?? "Failed to generate meal plan", "Meal Plan"); return }
       setPlan(data)
+      setFiltersJson(filters)
+      setIsModified(false)
+      setPlanId(null)
       setExpandedDay(null)
 
       if (user?.id) {
         const weekStart = new Date()
         weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1)
-        fetch(`${API_BASE_URL}/api/meal-plan`, {
+        const saveRes = await fetch(`${API_BASE_URL}/api/meal-plan`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id, weekStart: weekStart.toISOString().split("T")[0], planData: data }),
-        }).catch(() => {})
+          body: JSON.stringify({ userId: user.id, weekStart: weekStart.toISOString().split("T")[0], planData: data, filtersJson: filters }),
+        }).catch(() => null)
+        if (saveRes?.ok) {
+          const saved = await saveRes.json().catch(() => null)
+          if (saved?.plan?.id) setPlanId(saved.plan.id)
+        }
 
-        Alert.alert("Add to Shopping List?", "Add all this week's meal ingredients to your shopping list?", [
-          { text: "Not now", style: "cancel" },
-          { text: "Yes, add all", onPress: async () => {
-            const allMeals: any[] = Object.values(data.week as Record<string, any>).flatMap((day: any) => day.meals ?? [])
-            await Promise.all(allMeals.map((meal: any) =>
-              apiFetch("/api/shopping-list", { method: "POST", body: JSON.stringify({ userId: user!.id, recipeId: String(meal.id), recipeTitle: meal.title, ingredients: [{ name: meal.title, amount: "see recipe" }] }) }).catch(() => {})
-            ))
-            Alert.alert("Done!", "All meals added to your shopping list.")
-          }},
-        ])
+        // Prompt to name/folder the plan and add to shopping list
+        setShowSaveModal(true)
       }
     } catch (e: any) {
       showError(e?.message ?? "Network error", "Meal Plan")
     } finally { setLoading(false) }
-  }, [isPremium, user?.id, showError])
+  }, [isPremium, user?.id, showError, cuisine, intolerances, nutrition])
 
-  // Called after AI resolves params — show meals-per-day picker
+  const handleSavePlan = async () => {
+    if (!user?.id || !planId) return
+    setSaving(true)
+    const folder = saveFolder === "Custom" ? saveFolderCustom.trim() : saveFolder
+    try {
+      await apiFetch("/api/meal-plan", {
+        method: "PATCH",
+        body: JSON.stringify({ userId: user.id, planId, planData: plan, isModified: false }),
+      })
+      // Also update name/folder via a second PATCH — simplest given current API shape
+      // We piggyback by re-POSTing with the week key — the ON CONFLICT updates name/folder
+      const weekStart = new Date()
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1)
+      await fetch(`${API_BASE_URL}/api/meal-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, weekStart: weekStart.toISOString().split("T")[0], planData: plan, name: saveName.trim() || null, folder: folder || null, filtersJson }),
+      }).catch(() => {})
+    } catch { /* non-fatal */ }
+    setSaving(false)
+    setShowSaveModal(false)
+
+    Alert.alert("Add to Shopping List?", "Add all this week's ingredients to your shopping list?", [
+      { text: "Not now", style: "cancel" },
+      { text: "Yes, add all", onPress: async () => {
+        if (!plan) return
+        const allMeals: any[] = Object.values(plan.week).flatMap((day: any) => day.meals ?? [])
+        await Promise.all(allMeals.map((meal: any) =>
+          apiFetch("/api/shopping-list", { method: "POST", body: JSON.stringify({ userId: user!.id, recipeId: String(meal.id), recipeTitle: meal.title, ingredients: [{ name: meal.title, amount: "see recipe" }] }) }).catch(() => {})
+        ))
+        Alert.alert("Done!", "All meals added to your shopping list.")
+      }},
+    ])
+  }
+
   const handleAiGenerate = async () => {
     const goal = aiPreset || aiGoal.trim()
     if (!goal) return
@@ -192,13 +275,106 @@ export default function MealPlanScreen() {
     finally { setAiLoading(false) }
   }
 
-  // Called from Custom path last step
   const handleCustomGenerate = () => {
     const params = { calories, diet, exclude }
     setPendingParams(params)
     setMealsPerDay("3")
     setModalOpen(false)
     setShowMealsModal(true)
+  }
+
+  // ── Replace full day ──────────────────────────────────────────────────
+  const handleReplaceDay = async (day: string) => {
+    if (!filtersJson || !plan) return
+    setShowReplaceSheet(false)
+    setReplacingDay(true)
+    try {
+      const res = await apiFetch("/api/meal-plan/replace-day", {
+        method: "POST",
+        body: JSON.stringify({ day, filtersJson, currentWeek: plan.week }),
+        screen: "Meal Plan",
+      })
+      const data = await res.json()
+      if (!res.ok) { showError(data.error ?? "Could not replace day", "Meal Plan"); return }
+      const newPlan = { week: { ...plan.week, [day]: data.day } }
+      setPlan(newPlan)
+      // Persist updated plan
+      if (user?.id && planId) {
+        await apiFetch("/api/meal-plan", {
+          method: "PATCH",
+          body: JSON.stringify({ userId: user.id, planId, planData: newPlan, isModified: false }),
+        }).catch(() => {})
+      }
+    } catch (e: any) {
+      showError(e?.message ?? "Network error", "Meal Plan")
+    } finally { setReplacingDay(false) }
+  }
+
+  // ── Replace single meal ───────────────────────────────────────────────
+  const handleReplaceMeal = async (day: string, mealIndex: number) => {
+    if (!filtersJson || !plan) return
+    setShowReplaceSheet(false)
+    setReplacingMeal(true)
+    setReplaceCandidates([])
+    setReplaceMessage("")
+    try {
+      const dayPlan = plan.week[day]
+      const res = await apiFetch("/api/meal-plan/replace-meal", {
+        method: "POST",
+        body: JSON.stringify({ dayPlan, mealIndex, filtersJson }),
+        screen: "Meal Plan",
+      })
+      const data = await res.json()
+      if (!res.ok) { showError(data.error ?? "Could not find replacements", "Meal Plan"); return }
+      if (!data.candidates?.length) {
+        setReplaceMessage(data.message ?? "No alternatives found within your nutrition budget.")
+        setShowCandidates(true)
+        return
+      }
+      setReplaceCandidates(data.candidates)
+      setShowCandidates(true)
+    } catch (e: any) {
+      showError(e?.message ?? "Network error", "Meal Plan")
+    } finally { setReplacingMeal(false) }
+  }
+
+  const confirmReplaceMeal = async (candidate: any, overrideWarning: boolean) => {
+    if (!plan || replaceDay === null || replaceMealIndex === null) return
+    if (candidate.warning && !overrideWarning) {
+      Alert.alert(
+        "Nutrition Warning",
+        candidate.warning + "\n\nReplace anyway?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Replace anyway", onPress: () => confirmReplaceMeal(candidate, true) },
+        ]
+      )
+      return
+    }
+    const dayPlan = plan.week[replaceDay]
+    const newMeals = dayPlan.meals.map((m, i) =>
+      i === replaceMealIndex ? { id: candidate.id, title: candidate.title, readyInMinutes: candidate.readyInMinutes ?? 0, servings: candidate.servings ?? 1 } : m
+    )
+    const newPlan = { week: { ...plan.week, [replaceDay]: { ...dayPlan, meals: newMeals } } }
+    const modified = !candidate.fits
+    setPlan(newPlan)
+    if (modified) setIsModified(true)
+    setShowCandidates(false)
+    setReplaceCandidates([])
+    if (user?.id && planId) {
+      await apiFetch("/api/meal-plan", {
+        method: "PATCH",
+        body: JSON.stringify({ userId: user.id, planId, planData: newPlan, isModified: modified }),
+      }).catch(() => {})
+    }
+  }
+
+  const openPath = (p: Path) => {
+    setPlan(null)
+    setPath(p ?? null)
+    setCustomStep("nutrition")
+    setAiPreset(""); setAiGoal(""); setAiError("")
+    if (p !== null) setModalOpen(true)
   }
 
   const DropdownRow = ({ label, pickerId, value, displayValue, options, onSelect }: {
@@ -250,15 +426,6 @@ export default function MealPlanScreen() {
     </View>
   )
 
-  const openPath = (p: Path) => {
-    setPlan(null)
-    setPath(p ?? null)
-    setCustomStep("nutrition")
-    setAiPreset(""); setAiGoal(""); setAiError("")
-    // If called from "New plan" button with no path, just reset to home (plan=null shows path cards)
-    if (p !== null) setModalOpen(true)
-  }
-
   if (subLoading) {
     return <SafeAreaView style={s.container} edges={["top"]}><View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View></SafeAreaView>
   }
@@ -275,30 +442,28 @@ export default function MealPlanScreen() {
         )}
       </View>
 
-      {/* Empty state — two path cards */}
+      {/* Empty state */}
       {!plan && !loading && (
         <ScrollView contentContainerStyle={s.homeContent}>
           <Text style={s.homeTitle}>Build your week</Text>
           <Text style={s.homeSub}>Choose how you want to plan your meals.</Text>
-
           <TouchableOpacity style={s.pathCard} onPress={() => openPath("ai")} activeOpacity={0.85}>
             <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
               <Ionicons name="sparkles" size={28} color={colors.primary} />
             </View>
             <View style={s.pathInfo}>
               <Text style={s.pathTitle}>AI Goal</Text>
-              <Text style={s.pathDesc}>Tell the AI your goal — bulking, weight loss, endurance — and it builds the plan for you in one tap.</Text>
+              <Text style={s.pathDesc}>Tell the AI your goal — bulking, weight loss, endurance — and it builds the plan for you.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </TouchableOpacity>
-
           <TouchableOpacity style={s.pathCard} onPress={() => openPath("custom")} activeOpacity={0.85}>
             <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
               <Ionicons name="options-outline" size={28} color={colors.primary} />
             </View>
             <View style={s.pathInfo}>
               <Text style={s.pathTitle}>Customise</Text>
-              <Text style={s.pathDesc}>Set your calories, diet, cuisine, intolerances and excluded ingredients step by step.</Text>
+              <Text style={s.pathDesc}>Set your calories, diet, cuisine, intolerances and nutrients step by step.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </TouchableOpacity>
@@ -316,45 +481,90 @@ export default function MealPlanScreen() {
       {/* Plan results */}
       {plan && !loading && (
         <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+          {/* Filter drift warning */}
+          {isModified && (
+            <TouchableOpacity style={s.driftBanner} onPress={() => {
+              const summary = filtersJson ? `${filtersJson.calories} kcal · ${filtersJson.diet !== "none" ? filtersJson.diet : "any diet"} · ${filtersJson.mealsPerDay} meals/day` : "Custom filters"
+              Alert.alert("Filters Modified", `Original filters: ${summary}\n\nSome meals in this plan no longer match the original criteria.`, [{ text: "OK" }])
+            }}>
+              <Ionicons name="warning-outline" size={16} color="#b45309" />
+              <Text style={s.driftText}>Filters modified — tap to see original criteria</Text>
+            </TouchableOpacity>
+          )}
+
           {DAY_NAMES.map(day => {
             const key = day.toLowerCase()
             const dayPlan = plan.week[key]
             if (!dayPlan) return null
             const isExpanded = expandedDay === day
             return (
-              <TouchableOpacity key={day} style={s.dayCard} onPress={() => setExpandedDay(isExpanded ? null : day)} activeOpacity={0.8}>
-                <View style={s.dayHeader}>
+              <View key={day} style={s.dayCard}>
+                <TouchableOpacity style={s.dayHeader} onPress={() => setExpandedDay(isExpanded ? null : day)} activeOpacity={0.8}>
                   <Text style={s.dayName}>{day}</Text>
                   <View style={s.dayNutrients}>
                     <Text style={s.nutrientText}>{Math.round(dayPlan.nutrients.calories)} cal</Text>
                     <Text style={s.nutrientDot}>·</Text>
                     <Text style={s.nutrientText}>{Math.round(dayPlan.nutrients.protein)}g protein</Text>
                   </View>
+                  {/* Replace day button */}
+                  {filtersJson && (
+                    <TouchableOpacity style={s.replaceDayBtn} onPress={() => {
+                      setReplaceDay(key)
+                      Alert.alert("Replace Day", `Re-generate all meals for ${day} using your original filters?`, [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Replace", onPress: () => handleReplaceDay(key) },
+                      ])
+                    }}>
+                      {replacingDay && replaceDay === key
+                        ? <ActivityIndicator size="small" color={colors.primary} />
+                        : <Ionicons name="refresh-outline" size={16} color={colors.primary} />}
+                    </TouchableOpacity>
+                  )}
                   <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
-                </View>
+                </TouchableOpacity>
+
                 {isExpanded && (
                   <View style={s.mealsContainer}>
                     {dayPlan.meals.map((meal, i) => (
                       <TouchableOpacity key={meal.id} style={s.mealRow} onPress={() => navigation.navigate("RecipeDetail", { id: meal.id, title: meal.title })}>
                         <View style={s.mealType}>
-                          <Text style={s.mealTypeText}>{["Breakfast", "Lunch", "Dinner", "Snack", "Extra", "Extra 2"][i] ?? "Meal"}</Text>
+                          <Text style={s.mealTypeText}>{MEAL_LABELS[i] ?? "Meal"}</Text>
                         </View>
                         <View style={s.mealInfo}>
                           <Text style={s.mealTitle} numberOfLines={2}>{meal.title}</Text>
                           <Text style={s.mealMeta}>{meal.readyInMinutes} min · {meal.servings} servings</Text>
                         </View>
+                        {/* Replace meal button */}
+                        {filtersJson && (
+                          <TouchableOpacity style={s.replaceMealBtn} onPress={() => {
+                            setReplaceDay(key)
+                            setReplaceMealIndex(i)
+                            Alert.alert(
+                              "Replace Meal",
+                              `Find an alternative for "${meal.title}" that fits your daily nutrition budget?`,
+                              [
+                                { text: "Cancel", style: "cancel" },
+                                { text: "Find alternatives", onPress: () => handleReplaceMeal(key, i) },
+                              ]
+                            )
+                          }}>
+                            {replacingMeal && replaceDay === key && replaceMealIndex === i
+                              ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                              : <Ionicons name="swap-horizontal-outline" size={18} color={colors.mutedForeground} />}
+                          </TouchableOpacity>
+                        )}
                         <Ionicons name="chevron-forward" size={16} color={colors.muted} />
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
-              </TouchableOpacity>
+              </View>
             )
           })}
         </ScrollView>
       )}
 
-      {/* Modal — AI path */}
+      {/* ── Modal — AI path ─────────────────────────────────────────── */}
       <Modal visible={modalOpen && path === "ai"} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
@@ -363,8 +573,7 @@ export default function MealPlanScreen() {
             <View style={{ width: 24 }} />
           </View>
           <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }} keyboardShouldPersistTaps="handled">
-            <Text style={s.aiIntro}>Pick a preset or describe your goal in your own words. The AI will set the best plan parameters for you.</Text>
-
+            <Text style={s.aiIntro}>Pick a preset or describe your goal. The AI will set the best plan parameters for you.</Text>
             <View style={s.aiChipsRow}>
               {AI_PRESETS.map(p => (
                 <TouchableOpacity key={p} style={[s.aiChip, aiPreset === p && s.aiChipActive]} onPress={() => { setAiPreset(aiPreset === p ? "" : p); setAiGoal("") }}>
@@ -372,33 +581,19 @@ export default function MealPlanScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-
             <View>
               <Text style={s.settingLabel}>Or describe your goal</Text>
               <View style={s.aiInputRow}>
-                <TextInput
-                  style={s.aiInput}
-                  value={aiGoal}
-                  onChangeText={v => { setAiPreset(""); setAiGoal(v.trim().split(/\s+/).length > 30 ? v.trim().split(/\s+/).slice(0, 30).join(" ") : v) }}
-                  placeholder="e.g. lose weight, high protein, low carb..."
-                  placeholderTextColor={colors.muted}
-                  editable={!aiLoading}
-                />
+                <TextInput style={s.aiInput} value={aiGoal} onChangeText={v => { setAiPreset(""); setAiGoal(v.trim().split(/\s+/).length > 30 ? v.trim().split(/\s+/).slice(0, 30).join(" ") : v) }} placeholder="e.g. lose weight, high protein, low carb..." placeholderTextColor={colors.muted} editable={!aiLoading} />
                 <TouchableOpacity style={[s.aiMicBtn, isListening && s.aiMicBtnActive]} onPress={isListening ? stopVoiceInput : startVoiceInput} disabled={aiLoading}>
                   <Ionicons name={isListening ? "stop" : "mic"} size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
-
             {aiError ? <Text style={s.errorText}>{aiError}</Text> : null}
           </ScrollView>
-
           <View style={s.modalFooter}>
-            <TouchableOpacity
-              style={[s.generateBtnLarge, (!aiPreset && !aiGoal.trim() || aiLoading) && s.btnDisabled]}
-              onPress={handleAiGenerate}
-              disabled={(!aiPreset && !aiGoal.trim()) || aiLoading}
-            >
+            <TouchableOpacity style={[s.generateBtnLarge, (!aiPreset && !aiGoal.trim() || aiLoading) && s.btnDisabled]} onPress={handleAiGenerate} disabled={(!aiPreset && !aiGoal.trim()) || aiLoading}>
               {aiLoading ? <ActivityIndicator color="#fff" /> : (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Ionicons name="sparkles" size={18} color="#fff" />
@@ -410,7 +605,7 @@ export default function MealPlanScreen() {
         </SafeAreaView>
       </Modal>
 
-      {/* Modal — Custom path */}
+      {/* ── Modal — Custom path ──────────────────────────────────────── */}
       <Modal visible={modalOpen && path === "custom"} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
@@ -429,59 +624,25 @@ export default function MealPlanScreen() {
               {customStep === "nutrition" ? "1/4" : customStep === "diet" ? "2/4" : customStep === "macros" ? "3/4" : "4/4"}
             </Text>
           </View>
-
           <ScrollView contentContainerStyle={{ paddingVertical: spacing.md, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-
-            {/* Step 1 — Nutrition */}
             {customStep === "nutrition" && (
               <>
-                <DropdownRow
-                  label="Daily Calories"
-                  pickerId="calories"
-                  value={calories}
-                  displayValue={`${calories} kcal`}
-                  options={CALORIES.map(c => ({ value: c, label: `${c} kcal` }))}
-                  onSelect={setCalories}
-                />
+                <DropdownRow label="Daily Calories" pickerId="calories" value={calories} displayValue={`${calories} kcal`} options={CALORIES.map(c => ({ value: c, label: `${c} kcal` }))} onSelect={setCalories} />
                 <View style={s.dropdownRow}>
                   <Text style={s.dropdownLabel}>Exclude Ingredients</Text>
-                  <TextInput
-                    style={s.excludeInput}
-                    value={exclude}
-                    onChangeText={setExclude}
-                    placeholder="e.g. pork, nuts..."
-                    placeholderTextColor={colors.muted}
-                  />
+                  <TextInput style={s.excludeInput} value={exclude} onChangeText={setExclude} placeholder="e.g. pork, nuts..." placeholderTextColor={colors.muted} />
                 </View>
               </>
             )}
-
-            {/* Step 2 — Diet & Cuisine */}
             {customStep === "diet" && (
               <>
-                <DropdownRow
-                  label="Diet"
-                  pickerId="diet"
-                  value={diet}
-                  displayValue={DIET_LABELS[diet]}
-                  options={DIETS.map(d => ({ value: d, label: DIET_LABELS[d] }))}
-                  onSelect={setDiet}
-                />
-                <DropdownRow
-                  label="Cuisine"
-                  pickerId="cuisine"
-                  value={cuisine}
-                  displayValue={cuisine === "any" ? "Any cuisine" : cuisine.charAt(0).toUpperCase() + cuisine.slice(1)}
-                  options={CUISINES.map(c => ({ value: c, label: c === "any" ? "Any cuisine" : c.charAt(0).toUpperCase() + c.slice(1) }))}
-                  onSelect={setCuisine}
-                />
+                <DropdownRow label="Diet" pickerId="diet" value={diet} displayValue={DIET_LABELS[diet]} options={DIETS.map(d => ({ value: d, label: DIET_LABELS[d] }))} onSelect={setDiet} />
+                <DropdownRow label="Cuisine" pickerId="cuisine" value={cuisine} displayValue={cuisine === "any" ? "Any cuisine" : cuisine.charAt(0).toUpperCase() + cuisine.slice(1)} options={CUISINES.map(c => ({ value: c, label: c === "any" ? "Any cuisine" : c.charAt(0).toUpperCase() + c.slice(1) }))} onSelect={setCuisine} />
                 <View style={s.dropdownGroup}>
                   <TouchableOpacity style={s.dropdownRow} onPress={() => setOpenPicker(openPicker === "intolerances" ? null : "intolerances")} activeOpacity={0.7}>
                     <Text style={s.dropdownLabel}>Intolerances</Text>
                     <View style={s.dropdownRight}>
-                      <Text style={[s.dropdownValue, intolerances.length > 0 && { color: colors.primary, fontWeight: "700" }]}>
-                        {intolerances.length === 0 ? "None" : `${intolerances.length} selected`}
-                      </Text>
+                      <Text style={[s.dropdownValue, intolerances.length > 0 && { color: colors.primary, fontWeight: "700" }]}>{intolerances.length === 0 ? "None" : `${intolerances.length} selected`}</Text>
                       <Ionicons name={openPicker === "intolerances" ? "chevron-up" : "chevron-down"} size={16} color={intolerances.length > 0 ? colors.primary : colors.muted} />
                     </View>
                   </TouchableOpacity>
@@ -501,8 +662,6 @@ export default function MealPlanScreen() {
                 </View>
               </>
             )}
-
-            {/* Step 3 — Macronutrients */}
             {customStep === "macros" && (
               <View style={{ paddingHorizontal: spacing.md, paddingTop: 8 }}>
                 <NutritionInput label="Protein" minKey="minProtein" maxKey="maxProtein" unit="g" />
@@ -515,8 +674,6 @@ export default function MealPlanScreen() {
                 <NutritionInput label="Sodium" minKey="minSodium" maxKey="maxSodium" unit="mg" />
               </View>
             )}
-
-            {/* Step 4 — Micronutrients */}
             {customStep === "micros" && (
               <View style={{ paddingHorizontal: spacing.md, paddingTop: 8 }}>
                 <Text style={[s.settingLabel, { marginBottom: 16 }]}>Vitamins</Text>
@@ -534,35 +691,17 @@ export default function MealPlanScreen() {
                 <NutritionInput label="Zinc" minKey="minZinc" maxKey="maxZinc" unit="mg" />
               </View>
             )}
-
           </ScrollView>
-
           <View style={s.modalFooter}>
-            {customStep === "nutrition" && (
-              <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("diet")}>
-                <Text style={s.generateBtnText}>Next →</Text>
-              </TouchableOpacity>
-            )}
-            {customStep === "diet" && (
-              <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("macros")}>
-                <Text style={s.generateBtnText}>Next →</Text>
-              </TouchableOpacity>
-            )}
-            {customStep === "macros" && (
-              <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("micros")}>
-                <Text style={s.generateBtnText}>Next →</Text>
-              </TouchableOpacity>
-            )}
-            {customStep === "micros" && (
-              <TouchableOpacity style={s.generateBtnLarge} onPress={handleCustomGenerate}>
-                <Text style={s.generateBtnText}>Next →</Text>
-              </TouchableOpacity>
-            )}
+            {customStep === "nutrition" && <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("diet")}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
+            {customStep === "diet" && <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("macros")}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
+            {customStep === "macros" && <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("micros")}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
+            {customStep === "micros" && <TouchableOpacity style={s.generateBtnLarge} onPress={handleCustomGenerate}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
           </View>
         </SafeAreaView>
       </Modal>
 
-      {/* Meals per day picker — shown after both AI and Custom paths */}
+      {/* ── Meals per day modal ──────────────────────────────────────── */}
       <Modal visible={showMealsModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
@@ -572,18 +711,11 @@ export default function MealPlanScreen() {
             <Text style={s.modalTitle}>Meals per Day</Text>
             <View style={{ width: 24 }} />
           </View>
-
           <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 12 }}>
-            <Text style={s.aiIntro}>How many meals a day would you like? More meals can help with muscle gain and energy management.</Text>
-
+            <Text style={s.aiIntro}>How many meals a day would you like?</Text>
             <View style={{ gap: 10, marginTop: 8 }}>
               {MEALS_PER_DAY_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[s.mealsOption, mealsPerDay === opt.value && s.mealsOptionActive]}
-                  onPress={() => setMealsPerDay(opt.value)}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity key={opt.value} style={[s.mealsOption, mealsPerDay === opt.value && s.mealsOptionActive]} onPress={() => setMealsPerDay(opt.value)} activeOpacity={0.8}>
                   <View style={{ flex: 1 }}>
                     <Text style={[s.mealsOptionLabel, mealsPerDay === opt.value && s.mealsOptionLabelActive]}>{opt.label}</Text>
                     <Text style={s.mealsOptionDesc}>{opt.desc}</Text>
@@ -593,18 +725,83 @@ export default function MealPlanScreen() {
               ))}
             </View>
           </ScrollView>
-
           <View style={s.modalFooter}>
-            <TouchableOpacity
-              style={s.generateBtnLarge}
-              onPress={() => pendingParams && generatePlan(pendingParams, mealsPerDay)}
-            >
+            <TouchableOpacity style={s.generateBtnLarge} onPress={() => pendingParams && generatePlan(pendingParams, mealsPerDay)}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Ionicons name="sparkles" size={18} color="#fff" />
                 <Text style={s.generateBtnText}>Generate Plan</Text>
               </View>
             </TouchableOpacity>
           </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Save plan modal ──────────────────────────────────────────── */}
+      <Modal visible={showSaveModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={s.modalContainer} edges={["top"]}>
+          <View style={s.modalHeader}>
+            <View style={{ width: 24 }} />
+            <Text style={s.modalTitle}>Save Plan</Text>
+            <TouchableOpacity onPress={() => setShowSaveModal(false)}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>Skip</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }} keyboardShouldPersistTaps="handled">
+            <Text style={s.aiIntro}>Give this plan a name and optionally assign it to a folder.</Text>
+            <View>
+              <Text style={s.settingLabel}>Plan name (optional)</Text>
+              <TextInput style={s.textField} value={saveName} onChangeText={setSaveName} placeholder="e.g. Bulk Week 1, Cut Phase..." placeholderTextColor={colors.muted} />
+            </View>
+            <View>
+              <Text style={s.settingLabel}>Folder (optional)</Text>
+              <View style={s.aiChipsRow}>
+                {SUGGESTED_FOLDERS.map(f => (
+                  <TouchableOpacity key={f} style={[s.aiChip, saveFolder === f && s.aiChipActive]} onPress={() => setSaveFolder(saveFolder === f ? "" : f)}>
+                    <Text style={[s.aiChipText, saveFolder === f && s.aiChipTextActive]}>{f}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {saveFolder === "Custom" && (
+                <TextInput style={[s.textField, { marginTop: 10 }]} value={saveFolderCustom} onChangeText={setSaveFolderCustom} placeholder="Enter folder name..." placeholderTextColor={colors.muted} />
+              )}
+            </View>
+          </ScrollView>
+          <View style={s.modalFooter}>
+            <TouchableOpacity style={[s.generateBtnLarge, saving && s.btnDisabled]} onPress={handleSavePlan} disabled={saving}>
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.generateBtnText}>Save Plan</Text>}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* ── Replace meal candidates modal ───────────────────────────── */}
+      <Modal visible={showCandidates} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={s.modalContainer} edges={["top"]}>
+          <View style={s.modalHeader}>
+            <TouchableOpacity onPress={() => { setShowCandidates(false); setReplaceCandidates([]) }}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={s.modalTitle}>Choose Replacement</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+            {replaceMessage ? (
+              <Text style={s.aiIntro}>{replaceMessage}</Text>
+            ) : (
+              <>
+                <Text style={s.aiIntro}>Select a replacement meal. Green means it fits your daily nutrition budget.</Text>
+                {replaceCandidates.map((c, i) => (
+                  <TouchableOpacity key={c.id ?? i} style={[s.candidateCard, c.fits ? s.candidateFits : s.candidateWarn]} onPress={() => confirmReplaceMeal(c, false)} activeOpacity={0.8}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.candidateTitle} numberOfLines={2}>{c.title}</Text>
+                      {c.warning && <Text style={s.candidateWarning}>{c.warning}</Text>}
+                    </View>
+                    <Ionicons name={c.fits ? "checkmark-circle" : "warning-outline"} size={20} color={c.fits ? "#16a34a" : "#b45309"} />
+                  </TouchableOpacity>
+                ))}
+              </>
+            )}
+          </ScrollView>
         </SafeAreaView>
       </Modal>
 
@@ -622,7 +819,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
   emptyEmoji: { fontSize: 48 },
   emptySubText: { fontSize: 14, color: colors.mutedForeground },
-  // home
   homeContent: { padding: spacing.md, paddingTop: 32, gap: 16 },
   homeTitle: { fontSize: 22, fontWeight: "800", color: colors.text },
   homeSub: { fontSize: 14, color: colors.mutedForeground, lineHeight: 20, marginTop: -8 },
@@ -631,6 +827,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   pathInfo: { flex: 1 },
   pathTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 4 },
   pathDesc: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18 },
+  // drift banner
+  driftBanner: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#fef3c7", borderRadius: radius.md, padding: 12, borderWidth: 1, borderColor: "#f59e0b" },
+  driftText: { fontSize: 13, color: "#b45309", fontWeight: "600", flex: 1 },
   // plan
   dayCard: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, overflow: "hidden" },
   dayHeader: { flexDirection: "row", alignItems: "center", padding: spacing.md, gap: 8 },
@@ -638,6 +837,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   dayNutrients: { flexDirection: "row", alignItems: "center", gap: 4 },
   nutrientText: { fontSize: 12, color: colors.mutedForeground },
   nutrientDot: { color: colors.muted },
+  replaceDayBtn: { padding: 4 },
   mealsContainer: { borderTopWidth: 1, borderTopColor: colors.border },
   mealRow: { flexDirection: "row", alignItems: "center", padding: spacing.md, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border + "80" },
   mealType: { backgroundColor: colors.primary + "22", paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
@@ -645,6 +845,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   mealInfo: { flex: 1 },
   mealTitle: { fontSize: 14, fontWeight: "600", color: colors.text },
   mealMeta: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
+  replaceMealBtn: { padding: 4 },
   // modal shared
   modalContainer: { flex: 1, backgroundColor: colors.background },
   modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
@@ -652,7 +853,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   stepIndicator: { fontSize: 13, color: colors.mutedForeground, fontWeight: "600" },
   modalFooter: { padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   settingLabel: { fontSize: 12, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 12 },
-  // dropdown rows
   dropdownGroup: {},
   dropdownRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.md, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   dropdownLabel: { fontSize: 15, color: colors.text, fontWeight: "500" },
@@ -664,21 +864,10 @@ const makeStyles = (colors: any) => StyleSheet.create({
   dropdownItemText: { fontSize: 14, color: colors.text },
   dropdownItemTextActive: { color: colors.primary, fontWeight: "600" },
   excludeInput: { paddingTop: 8, paddingBottom: 4, color: colors.text, fontSize: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
-  pillActive: { borderColor: colors.primary, backgroundColor: colors.primary + "22" },
-  pillText: { fontSize: 14, color: colors.mutedForeground },
-  pillTextActive: { color: colors.primary, fontWeight: "600" },
-  pillsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  segmentRow: { flexDirection: "row", borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, overflow: "hidden" },
-  segmentBtn: { flex: 1, paddingVertical: 10, alignItems: "center", backgroundColor: colors.card },
-  segmentBtnActive: { backgroundColor: colors.primary },
-  segmentText: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground },
-  segmentTextActive: { color: "#fff" },
   textField: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 11, color: colors.text, fontSize: 14 },
   generateBtnLarge: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.md, alignItems: "center" },
   generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   btnDisabled: { opacity: 0.4 },
-  // AI path
   aiIntro: { fontSize: 14, color: colors.mutedForeground, lineHeight: 20 },
   aiChipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   aiChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: colors.primary },
@@ -699,10 +888,15 @@ const makeStyles = (colors: any) => StyleSheet.create({
   nutritionInput: { flex: 1, color: colors.text, fontSize: 14, padding: 0 },
   nutritionUnit: { fontSize: 11, color: colors.muted },
   sectionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 20 },
-  // meals per day picker
   mealsOption: { flexDirection: "row", alignItems: "center", backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md, gap: 12 },
   mealsOptionActive: { borderColor: colors.primary, backgroundColor: colors.primary + "11" },
   mealsOptionLabel: { fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: 2 },
   mealsOptionLabelActive: { color: colors.primary },
   mealsOptionDesc: { fontSize: 12, color: colors.mutedForeground },
+  // candidates
+  candidateCard: { flexDirection: "row", alignItems: "center", borderRadius: radius.lg, borderWidth: 1.5, padding: spacing.md, gap: 12 },
+  candidateFits: { backgroundColor: "#f0fdf4", borderColor: "#16a34a" },
+  candidateWarn: { backgroundColor: "#fffbeb", borderColor: "#f59e0b" },
+  candidateTitle: { fontSize: 14, fontWeight: "600", color: colors.text },
+  candidateWarning: { fontSize: 12, color: "#b45309", marginTop: 4 },
 })
