@@ -94,6 +94,15 @@ Organise favourites into custom named folders — "Weeknight dinners", "Date nig
 First collection free, more = premium.
 
 
+--- Review & Enhance ---
+
+Endpoint enhancement audit
+Cross-reference the full Spoonacular endpoint list against SHOULD / COULD / Phase 3 features.
+Identify which planned features could be built with existing endpoints, and which unused endpoints
+unlock cheap wins. Check autocomplete, nutrition facts, food trivia, recipe card images, etc.
+Do this before starting any new feature work.
+
+
 ================================================================
 LIST: SHOULD — High Priority After Launch
 ================================================================
@@ -352,3 +361,8 @@ Weekly AI Meal Planner — full v2 ✅
 
 Meal Plan — Replace meal / Replace full day ✅
 Meal Plan — Saved plans, folders, and filter drift warning ✅
+Meal plan save weekStart bug fix ✅ (Sunday was computing next Monday — fixed)
+Meal plan save confirmation alert ✅
+My Recipes card image layout fix ✅ (flush top-left, CDN images for tried-only)
+Claude failure owner alerts ✅ (email on 401/429/529 — lib/alertOwner.ts)
+Build fix ✅ (@anthropic-ai/sdk missing from package.json — broke all Amplify builds)
