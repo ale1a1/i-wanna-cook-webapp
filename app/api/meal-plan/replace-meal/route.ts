@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
+import { checkClaudeError } from "@/lib/alertOwner"
 
 const anthropic = new Anthropic()
 
@@ -144,6 +145,9 @@ Reply ONLY as JSON: { "results": [ { "index": 1, "fits": true, "warning": null }
     return NextResponse.json({ candidates: annotated })
   } catch (e: any) {
     if (e.message === "QUOTA") return NextResponse.json({ error: "Daily API limit reached. Try again tomorrow." }, { status: 402 })
+    // Anthropic SDK throws with status property on API errors
+    const claudeStatus = e?.status ?? e?.statusCode
+    if (claudeStatus) await checkClaudeError(claudeStatus, "/api/meal-plan/replace-meal")
     return NextResponse.json({ error: e.message ?? "Failed to find replacement meals" }, { status: 500 })
   }
 }

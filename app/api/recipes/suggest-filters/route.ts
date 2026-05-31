@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { checkClaudeError } from "@/lib/alertOwner"
 
 export async function POST(request: NextRequest) {
   const { goal } = await request.json()
@@ -41,6 +42,7 @@ Return ONLY the JSON object, no explanation.`
 
     const data = await res.json()
     if (!res.ok) {
+      await checkClaudeError(res.status, "/api/recipes/suggest-filters")
       console.error("Anthropic error:", JSON.stringify(data))
       return NextResponse.json({ error: data.error?.message ?? "AI request failed" }, { status: 500 })
     }

@@ -205,71 +205,209 @@ Required before push notifications can be built.
 
 
 ================================================================
+SERVICE FAILURE & BILLING ALERTS — MANUAL CHECKLIST
+================================================================
+
+This section documents every paid/quota service, what breaks when it fails,
+whether the app currently alerts you, and what you need to check/pay.
+
+----------------------------------------------------------------
+1. ANTHROPIC (Claude API)
+----------------------------------------------------------------
+Cost model: pay-per-token. No hard cap — if you run out of credits the API returns 401 or 429.
+Used for: ingredient photo scanning, substitute suggestions, AI filter suggestions, meal replacement validation.
+Routes: /api/recipes/analyze-image, /api/recipes/suggest-substitute, /api/recipes/suggest-filters, /api/meal-plan/replace-meal
+
+What breaks when it fails:
+- Fridge scanner stops working (users get generic error)
+- AI goal interpretation silently falls back to default params
+- Substitute suggestions fail during cooking flow
+- Meal replacement validation skipped (candidates shown unvalidated)
+
+Alert to owner: ✅ IMPLEMENTED — lib/alertOwner.ts sends you a 🚨 email on 401/429/529
+  - 401 = API key invalid or missing → check ANTHROPIC_API_KEY in Amplify env vars
+  - 429 = rate limit hit → check Anthropic console, top up credits
+  - 529/503 = Anthropic overloaded → temporary, users retry
+
+Action when alerted:
+→ Go to console.anthropic.com → check usage and credits → top up if needed
+
+Gap / TODO: No alerting if the key is misconfigured on Amplify (would show as 401 on every request).
+
+----------------------------------------------------------------
+2. SPOONACULAR
+----------------------------------------------------------------
+Cost model: points-based daily quota. Free = 150pts/day. Paid plans from $29/mo.
+complexSearch = ~1pt + 0.01pt per result. Recipe detail = ~1pt.
+Used for: all recipe search, recipe detail, wine pairing, meal plan generation, ingredient autocomplete.
+Routes: /api/recipes/search, /api/recipes/[id], /api/recipes/wine-pairing, /api/meal-plan/generate, /api/meal-plan/replace-*
+
+What breaks when it fails (402 response):
+- Recipe search returns no results / error
+- Meal plan generation fails completely
+- Recipe detail pages fail to load
+- Wine pairing fails
+
+Alert to owner: ⚠️ PARTIAL
+  - Meal plan routes (generate, replace-day, replace-meal): 402 caught, returns friendly error to user
+  - Recipe search route (/api/recipes/search): 402 passed through as raw error — NO owner alert
+  - Recipe detail, wine pairing: NO 402 handling, NO owner alert
+  - NO email to you when quota is exhausted on any route
+
+Action when alerted (currently manual — check dashboard):
+→ Go to spoonacular.com/food-api/console → check daily points used
+→ Upgrade plan or wait until midnight UTC for quota reset
+
+TODO: Add checkSpoonacularError() equivalent to search, recipe detail, and wine-pairing routes.
+
+----------------------------------------------------------------
+3. RESEND (email service)
+----------------------------------------------------------------
+Cost model: free tier = 3,000 emails/month, 100/day. Paid from $20/mo.
+Used for: welcome email, trial warning email, account deletion email, error report emails to owner.
+Routes: /api/auth/register, /api/auth/login, /api/user, /api/report-error, lib/alertOwner.ts
+
+What breaks when it fails:
+- Users don't receive welcome email (non-critical, no UX block)
+- Trial warning email not sent (non-critical)
+- Deletion confirmation email not sent (non-critical)
+- Owner error alert emails stop arriving (CRITICAL — you go blind)
+- report-error emails stop arriving (you stop seeing user errors)
+
+Alert to owner: ❌ NOT IMPLEMENTED
+  - If Resend quota is exceeded or key expires, all emails silently fail
+  - No fallback, no alert (you can't alert via Resend if Resend is down)
+  - Resend errors are currently swallowed with .catch(() => {})
+
+Action when it fails:
+→ Go to resend.com/overview → check email logs and quota
+→ Upgrade plan if over limit
+→ If key expired: regenerate in Resend dashboard, update RESEND_API_KEY in Amplify env vars
+
+TODO: Add console.error logging when Resend fails so at least Amplify CloudWatch shows it.
+      Consider a secondary alert channel (e.g. a webhook to a free Slack/Discord) as fallback.
+
+----------------------------------------------------------------
+4. AWS RDS PostgreSQL
+----------------------------------------------------------------
+Cost model: always-on instance. eu-west-2. Charged per hour regardless of usage.
+If you stop paying AWS, the instance stops and ALL user data is inaccessible.
+
+What breaks when it fails:
+- Login fails (can't fetch user profile)
+- Registration fails (can't store user)
+- All favourites, shopping list, meal plans, tried recipes return errors
+- Entire app is essentially broken for logged-in users
+
+Alert to owner: ❌ NOT IMPLEMENTED
+  - DB errors return 500 to the user and fire a report-error email (if Resend is up)
+  - No specific "DB is down" alert to you
+  - No health check endpoint
+
+Action when it fails:
+→ Go to AWS Console → RDS → check instance status
+→ If stopped: start the instance (takes ~2 min)
+→ If billing issue: pay AWS bill → instance auto-restarts
+→ If security group issue: check inbound rules allow Amplify's egress IPs
+
+TODO: Add a /api/health route that pings the DB and returns 200/500.
+      Set up AWS CloudWatch alarm on RDS — sends email when CPU/connections spike or instance stops.
+
+----------------------------------------------------------------
+5. AWS COGNITO
+----------------------------------------------------------------
+Cost model: free up to 50,000 MAUs. Paid beyond that ($0.0055/MAU).
+Used for: all user auth — register, login, email verify, forgot password, change password.
+
+What breaks when it fails:
+- Users cannot log in or register
+- Password reset fails
+- Email verification fails
+
+Alert to owner: ❌ NOT IMPLEMENTED
+  - Cognito errors return generic 500/401 to users
+  - No owner alert when Cognito is down or misconfigured
+
+Action when it fails:
+→ Go to AWS Console → Cognito → check User Pool status
+→ Check Amplify env vars: COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID match the pool
+→ If billing: Cognito free tier is generous, unlikely to be a cost issue at current scale
+
+----------------------------------------------------------------
+6. AWS AMPLIFY (hosting & deployment)
+----------------------------------------------------------------
+Cost model: pay-per-build + per-GB served. Low cost at current scale.
+Used for: hosting Next.js backend + auto-deploy on push to main.
+
+What breaks when it fails:
+- New deployments fail (code changes don't go live)
+- If instance is stopped: entire backend is down, app is dead
+
+Alert to owner: ❌ NOT IMPLEMENTED
+  - Build failures visible in Amplify console but no email alert
+  - No uptime monitoring
+
+Action when it fails:
+→ Go to AWS Console → Amplify → check build logs
+→ Check environment variables are all set (missing var = build passes but runtime fails)
+→ If billing: pay AWS bill
+
+TODO: Enable Amplify build notifications (Settings → Notifications → add your email).
+      This is a one-click setup in the Amplify console — do this now.
+
+----------------------------------------------------------------
+SUMMARY — ALERT COVERAGE STATUS
+----------------------------------------------------------------
+
+Service          | Quota/Billing Alert | App Error to User | Owner Email Alert
+-----------------|--------------------|--------------------|------------------
+Anthropic Claude | ✅ Implemented      | ✅ Generic error   | ✅ 401/429/529
+Spoonacular      | ⚠️ Partial (meal plan only) | ✅ Partial | ❌ No owner email
+Resend           | ❌ Not implemented  | N/A (email service)| ❌ Silently fails
+AWS RDS          | ❌ Not implemented  | ✅ 500 error       | ⚠️ Via report-error only
+AWS Cognito      | ❌ Not implemented  | ✅ Auth error      | ❌ No owner email
+AWS Amplify      | ❌ Not implemented  | N/A (hosting)      | ❌ No build alerts
+
+IMMEDIATE ACTIONS (do these manually now):
+1. Amplify build notifications — enable in Amplify console (1 minute, free)
+2. AWS CloudWatch RDS alarm — alert when DB stops (15 minutes, free tier)
+3. Add Spoonacular 402 handling to /api/recipes/search (code change needed)
+4. Add console.error to all Resend .catch() blocks so CloudWatch at least logs failures
+
+
+================================================================
 LIST: APIs & BREAKING POINTS
 ================================================================
 
 Spoonacular
-Used for: recipe search, recipe detail, wine pairing, ingredient substitutes (legacy), meal plan generation.
+Used for: recipe search, recipe detail, wine pairing, meal plan generation.
 API key: SPOONACULAR_API_KEY in .env.local (server-side only, never client).
-Proxied via: /api/recipes/* and /api/meal-plan/* routes on the Next.js backend.
-Quota: points-based. complexSearch = 1pt + 0.01pt per result + extras if addRecipeInformation/Nutrition set.
+Quota: points-based. complexSearch = 1pt + 0.01pt per result.
 Breaking points:
-- 402 or "apiKey" error in response → quota exhausted for the day. Check spoonacular.com dashboard.
-- Recipe detail returns empty extendedIngredients → Spoonacular data gap, not a code bug.
-- Search returns 0 results with no error → too many filters combined, or ingredient names too specific.
-- CORS error → route is being called client-side directly. Must always go through /api/* proxy.
-- mealplanner/generate overshoots calories by ~20% — backend scales nutrients back to target after fetch.
+- 402 → quota exhausted. Check spoonacular.com dashboard. Resets midnight UTC.
+- Search returns 0 results → too many filters combined, or ingredient names too specific.
+- mealplanner/generate overshoots calories → backend scales nutrients back to target.
 
 Claude (Anthropic)
-Used for: ingredient photo scanning (vision), substitute suggestions, AI filter suggestions, meal replacement validation.
-API key: ANTHROPIC_API_KEY in .env.local (server-side only). Must also be set in Amplify env vars.
-Model: claude-haiku-4-5-20251001 for all current calls. Use full model ID — short names will 404.
-Proxied via: /api/recipes/analyze-image, /api/recipes/suggest-substitute, /api/recipes/suggest-filters,
-             /api/meal-plan/replace-meal.
+Used for: ingredient photo scanning, substitute suggestions, AI filter suggestions, meal replacement validation.
+API key: ANTHROPIC_API_KEY in .env.local + Amplify env vars.
+Model: claude-haiku-4-5-20251001. Always use full model ID.
 Breaking points:
-- 401 → API key missing or wrong. Check .env.local and Amplify environment variables.
-- 529 or 503 → Anthropic overloaded. Retry after a few seconds.
-- Response not valid JSON → Claude returned markdown instead of plain text. Check prompt.
+- 401 → API key missing or wrong → owner alerted via email ✅
+- 429 → rate limit hit → owner alerted via email ✅
+- 529/503 → Anthropic overloaded → owner alerted via email ✅
 
-AWS Cognito
-Used for: user authentication (register, login, email verify, forgot password, change password).
-Region: eu-west-2.
-Breaking points:
-- "UserNotConfirmedException" → user registered but didn't verify email.
-- "NotAuthorizedException" → wrong password or user doesn't exist.
-- JWT expired → auto-logout handled. Auth state cleared on expiry.
-- Resend code fails → AutoVerifiedAttributes must include 'email' on the user pool.
-
-AWS RDS PostgreSQL
-Used for: all persistent data — users, favourites, shopping list, tried recipes, meal plans, ratings,
-quick shopping list, active recipe session, search_usage, scan_usage.
-Region: eu-west-2.
-Breaking points:
-- "Connection refused" or pool timeout → RDS instance stopped or security group blocking Amplify IP.
-- "column does not exist" → migration not run. Check lib/schema.sql and run missing ALTER TABLE manually.
-- "unique constraint violated" → duplicate insert. Check ON CONFLICT clause.
-
-AWS Amplify (hosting)
-Used for: auto-deploy Next.js backend + web frontend on push to main.
-Breaking points:
-- Build fails → check Amplify console build logs. Usually a missing env var or TypeScript error.
-- Environment variable not found at runtime → must be added in Amplify console, not just .env.local.
-- Old code still running after push → trigger a manual redeploy from the console.
-
-Resend (email)
-Used for: welcome email, trial warning email, deletion confirmation email.
-API key: RESEND_API_KEY in .env.local and Amplify env vars.
-Breaking points:
-- Emails not arriving → check Resend dashboard. Free plan only reliably delivers to account owner's email.
-- To send to any email → need a verified custom domain in Resend.
+AWS Cognito — Region: eu-west-2. Used for all auth.
+AWS RDS PostgreSQL — Region: eu-west-2. All persistent data.
+AWS Amplify — Auto-deploy on push to main.
+Resend — Transactional emails. Free tier: 3000/month, 100/day.
 
 Expo / React Native (mobile)
 Breaking points:
 - Metro bundler crash → delete node_modules/.cache and restart.
 - Public Wi-Fi blocks LAN → use npx expo start --tunnel.
 - Android build fails → check C:\p\ short path workaround (Windows 260-char path limit).
-- expo-speech not working on device → physical device permissions or TTS engine not installed.
-- Navigation crash on tab swap → session state changed mid-render. Check HomeTabs in App.tsx.
+- Navigation crash on tab swap → check HomeTabs in App.tsx.
 
 
 ================================================================

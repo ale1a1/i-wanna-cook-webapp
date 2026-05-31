@@ -194,28 +194,85 @@ Required before push notifications can be built.
 
 
 ================================================================
+SERVICE FAILURE & BILLING ALERTS — MANUAL CHECKLIST
+================================================================
+
+1. ANTHROPIC (Claude API)
+Cost: pay-per-token. Runs out → 401 or 429.
+Used for: scanner, substitutes, AI filters, meal replacement validation.
+Alert: ✅ Owner email on 401/429/529 (lib/alertOwner.ts)
+Action: console.anthropic.com → top up credits
+
+2. SPOONACULAR
+Cost: points-based daily quota. Free = 150pts/day. Paid from $29/mo.
+Used for: all recipe search, detail, wine pairing, meal plan generation.
+Alert: ⚠️ PARTIAL — meal plan routes catch 402, search/detail/wine do NOT alert owner
+Action: spoonacular.com/food-api/console → check points → upgrade or wait midnight UTC
+TODO: Add 402 owner alert to /api/recipes/search, /api/recipes/[id], /api/recipes/wine-pairing
+
+3. RESEND (email)
+Cost: free = 3,000 emails/month. Paid from $20/mo.
+Used for: welcome, trial warning, deletion, error alerts to owner.
+Alert: ❌ NOT IMPLEMENTED — Resend failures silently swallowed
+CRITICAL: if Resend fails, you stop receiving owner alerts AND user emails stop
+Action: resend.com/overview → check quota and logs → upgrade if needed
+TODO: Add console.error to all Resend .catch() blocks for CloudWatch visibility
+
+4. AWS RDS PostgreSQL
+Cost: always-on hourly charge. Stops if AWS bill unpaid.
+Used for: ALL persistent data — users, plans, favourites, shopping list, etc.
+Alert: ❌ NOT IMPLEMENTED — DB down = 500 errors to users, no owner email
+Action: AWS Console → RDS → check instance status → start if stopped
+TODO: Enable AWS CloudWatch alarm on RDS instance (free, 15 min setup)
+
+5. AWS COGNITO
+Cost: free up to 50,000 MAUs.
+Used for: all auth — register, login, verify, forgot password.
+Alert: ❌ NOT IMPLEMENTED
+Action: AWS Console → Cognito → check User Pool + Amplify env vars
+
+6. AWS AMPLIFY (hosting)
+Cost: pay-per-build + per-GB served.
+Alert: ❌ NOT IMPLEMENTED — build failures only visible in console
+TODO: Enable Amplify build notifications in console (1 click, free) — DO THIS NOW
+
+SUMMARY — COVERAGE STATUS
+--------------------------
+Anthropic Claude  ✅ Owner email alert implemented
+Spoonacular       ⚠️ Partial (meal plan only, not search/detail)
+Resend            ❌ Silent failure
+AWS RDS           ❌ No alert (only generic 500 to user)
+AWS Cognito       ❌ No alert
+AWS Amplify       ❌ No build notifications
+
+IMMEDIATE MANUAL ACTIONS (do these now, no code needed):
+1. Enable Amplify build email notifications → Amplify console → Settings → Notifications
+2. Set up CloudWatch alarm on RDS instance → alerts when DB stops or CPU spikes
+
+CODE TODOS:
+3. Add Spoonacular 402 owner alert to /api/recipes/search + /api/recipes/[id] + wine-pairing
+4. Add console.error to all Resend .catch() so CloudWatch at least logs failures
+
+
+================================================================
 LIST: APIs & BREAKING POINTS
 ================================================================
 
-Spoonacular
-Used for: recipe search, recipe detail, wine pairing, meal plan generation, ingredient autocomplete.
-API key: SPOONACULAR_API_KEY in .env.local (server-side only).
-Breaking points:
-- 402 → quota exhausted. Check spoonacular.com dashboard.
-- Search returns 0 results → too many filters or ingredient names too specific.
-- mealplanner/generate overshoots calories by ~20% — backend scales back to target after fetch.
+Spoonacular — SPOONACULAR_API_KEY (server-side only)
+- 402 → quota exhausted → spoonacular.com dashboard → resets midnight UTC
+- mealplanner/generate overshoots calories → backend scales back to target
 
-Claude (Anthropic)
-Used for: ingredient photo scanning, substitute suggestions, AI filter suggestions, meal replacement validation.
-Model: claude-haiku-4-5-20251001. Use full model ID.
-Breaking points:
-- 401 → API key missing. Check .env.local and Amplify env vars.
-- 529/503 → Anthropic overloaded. Retry.
+Claude — Model: claude-haiku-4-5-20251001 (always full model ID)
+- 401/429/529 → owner alerted via email ✅
 
-AWS Cognito — Region: eu-west-2
-AWS RDS PostgreSQL — Region: eu-west-2
+AWS Cognito — eu-west-2 — all auth
+AWS RDS PostgreSQL — eu-west-2 — all data
 AWS Amplify — auto-deploy on push to main
-Resend — welcome, trial warning, deletion emails
+Resend — transactional emails (3000/month free)
+
+Expo / React Native
+- Public Wi-Fi → npx expo start --tunnel
+- Android build → C:\p\ short path workaround
 
 
 ================================================================
