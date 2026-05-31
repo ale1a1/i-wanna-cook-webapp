@@ -363,6 +363,10 @@ Meal Plan — Replace meal / Replace full day ✅
 Meal Plan — Saved plans, folders, and filter drift warning ✅
 Meal plan save weekStart bug fix ✅ (Sunday was computing next Monday — fixed)
 Meal plan save confirmation alert ✅
+Meal plan saved plans browser ✅
+  Home screen: Saved Plans card → folder list → plans inside each folder.
+  Plan card shows name, filters summary, date, modified badge.
+  Tapping loads plan back into active view.
 My Recipes card image layout fix ✅ (flush top-left, CDN images for tried-only)
 Claude failure owner alerts ✅ (email on 401/429/529 — lib/alertOwner.ts)
 Build fix ✅ (@anthropic-ai/sdk missing from package.json — broke all Amplify builds)
