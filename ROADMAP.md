@@ -203,8 +203,33 @@ UI:
 - Replace day: shows a loading spinner, then swaps the day silently and collapses back.
 - Premium feature.
 
-Meal Plan saved plans & history
-When a plan is generated, user can name and save it (e.g. "Bulk Week 1", "Cut Phase"). Up to 10 saved plans. Each saved plan stores: name, filters used (calories, diet, cuisine, macros, AI goal), and meal titles as a lightweight preview. No full recipe data stored. Opening a saved plan shows the preview; "Regenerate" re-calls Spoonacular with the original filters for fresh recipes. Plans can be organised into categories/folders (e.g. "Bulking", "Weight Loss", "Family"). Premium feature. DB: extend meal_plans table with name, filters_json, category columns.
+Meal Plan — Saved plans, folders, and filter drift warning
+
+SAVING & FOLDERS:
+- When a plan is generated, the user can name and save it (e.g. "Bulk Week 1", "Cut Phase").
+- Saved plans can be organised into named folders/categories (e.g. "Bulking", "Weight Loss", "Family").
+- Each folder stores the filter criteria that were used to create it (calories, diet, macros, micros, cuisine, intolerances, excludes, mealsPerDay) as filters_json.
+- This means the folder is not just an organiser — it is also a nutritional context. Plans inside a folder were built to the same criteria.
+- Up to 10 saved plans total. Premium feature.
+- DB: extend meal_plans table with name, filters_json, category/folder columns.
+
+SWAPPING MEALS INSIDE SAVED PLANS:
+- Once a plan is saved, the user can freely swap individual meals or full days (same replace logic as above).
+- When swapping within a saved plan, the system still applies the folder's filter criteria by default — AI-assisted swaps respect the original constraints.
+- However, the user is allowed to override and swap with something outside the criteria (e.g. pick any recipe they like from their favourites or from search).
+
+FILTER DRIFT WARNING (important UX):
+- The app tracks whether the current state of a saved plan still matches its original filter criteria.
+- If the user has made swaps that deviate from the original filters (e.g. a meal exceeds the daily calorie target, or uses an excluded ingredient), the plan shows a visible "Filters modified" badge or warning.
+- The warning is not a block — the user is allowed to deviate. But it must be clearly visible so they know the plan no longer matches what they originally set up.
+- Tapping the badge shows a summary: "Original filters: 2500 kcal, high protein, keto. Some meals in this plan no longer match these criteria."
+- There is also a "Restore to original filters" option that re-validates (and flags) each meal, or re-generates the deviating days using the original criteria.
+- When the user opens a folder, each plan inside shows either a green "On track" indicator or the "Filters modified" badge at a glance.
+
+ASKING BEFORE AI SWAPS:
+- When the user requests an AI-assisted swap (let the system find a replacement), the app first asks: "Do you want to stick to your original criteria?" Yes / No.
+- Yes → swap respects all original filter constraints (existing replace logic).
+- No → swap is free, but the filter drift warning will appear after the swap completes.
 
 Macro and nutrition tracking
 Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium.

@@ -196,8 +196,33 @@ UI:
 - Bottom sheet: "Replace this meal" / "Replace full day".
 - Premium feature.
 
-Meal Plan saved plans & history
-When a plan is generated, user can name and save it (e.g. "Bulk Week 1", "Cut Phase"). Up to 10 saved plans. Each saved plan stores: name, filters used (calories, diet, cuisine, macros, AI goal), and meal titles as a lightweight preview. No full recipe data stored. Opening a saved plan shows the preview; "Regenerate" re-calls Spoonacular with the original filters for fresh recipes. Plans can be organised into categories/folders (e.g. "Bulking", "Weight Loss", "Family"). Premium feature. DB: extend meal_plans table with name, filters_json, category columns.
+Meal Plan — Saved plans, folders, and filter drift warning
+
+SAVING & FOLDERS:
+- User can name and save a generated plan (e.g. "Bulk Week 1", "Cut Phase").
+- Plans organised into named folders/categories (e.g. "Bulking", "Weight Loss", "Family").
+- Each folder stores the original filter criteria (calories, diet, macros, micros, cuisine, intolerances, excludes, mealsPerDay) as filters_json.
+- The folder is both an organiser and a nutritional context — all plans inside share the same criteria.
+- Up to 10 saved plans. Premium feature.
+- DB: extend meal_plans table with name, filters_json, category/folder columns.
+
+SWAPPING MEALS INSIDE SAVED PLANS:
+- User can freely swap individual meals or full days inside a saved plan (same replace logic as above).
+- AI-assisted swaps respect the folder's original filter criteria by default.
+- User can override and pick any recipe — but the filter drift warning will appear.
+
+FILTER DRIFT WARNING:
+- App tracks whether the current plan still matches its original filter criteria.
+- If swaps have deviated (meal exceeds daily calorie target, uses excluded ingredient, etc.), plan shows a "Filters modified" badge.
+- Not a block — user is allowed to deviate, but it must be clearly visible.
+- Tapping the badge shows: "Original filters: 2500 kcal, high protein, keto. Some meals no longer match."
+- "Restore to original filters" option re-validates each meal and re-generates deviating days.
+- Inside a folder, each plan shows green "On track" or "Filters modified" badge at a glance.
+
+ASKING BEFORE AI SWAPS:
+- Before an AI-assisted swap: "Do you want to stick to your original criteria?" Yes / No.
+- Yes → swap respects all original constraints.
+- No → free swap, but filter drift warning appears after.
 
 Macro and nutrition tracking
 Daily targets for calories, protein, carbs, fat. Track meals logged against targets. Show trends over time. Premium.
