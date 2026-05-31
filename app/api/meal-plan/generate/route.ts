@@ -2,23 +2,37 @@ import { NextRequest, NextResponse } from "next/server"
 
 const DAY_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
-async function fetchOnePlan(apiKey: string, targetCalories: string, diet: string, exclude: string): Promise<any> {
+async function fetchWeekPlan(apiKey: string, targetCalories: string, diet: string, exclude: string): Promise<any> {
   const params = new URLSearchParams({ apiKey, targetCalories, timeFrame: "week" })
   if (diet) params.set("diet", diet)
   if (exclude) params.set("exclude", exclude)
   params.set("_ts", Date.now().toString() + Math.random().toString(36).slice(2))
-
-  const res = await fetch(
-    `https://api.spoonacular.com/mealplanner/generate?${params.toString()}`,
-    { cache: "no-store" }
-  )
+  const res = await fetch(`https://api.spoonacular.com/mealplanner/generate?${params.toString()}`, { cache: "no-store" })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    const code: number = data?.code ?? res.status
-    if (code === 402) throw new Error("QUOTA")
+    if ((data?.code ?? res.status) === 402) throw new Error("QUOTA")
     throw new Error(data?.message ?? "Failed to generate meal plan")
   }
   return res.json()
+}
+
+// Search for small snack/extra meals that fit within a calorie budget
+async function fetchExtraMeals(apiKey: string, maxCalories: number, diet: string, exclude: string, excludeIds: Set<number>): Promise<any[]> {
+  const params = new URLSearchParams({
+    apiKey,
+    number: "20",
+    maxCalories: String(Math.round(maxCalories)),
+    minCalories: String(Math.round(maxCalories * 0.3)),
+    addRecipeInformation: "true",
+    sort: "random",
+  })
+  if (diet && diet !== "none") params.set("diet", diet)
+  if (exclude) params.set("excludeIngredients", exclude)
+
+  const res = await fetch(`https://api.spoonacular.com/recipes/complexSearch?${params.toString()}`, { cache: "no-store" })
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.results ?? []).filter((r: any) => !excludeIds.has(r.id))
 }
 
 export async function GET(request: NextRequest) {
@@ -33,72 +47,74 @@ export async function GET(request: NextRequest) {
   const dailyCalories = parseInt(targetCalories)
 
   try {
+    // Always fetch the main plan at the exact daily target — Spoonacular splits this
+    // into 3 meals (breakfast/lunch/dinner) that together hit the calorie goal
+    const mainPlan = await fetchWeekPlan(apiKey, targetCalories, diet, exclude)
+
     if (mealsPerDay === 3) {
-      const plan = await fetchOnePlan(apiKey, targetCalories, diet, exclude)
-      // Scale nutrients to match target exactly (Spoonacular varies ±20%)
-      return NextResponse.json(scalePlanNutrients(plan, dailyCalories))
+      return NextResponse.json(mainPlan)
     }
 
-    // For 4-6 meals: fetch two plans each targeting half the daily calories,
-    // then merge. This way the two halves together equal the full daily target.
-    const halfCalories = String(Math.round(dailyCalories / 2))
+    // For extra meals (4-6): each main plan day already covers the full calorie target
+    // across 3 meals. Extra meals are snacks/small meals carved OUT of that budget —
+    // not added on top. We redistribute: reduce each main meal's calorie contribution
+    // and fill the gap with small extras.
+    //
+    // Strategy: extra meals budget = 15% of daily target per extra slot
+    // (a snack is typically ~200-400 kcal for a 2000-2500 kcal diet)
     const extraCount = mealsPerDay - 3
+    const extraBudgetPerMeal = Math.round(dailyCalories * 0.15)
 
-    // Fetch planB multiple times if needed to get enough non-duplicate meals
-    const [planA, planB1, planB2] = await Promise.all([
-      fetchOnePlan(apiKey, halfCalories, diet, exclude),
-      fetchOnePlan(apiKey, halfCalories, diet, exclude),
-      // Third call as backup for dedup fallback — only costs quota if actually used
-      extraCount > 0 ? fetchOnePlan(apiKey, halfCalories, diet, exclude) : Promise.resolve(null),
-    ])
+    // Collect all recipe IDs from the main plan to avoid duplicates
+    const allMainIds = new Set<number>()
+    for (const day of DAY_KEYS) {
+      for (const meal of (mainPlan.week?.[day]?.meals ?? [])) {
+        allMainIds.add(meal.id)
+      }
+    }
+
+    // Fetch a pool of snack-sized recipes once, reuse across days
+    const extraPool = await fetchExtraMeals(apiKey, extraBudgetPerMeal, diet, exclude, allMainIds)
 
     const merged: any = { week: {} }
+    let poolIndex = 0
 
     for (const day of DAY_KEYS) {
-      const dayA = planA.week[day]
-      if (!dayA) continue
+      const dayData = mainPlan.week?.[day]
+      if (!dayData) continue
 
-      const seen = new Set(dayA.meals.map((m: any) => m.id))
+      const extras: any[] = []
+      const usedThisDay = new Set(dayData.meals.map((m: any) => m.id))
 
-      // Try planB1 first, fall back to planB2 for any missing slots
-      let extras: any[] = []
-      for (const planB of [planB1, planB2]) {
-        if (!planB) continue
-        const candidates = (planB.week[day]?.meals ?? []).filter((m: any) => !seen.has(m.id))
-        for (const c of candidates) {
-          if (extras.length >= extraCount) break
-          if (!extras.find(e => e.id === c.id)) {
-            extras.push(c)
-            seen.add(c.id)
+      for (let i = 0; i < extraCount; i++) {
+        // Find next pool entry not already used today
+        let found = false
+        for (let attempt = 0; attempt < extraPool.length; attempt++) {
+          const candidate = extraPool[(poolIndex + attempt) % extraPool.length]
+          if (!usedThisDay.has(candidate.id)) {
+            extras.push({
+              id: candidate.id,
+              title: candidate.title,
+              readyInMinutes: candidate.readyInMinutes ?? 0,
+              servings: candidate.servings ?? 1,
+            })
+            usedThisDay.add(candidate.id)
+            poolIndex = (poolIndex + attempt + 1) % Math.max(extraPool.length, 1)
+            found = true
+            break
           }
         }
-        if (extras.length >= extraCount) break
+        // If pool exhausted, reuse a main meal as placeholder
+        if (!found && dayData.meals.length > 0) {
+          extras.push(dayData.meals[i % dayData.meals.length])
+        }
       }
-
-      // If still not enough unique meals, duplicate from planA to fill the slot
-      // (better to show a repeated meal than show fewer meals than requested)
-      let i = 0
-      while (extras.length < extraCount && i < dayA.meals.length) {
-        extras.push(dayA.meals[i])
-        i++
-      }
-
-      const allMeals = [...dayA.meals, ...extras]
-
-      // Calculate raw merged calories from both halves
-      const rawCalories = (dayA.nutrients?.calories ?? 0) + (planB1.week[day]?.nutrients?.calories ?? 0)
-
-      // Scale all nutrients so total always matches the user's target (±0)
-      const scale = rawCalories > 0 ? dailyCalories / rawCalories : 1
 
       merged.week[day] = {
-        meals: allMeals,
-        nutrients: {
-          calories: Math.round(dailyCalories), // always show exact target
-          protein: Math.round(((dayA.nutrients?.protein ?? 0) + (planB1.week[day]?.nutrients?.protein ?? 0)) * scale),
-          fat: Math.round(((dayA.nutrients?.fat ?? 0) + (planB1.week[day]?.nutrients?.fat ?? 0)) * scale),
-          carbohydrates: Math.round(((dayA.nutrients?.carbohydrates ?? 0) + (planB1.week[day]?.nutrients?.carbohydrates ?? 0)) * scale),
-        },
+        meals: [...dayData.meals, ...extras],
+        // Nutrients stay exactly as Spoonacular returned for the 3 main meals —
+        // extras are snacks carved from the same budget, not additions
+        nutrients: dayData.nutrients,
       }
     }
 
@@ -107,25 +123,4 @@ export async function GET(request: NextRequest) {
     if (e.message === "QUOTA") return NextResponse.json({ error: "Daily API limit reached. Try again tomorrow." }, { status: 402 })
     return NextResponse.json({ error: e.message ?? "Failed to generate meal plan" }, { status: 500 })
   }
-}
-
-// Scale a single-call plan's nutrients to match the exact target calories
-function scalePlanNutrients(plan: any, targetCalories: number): any {
-  const week: any = {}
-  for (const day of DAY_KEYS) {
-    const d = plan.week?.[day]
-    if (!d) continue
-    const raw = d.nutrients?.calories ?? 0
-    const scale = raw > 0 ? targetCalories / raw : 1
-    week[day] = {
-      ...d,
-      nutrients: {
-        calories: Math.round(targetCalories),
-        protein: Math.round((d.nutrients?.protein ?? 0) * scale),
-        fat: Math.round((d.nutrients?.fat ?? 0) * scale),
-        carbohydrates: Math.round((d.nutrients?.carbohydrates ?? 0) * scale),
-      },
-    }
-  }
-  return { week }
 }
