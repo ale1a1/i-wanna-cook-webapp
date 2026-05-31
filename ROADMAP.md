@@ -531,5 +531,10 @@ Active Recipe Session ✅
 Claude failure owner alerts ✅ (lib/alertOwner.ts — email on 401/429/529, all 4 Claude routes wired)
 Meal plan save weekStart bug fix ✅ (Sunday was computing next Monday — fixed)
 Meal plan save confirmation alert ✅ (success/failure feedback to user)
+Meal plan saved plans browser ✅
+  Home screen has "Saved Plans" card alongside AI Goal and Customise.
+  Tapping opens a folder browser — folders listed with plan count.
+  Tapping a folder shows plans inside: name, calorie/meals/diet subtitle, date, modified badge.
+  Tapping a plan loads it back into the active view with all filters and modified state restored.
 My Recipes card image layout fix ✅ (image flush top-left, CDN images for tried-only recipes)
 Build fix ✅ (@anthropic-ai/sdk added to package.json — was missing, broke Amplify builds)

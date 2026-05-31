@@ -88,6 +88,12 @@ export default function MealPlanScreen() {
   const [saveFolderCustom, setSaveFolderCustom] = useState("")
   const [saving, setSaving] = useState(false)
 
+  // saved plans browser
+  const [showPlansModal, setShowPlansModal] = useState(false)
+  const [savedPlans, setSavedPlans] = useState<any[]>([])
+  const [plansLoading, setPlansLoading] = useState(false)
+  const [openFolder, setOpenFolder] = useState<string | null>(null)
+
   // replace state
   const [replaceDay, setReplaceDay] = useState<string | null>(null)
   const [replaceMealIndex, setReplaceMealIndex] = useState<number | null>(null)
@@ -374,6 +380,32 @@ export default function MealPlanScreen() {
     }
   }
 
+  const fetchSavedPlans = async () => {
+    if (!user?.id) return
+    setPlansLoading(true)
+    try {
+      const res = await apiFetch(`/api/meal-plan?userId=${user.id}&isPremium=${isPremium}`, { screen: "Meal Plan" })
+      const data = await res.json()
+      setSavedPlans(data.plans ?? [])
+    } catch { /* non-fatal */ }
+    finally { setPlansLoading(false) }
+  }
+
+  const openSavedPlans = () => {
+    setOpenFolder(null)
+    setShowPlansModal(true)
+    fetchSavedPlans()
+  }
+
+  const loadSavedPlan = (savedPlan: any) => {
+    setShowPlansModal(false)
+    setPlan(savedPlan.plan_data)
+    setPlanId(savedPlan.id)
+    setFiltersJson(savedPlan.filters_json ?? null)
+    setIsModified(savedPlan.is_modified ?? false)
+    setExpandedDay(null)
+  }
+
   const openPath = (p: Path) => {
     const doOpen = () => {
       setPlan(null)
@@ -491,6 +523,17 @@ export default function MealPlanScreen() {
             <View style={s.pathInfo}>
               <Text style={s.pathTitle}>Customise</Text>
               <Text style={s.pathDesc}>Set your calories, diet, cuisine, intolerances and nutrients step by step.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[s.pathCard, { borderColor: colors.border }]} onPress={openSavedPlans} activeOpacity={0.85}>
+            <View style={[s.pathIconBg, { backgroundColor: colors.muted + "22" }]}>
+              <Ionicons name="folder-outline" size={28} color={colors.mutedForeground} />
+            </View>
+            <View style={s.pathInfo}>
+              <Text style={s.pathTitle}>Saved Plans</Text>
+              <Text style={s.pathDesc}>Browse your saved meal plans, organised by folder.</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.muted} />
           </TouchableOpacity>
@@ -832,6 +875,81 @@ export default function MealPlanScreen() {
         </SafeAreaView>
       </Modal>
 
+      {/* ── Saved Plans browser ─────────────────────────────────── */}
+      <Modal visible={showPlansModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={s.modalContainer} edges={["top"]}>
+          <View style={s.modalHeader}>
+            <TouchableOpacity onPress={() => {
+              if (openFolder !== null) setOpenFolder(null)
+              else setShowPlansModal(false)
+            }}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={s.modalTitle}>{openFolder ?? "Saved Plans"}</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          {plansLoading ? (
+            <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+          ) : savedPlans.length === 0 ? (
+            <View style={s.center}>
+              <Ionicons name="folder-open-outline" size={52} color={colors.muted} />
+              <Text style={{ color: colors.mutedForeground, fontSize: 15, marginTop: 12 }}>No saved plans yet</Text>
+              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>Generate a plan and tap Save to keep it here.</Text>
+            </View>
+          ) : openFolder === null ? (
+            // Folder list view
+            <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+              {(() => {
+                const folders = Array.from(new Set(savedPlans.map((p: any) => p.folder ?? "Uncategorised")))
+                return folders.map(folder => {
+                  const count = savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length
+                  return (
+                    <TouchableOpacity key={folder} style={s.folderCard} onPress={() => setOpenFolder(folder)} activeOpacity={0.8}>
+                      <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22", width: 44, height: 44, borderRadius: 12 }]}>
+                        <Ionicons name="folder" size={22} color={colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.folderName}>{folder}</Text>
+                        <Text style={s.folderCount}>{count} plan{count !== 1 ? "s" : ""}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                    </TouchableOpacity>
+                  )
+                })
+              })()}
+            </ScrollView>
+          ) : (
+            // Plans inside a folder
+            <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+              {savedPlans
+                .filter((p: any) => (p.folder ?? "Uncategorised") === openFolder)
+                .map((savedPlan: any) => {
+                  const filters = savedPlan.filters_json
+                  const subtitle = filters
+                    ? `${filters.calories ?? "?"} kcal · ${filters.mealsPerDay ?? 3} meals/day · ${filters.diet !== "none" && filters.diet ? filters.diet : "any diet"}`
+                    : savedPlan.week_start
+                  return (
+                    <TouchableOpacity key={savedPlan.id} style={s.planCard} onPress={() => loadSavedPlan(savedPlan)} activeOpacity={0.8}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.planName}>{savedPlan.name ?? "Unnamed plan"}</Text>
+                        <Text style={s.planSubtitle}>{subtitle}</Text>
+                        <Text style={s.planDate}>{savedPlan.week_start}</Text>
+                      </View>
+                      {savedPlan.is_modified && (
+                        <View style={s.modifiedBadge}>
+                          <Text style={s.modifiedBadgeText}>Modified</Text>
+                        </View>
+                      )}
+                      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                    </TouchableOpacity>
+                  )
+                })}
+            </ScrollView>
+          )}
+        </SafeAreaView>
+      </Modal>
+
       <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Meal Planner" />
     </SafeAreaView>
   )
@@ -920,6 +1038,16 @@ const makeStyles = (colors: any) => StyleSheet.create({
   mealsOptionLabel: { fontSize: 15, fontWeight: "700", color: colors.text, marginBottom: 2 },
   mealsOptionLabelActive: { color: colors.primary },
   mealsOptionDesc: { fontSize: 12, color: colors.mutedForeground },
+  // saved plans browser
+  folderCard: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md },
+  folderName: { fontSize: 15, fontWeight: "700", color: colors.text },
+  folderCount: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
+  planCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md },
+  planName: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 2 },
+  planSubtitle: { fontSize: 12, color: colors.mutedForeground },
+  planDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
+  modifiedBadge: { backgroundColor: "#fef3c7", borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#f59e0b" },
+  modifiedBadgeText: { fontSize: 10, fontWeight: "700", color: "#b45309" },
   // candidates
   candidateCard: { flexDirection: "row", alignItems: "center", borderRadius: radius.lg, borderWidth: 1.5, padding: spacing.md, gap: 12 },
   candidateFits: { backgroundColor: "#f0fdf4", borderColor: "#16a34a" },
