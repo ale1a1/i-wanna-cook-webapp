@@ -501,42 +501,52 @@ export default function MealPlanScreen() {
         )}
       </View>
 
-      {/* Empty state */}
+      {/* Home — two clear sections */}
       {!plan && !loading && (
         <ScrollView contentContainerStyle={s.homeContent}>
-          <Text style={s.homeTitle}>Build your week</Text>
-          <Text style={s.homeSub}>Choose how you want to plan your meals.</Text>
-          <TouchableOpacity style={s.pathCard} onPress={() => openPath("ai")} activeOpacity={0.85}>
-            <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
-              <Ionicons name="sparkles" size={28} color={colors.primary} />
-            </View>
-            <View style={s.pathInfo}>
-              <Text style={s.pathTitle}>AI Goal</Text>
-              <Text style={s.pathDesc}>Tell the AI your goal — bulking, weight loss, endurance — and it builds the plan for you.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-          </TouchableOpacity>
-          <TouchableOpacity style={s.pathCard} onPress={() => openPath("custom")} activeOpacity={0.85}>
-            <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
-              <Ionicons name="options-outline" size={28} color={colors.primary} />
-            </View>
-            <View style={s.pathInfo}>
-              <Text style={s.pathTitle}>Customise</Text>
-              <Text style={s.pathDesc}>Set your calories, diet, cuisine, intolerances and nutrients step by step.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-          </TouchableOpacity>
 
-          <TouchableOpacity style={[s.pathCard, { borderColor: colors.border }]} onPress={openSavedPlans} activeOpacity={0.85}>
-            <View style={[s.pathIconBg, { backgroundColor: colors.muted + "22" }]}>
-              <Ionicons name="folder-outline" size={28} color={colors.mutedForeground} />
-            </View>
-            <View style={s.pathInfo}>
-              <Text style={s.pathTitle}>Saved Plans</Text>
-              <Text style={s.pathDesc}>Browse your saved meal plans, organised by folder.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.muted} />
-          </TouchableOpacity>
+          {/* A — Create Plan */}
+          <View style={s.homeSection}>
+            <Text style={s.homeSectionLabel}>A  —  Create Plan</Text>
+            <TouchableOpacity style={s.pathCard} onPress={() => openPath("ai")} activeOpacity={0.85}>
+              <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
+                <Ionicons name="sparkles" size={28} color={colors.primary} />
+              </View>
+              <View style={s.pathInfo}>
+                <Text style={s.pathTitle}>AI Goal</Text>
+                <Text style={s.pathDesc}>Tell the AI your goal — bulking, weight loss, endurance — and it builds the plan for you.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.pathCard} onPress={() => openPath("custom")} activeOpacity={0.85}>
+              <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
+                <Ionicons name="options-outline" size={28} color={colors.primary} />
+              </View>
+              <View style={s.pathInfo}>
+                <Text style={s.pathTitle}>Customise</Text>
+                <Text style={s.pathDesc}>Set your calories, diet, cuisine, intolerances and nutrients step by step.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={s.homeDivider} />
+
+          {/* B — Saved Plans */}
+          <View style={s.homeSection}>
+            <Text style={s.homeSectionLabel}>B  —  Saved Plans</Text>
+            <TouchableOpacity style={s.pathCard} onPress={openSavedPlans} activeOpacity={0.85}>
+              <View style={[s.pathIconBg, { backgroundColor: colors.mutedForeground + "22" }]}>
+                <Ionicons name="folder-open-outline" size={28} color={colors.mutedForeground} />
+              </View>
+              <View style={s.pathInfo}>
+                <Text style={s.pathTitle}>Browse Saved Plans</Text>
+                <Text style={s.pathDesc}>View your saved plans organised by folder. Tap any plan to load it.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+            </TouchableOpacity>
+          </View>
+
         </ScrollView>
       )}
 
@@ -967,6 +977,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   homeContent: { padding: spacing.md, paddingTop: 32, gap: 16 },
   homeTitle: { fontSize: 22, fontWeight: "800", color: colors.text },
   homeSub: { fontSize: 14, color: colors.mutedForeground, lineHeight: 20, marginTop: -8 },
+  homeSection: { gap: 12 },
+  homeSectionLabel: { fontSize: 11, fontWeight: "800", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 1.2 },
+  homeDivider: { height: 1, backgroundColor: colors.border, marginVertical: 4 },
   pathCard: { flexDirection: "row", alignItems: "center", gap: 16, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md },
   pathIconBg: { width: 52, height: 52, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   pathInfo: { flex: 1 },
