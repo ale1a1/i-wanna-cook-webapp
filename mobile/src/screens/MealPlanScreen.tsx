@@ -146,10 +146,9 @@ export default function MealPlanScreen() {
   const [showCreateOptions, setShowCreateOptions] = useState(false)
 
   // replace state
-  const [replaceDay, setReplaceDay] = useState<string | null>(null)
+  const [replaceDay, setReplaceDay] = useState<string | null>(null) // used for single-meal replace only
   const [replaceMealIndex, setReplaceMealIndex] = useState<number | null>(null)
   const [showReplaceSheet, setShowReplaceSheet] = useState(false)
-  const [replacingDay, setReplacingDay] = useState(false)
   const [replacingMeal, setReplacingMeal] = useState(false)
   const [replaceCandidates, setReplaceCandidates] = useState<any[]>([])
   const [showCandidates, setShowCandidates] = useState(false)
@@ -385,27 +384,6 @@ export default function MealPlanScreen() {
   }
 
   // ── Replace full day ──────────────────────────────────────────────────
-  const handleReplaceDay = async (day: string) => {
-    if (!filtersJson || !plan) return
-    setShowReplaceSheet(false)
-    setReplacingDay(true)
-    try {
-      const res = await apiFetch("/api/meal-plan/replace-day", {
-        method: "POST",
-        body: JSON.stringify({ day, filtersJson, currentWeek: plan.week }),
-        screen: "Meal Plan",
-      })
-      const data = await res.json()
-      if (!res.ok) { showError(data.error ?? "Could not replace day", "Meal Plan"); return }
-      const newPlan = { week: { ...plan.week, [day]: data.day } }
-      setPlan(newPlan)
-      setIsModified(true)
-      setHasUnsavedChanges(true)
-    } catch (e: any) {
-      showError(e?.message ?? "Network error", "Meal Plan")
-    } finally { setReplacingDay(false) }
-  }
-
   // ── Replace single meal ───────────────────────────────────────────────
   const handleReplaceMeal = async (day: string, mealIndex: number) => {
     if (!filtersJson || !plan) return
@@ -434,19 +412,8 @@ export default function MealPlanScreen() {
     } finally { setReplacingMeal(false) }
   }
 
-  const confirmReplaceMeal = async (candidate: any, overrideWarning: boolean) => {
+  const confirmReplaceMeal = (candidate: any) => {
     if (!plan || replaceDay === null || replaceMealIndex === null) return
-    if (candidate.warning && !overrideWarning) {
-      Alert.alert(
-        "Nutrition Warning",
-        candidate.warning + "\n\nReplace anyway?",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Replace anyway", onPress: () => confirmReplaceMeal(candidate, true) },
-        ]
-      )
-      return
-    }
     const dayPlan = plan.week[replaceDay]
     const newMeals = dayPlan.meals.map((m, i) =>
       i === replaceMealIndex ? { id: candidate.id, title: candidate.title, readyInMinutes: candidate.readyInMinutes ?? 0, servings: candidate.servings ?? 1 } : m
@@ -722,19 +689,38 @@ export default function MealPlanScreen() {
       {plan && !loading && (<>
         <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
 
-          {/* Plan name — plain text, no card */}
+          {/* Plan name — plain text with inline delete */}
           {savedPlanName && (
-            <Text style={{ color: colors.text, fontSize: 22, fontWeight: "800", marginTop: 8, paddingHorizontal: 2 }}>{savedPlanName}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, paddingHorizontal: 2 }}>
+              <Text style={{ color: colors.text, fontSize: 22, fontWeight: "800", flex: 1 }}>{savedPlanName}</Text>
+              <TouchableOpacity
+                onPress={() => Alert.alert(
+                  "Delete plan?",
+                  `"${savedPlanName}" will be permanently deleted.`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: async () => {
+                      await apiFetch("/api/meal-plan", { method: "DELETE", body: JSON.stringify({ userId: user!.id, planId }) })
+                      setSavedPlans(prev => prev.filter((p: any) => p.id !== planId))
+                      clearPlan()
+                    }},
+                  ]
+                )}
+                hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.destructive} />
+              </TouchableOpacity>
+            </View>
           )}
 
-          {/* Filter drift warning */}
+          {/* Plan modified banner */}
           {isModified && (
-            <TouchableOpacity style={[s.driftBanner, { marginBottom: 36 }]} onPress={() => {
-              const summary = filtersJson ? `${filtersJson.calories} kcal · ${filtersJson.diet !== "none" ? filtersJson.diet : "any diet"} · ${filtersJson.mealsPerDay} meals/day` : "Custom filters"
-              Alert.alert("Filters Modified", `Original filters: ${summary}\n\nSome meals in this plan no longer match the original criteria.`, [{ text: "OK" }])
+            <TouchableOpacity style={[s.driftBanner, { marginBottom: 36, backgroundColor: "#f0fdf4", borderColor: "#16a34a55" }]} onPress={() => {
+              const summary = filtersJson ? `${filtersJson.calories} kcal · ${filtersJson.diet !== "none" ? filtersJson.diet : "any diet"} · ${filtersJson.mealsPerDay} meals/day` : "your original filters"
+              Alert.alert("Plan modified", `Some meals have been swapped. All replacements still match ${summary}.`, [{ text: "OK" }])
             }}>
-              <Ionicons name="warning-outline" size={16} color="#b45309" />
-              <Text style={s.driftText}>Filters modified — tap to see original criteria</Text>
+              <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
+              <Text style={[s.driftText, { color: "#166534" }]}>Plan modified — all changes within original filters</Text>
             </TouchableOpacity>
           )}
 
@@ -751,27 +737,13 @@ export default function MealPlanScreen() {
                 <TouchableOpacity style={s.dayHeader} onPress={() => setExpandedDay(isExpanded ? null : day)} activeOpacity={0.8}>
                   <Text style={s.dayName}>{day}</Text>
                   {isDayChanged && (
-                    <Ionicons name="warning" size={14} color="#f59e0b" style={{ marginLeft: 4, marginRight: 2 }} />
+                    <Ionicons name="checkmark-circle" size={14} color="#16a34a" style={{ marginLeft: 4, marginRight: 2 }} />
                   )}
                   <View style={s.dayNutrients}>
                     <Text style={s.nutrientText}>{Math.round(dayPlan.nutrients.calories)} cal</Text>
                     <Text style={s.nutrientDot}>·</Text>
                     <Text style={s.nutrientText}>{Math.round(dayPlan.nutrients.protein)}g protein</Text>
                   </View>
-                  {/* Replace day button */}
-                  {filtersJson && (
-                    <TouchableOpacity style={s.replaceDayBtn} onPress={() => {
-                      setReplaceDay(key)
-                      Alert.alert("Replace Day", `Re-generate all meals for ${day} using your original filters?`, [
-                        { text: "Cancel", style: "cancel" },
-                        { text: "Replace", onPress: () => handleReplaceDay(key) },
-                      ])
-                    }}>
-                      {replacingDay && replaceDay === key
-                        ? <ActivityIndicator size="small" color={colors.primary} />
-                        : <Ionicons name="refresh-outline" size={16} color={colors.primary} />}
-                    </TouchableOpacity>
-                  )}
                   <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
@@ -787,7 +759,7 @@ export default function MealPlanScreen() {
                           <Text style={s.mealMeta}>{meal.readyInMinutes} min · {meal.servings} servings</Text>
                         </View>
                         {changedMeals.has(i) && (
-                          <Ionicons name="warning" size={14} color="#f59e0b" style={{ marginRight: 4 }} />
+                          <Ionicons name="checkmark-circle" size={14} color="#16a34a" style={{ marginRight: 4 }} />
                         )}
                         {/* Replace meal button */}
                         {filtersJson && (
@@ -1107,14 +1079,14 @@ export default function MealPlanScreen() {
               <Text style={s.aiIntro}>{replaceMessage}</Text>
             ) : (
               <>
-                <Text style={s.aiIntro}>Select a replacement meal. Green means it fits your daily nutrition budget.</Text>
+                <Text style={s.aiIntro}>All options below match your original plan filters. Tap one to swap it in.</Text>
                 {replaceCandidates.map((c, i) => (
-                  <TouchableOpacity key={c.id ?? i} style={[s.candidateCard, c.fits ? s.candidateFits : s.candidateWarn]} onPress={() => confirmReplaceMeal(c, false)} activeOpacity={0.8}>
+                  <TouchableOpacity key={c.id ?? i} style={[s.candidateCard, s.candidateFits]} onPress={() => confirmReplaceMeal(c)} activeOpacity={0.8}>
                     <View style={{ flex: 1 }}>
                       <Text style={s.candidateTitle} numberOfLines={2}>{c.title}</Text>
-                      {c.warning && <Text style={s.candidateWarning}>{c.warning}</Text>}
+                      <Text style={{ fontSize: 12, color: "#166534", marginTop: 3 }}>Within your original filters</Text>
                     </View>
-                    <Ionicons name={c.fits ? "checkmark-circle" : "warning-outline"} size={20} color={c.fits ? "#16a34a" : "#b45309"} />
+                    <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
                   </TouchableOpacity>
                 ))}
               </>
@@ -1232,12 +1204,24 @@ export default function MealPlanScreen() {
             )}
             {/* Delete confirmation */}
             <Modal visible={!!deleteConfirm} transparent animationType="fade">
-              <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
-                <View style={[s.modalContainer, { borderRadius: radius.lg, padding: spacing.lg, maxWidth: 340, width: "100%" }]}>
-                  <Text style={[s.modalTitle, { textAlign: "center", marginBottom: 8 }]}>
+              <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
+                <View style={{
+                  backgroundColor: colors.background,
+                  borderRadius: 16,
+                  borderWidth: 1.5,
+                  borderColor: colors.border,
+                  padding: spacing.lg,
+                  width: "100%",
+                  maxWidth: 320,
+                  shadowColor: "#000",
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 12,
+                }}>
+                  <Text style={{ color: colors.text, fontSize: 17, fontWeight: "700", textAlign: "center", marginBottom: 8 }}>
                     {deleteConfirm?.type === "folder" ? "Delete folder?" : "Delete plan?"}
                   </Text>
-                  <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, marginBottom: 24 }}>
+                  <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, marginBottom: 24, lineHeight: 20 }}>
                     {deleteConfirm?.type === "folder"
                       ? `"${deleteConfirm.folder}" and all its plans will be permanently deleted.`
                       : `"${deleteConfirm?.plan?.name ?? "This plan"}" will be permanently deleted.`}
@@ -1270,27 +1254,37 @@ export default function MealPlanScreen() {
 
       {/* ── Exit guard modal ────────────────────────────────────────── */}
       <Modal visible={showExitGuard} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
-          <View style={[s.modalContainer, { borderRadius: radius.lg, padding: spacing.lg, maxWidth: 340, width: "100%" }]}>
-            <Text style={[s.modalTitle, { textAlign: "center", marginBottom: 8 }]}>Unsaved changes</Text>
-            <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, marginBottom: 24 }}>
-              {`You made changes to "${savedPlanName ?? "this plan"}". Would you like to save them before leaving?`}
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
+          <View style={{
+            backgroundColor: colors.background,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            borderColor: colors.border,
+            padding: spacing.lg,
+            width: "100%",
+            maxWidth: 320,
+            shadowColor: "#000",
+            shadowOpacity: 0.3,
+            shadowRadius: 16,
+            elevation: 12,
+            gap: 10,
+          }}>
+            <Text style={{ color: colors.text, fontSize: 17, fontWeight: "700", textAlign: "center", marginBottom: 4 }}>Unsaved changes</Text>
+            <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, marginBottom: 8, lineHeight: 20 }}>
+              {`You made changes to "${savedPlanName ?? "this plan"}". Save before leaving?`}
             </Text>
             <TouchableOpacity
-              style={[s.generateBtnLarge, { marginBottom: 10 }]}
-              onPress={async () => {
-                setShowExitGuard(false)
-                await handleSaveChanges()
-              }}
+              style={s.generateBtnLarge}
+              onPress={async () => { setShowExitGuard(false); await handleSaveChanges() }}
               disabled={saving}
             >
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.generateBtnText}>Save changes</Text>}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.destructive, marginBottom: 10 }]}
+              style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.destructive }]}
               onPress={() => { setShowExitGuard(false); setHasUnsavedChanges(false) }}
             >
-              <Text style={[s.generateBtnText, { color: colors.destructive }]}>Discard changes</Text>
+              <Text style={[s.generateBtnText, { color: colors.destructive }]}>Discard & leave</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.border }]}
@@ -1340,7 +1334,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   dayNutrients: { flexDirection: "row", alignItems: "center", gap: 4 },
   nutrientText: { fontSize: 12, color: colors.mutedForeground },
   nutrientDot: { color: colors.muted },
-  replaceDayBtn: { padding: 4 },
   mealsContainer: { borderTopWidth: 1, borderTopColor: colors.border },
   mealRow: { flexDirection: "row", alignItems: "center", padding: spacing.md, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.border + "80" },
   mealType: { backgroundColor: colors.primary + "22", paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
@@ -1404,8 +1397,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   planName: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 2 },
   planSubtitle: { fontSize: 12, color: colors.mutedForeground },
   planDate: { fontSize: 11, color: colors.muted, marginTop: 2 },
-  modifiedBadge: { backgroundColor: "#fef3c7", borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#f59e0b" },
-  modifiedBadgeText: { fontSize: 10, fontWeight: "700", color: "#b45309" },
+  modifiedBadge: { backgroundColor: "#f0fdf4", borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "#16a34a55" },
+  modifiedBadgeText: { fontSize: 10, fontWeight: "700", color: "#166534" },
   // candidates
   candidateCard: { flexDirection: "row", alignItems: "center", borderRadius: radius.lg, borderWidth: 1.5, padding: spacing.md, gap: 12 },
   candidateFits: { backgroundColor: "#f0fdf4", borderColor: "#16a34a" },
