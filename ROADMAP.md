@@ -11,6 +11,21 @@ not considered "web app features" and changes to them apply to both platforms.
 LIST: MUST — Before Launch
 ================================================================
 
+--- ⚠️ IMMEDIATE NEXT STEP ---
+
+Meal plan feature testing
+Before carrying on with any MUST items, fully test the meal plan feature end-to-end:
+  - Generate a plan (AI goal + custom paths)
+  - Save plan with name + folder (new folder and existing folder)
+  - Browse saved plans — folder list, plan list, drag reorder, delete folder, delete plan
+  - Load a saved plan — verify name shows, Save button is hidden
+  - Replace a meal and a full day — verify amber warning icons appear on changed day + meals
+  - Save changes via "Save changes" button — verify icons disappear and plan updates in DB
+  - Exit with unsaved changes — verify exit guard modal fires (via New plan + tab navigation)
+  - Timestamp formatting on saved plans (dd-mm-yy HH:MM)
+  - Required fields on save modal (name + folder — both must be non-empty)
+Only proceed with MUST items below once all of the above pass without bugs.
+
 --- Subscription & Payments ---
 
 Wire up Google Play Billing
