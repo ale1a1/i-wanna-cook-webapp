@@ -34,6 +34,33 @@ const MEAL_LABELS = ["Breakfast", "Lunch", "Dinner", "Snack", "Extra", "Extra 2"
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 const SUGGESTED_FOLDERS = ["Bulking", "Weight Loss", "Maintenance", "Family", "Endurance", "Custom"]
 
+function getChangedDays(original: WeekPlan | null, current: WeekPlan | null): Set<string> {
+  if (!original || !current) return new Set()
+  const changed = new Set<string>()
+  for (const day of Object.keys(current.week)) {
+    const origDay = original.week[day]
+    const currDay = current.week[day]
+    if (!origDay) { changed.add(day); continue }
+    if (origDay.meals.length !== currDay.meals.length) { changed.add(day); continue }
+    for (let i = 0; i < currDay.meals.length; i++) {
+      if (origDay.meals[i]?.id !== currDay.meals[i]?.id) { changed.add(day); break }
+    }
+  }
+  return changed
+}
+
+function getChangedMeals(original: WeekPlan | null, current: WeekPlan | null, day: string): Set<number> {
+  if (!original || !current) return new Set()
+  const origDay = original.week[day]
+  const currDay = current.week[day]
+  if (!origDay || !currDay) return new Set(currDay?.meals.map((_, i) => i) ?? [])
+  const changed = new Set<number>()
+  for (let i = 0; i < currDay.meals.length; i++) {
+    if (origDay.meals[i]?.id !== currDay.meals[i]?.id) changed.add(i)
+  }
+  return changed
+}
+
 function formatSavedAt(raw: string | undefined | null): string {
   if (!raw) return ""
   const d = new Date(raw)
@@ -72,8 +99,12 @@ export default function MealPlanScreen() {
   const [loading, setLoading] = useState(false)
   const [plan, setPlan] = useState<WeekPlan | null>(null)
   const [planId, setPlanId] = useState<string | null>(null)
+  const [savedPlanName, setSavedPlanName] = useState<string | null>(null)
+  const [originalPlan, setOriginalPlan] = useState<WeekPlan | null>(null)
   const [filtersJson, setFiltersJson] = useState<FiltersJson | null>(null)
   const [isModified, setIsModified] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [showExitGuard, setShowExitGuard] = useState(false)
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -151,6 +182,20 @@ export default function MealPlanScreen() {
     if (!subLoading && !isPremium) setShowPaywall(true)
   }, [subLoading, isPremium])
 
+  useEffect(() => {
+    if (plan && savedPlans.length === 0 && user?.id) fetchSavedPlans()
+  }, [plan])
+
+  // Exit guard — intercept tab/stack navigation away when there are unsaved changes
+  useEffect(() => {
+    if (!hasUnsavedChanges || !planId) return
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      e.preventDefault()
+      setShowExitGuard(true)
+    })
+    return unsubscribe
+  }, [hasUnsavedChanges, planId, navigation])
+
   const startVoiceInput = useCallback(async () => {
     if (!SpeechRecognitionModule) return
     try {
@@ -225,29 +270,13 @@ export default function MealPlanScreen() {
       const data = await res.json()
       if (!res.ok) { showError(data.error ?? "Failed to generate meal plan", "Meal Plan"); return }
       setPlan(data)
+      setOriginalPlan(data)
       setFiltersJson(filters)
       setIsModified(false)
+      setHasUnsavedChanges(false)
       setPlanId(null)
+      setSavedPlanName(null)
       setExpandedDay(null)
-
-      if (user?.id) {
-        const today = new Date()
-        const day = today.getDay() === 0 ? 7 : today.getDay()
-        const weekStart = new Date(today)
-        weekStart.setDate(today.getDate() - day + 1)
-        const weekStartStr = weekStart.toISOString().split("T")[0]
-        const saveRes = await fetch(`${API_BASE_URL}/api/meal-plan`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id, weekStart: weekStartStr, planData: data, filtersJson: filters }),
-        }).catch(() => null)
-        if (saveRes?.ok) {
-          const saved = await saveRes.json().catch(() => null)
-          if (saved?.plan?.id) setPlanId(saved.plan.id)
-        }
-
-        // Save button shown in top bar — user initiates when ready
-      }
     } catch (e: any) {
       showError(e?.message ?? "Network error", "Meal Plan")
     } finally { setLoading(false) }
@@ -282,9 +311,21 @@ export default function MealPlanScreen() {
       if (res.ok) {
         const saved = await res.json().catch(() => null)
         if (saved?.plan?.id) setPlanId(saved.plan.id)
+        setSavedPlanName(saveName.trim())
+        setOriginalPlan(plan)
+        setHasUnsavedChanges(false)
         setSaving(false)
         setShowSaveModal(false)
-        Alert.alert("Saved!", `"${saveName.trim()}" saved to your plans.`)
+        Alert.alert("Saved!", `"${saveName.trim()}" saved to "${folder}".`, [
+          {
+            text: "View folder", onPress: () => {
+              fetchSavedPlans()
+              setOpenFolder(folder)
+              setShowPlansModal(true)
+            }
+          },
+          { text: "OK", style: "cancel" },
+        ])
         return
       }
       const errData = await res.json().catch(() => null)
@@ -292,6 +333,28 @@ export default function MealPlanScreen() {
     } catch (e: any) {
       console.error("Save plan failed:", e?.message)
       Alert.alert("Save failed", e?.message ?? "Could not save the plan. Please try again.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveChanges = async () => {
+    if (!user?.id || !plan || !planId) return
+    setSaving(true)
+    try {
+      const res = await apiFetch("/api/meal-plan", {
+        method: "PATCH",
+        body: JSON.stringify({ userId: user.id, planId, planData: plan, isModified }),
+      })
+      if (res.ok) {
+        setOriginalPlan(plan)
+        setHasUnsavedChanges(false)
+        Alert.alert("Saved!", "Your changes have been saved.")
+      } else {
+        Alert.alert("Save failed", "Could not save changes. Please try again.")
+      }
+    } catch {
+      Alert.alert("Save failed", "Could not save changes. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -335,13 +398,7 @@ export default function MealPlanScreen() {
       if (!res.ok) { showError(data.error ?? "Could not replace day", "Meal Plan"); return }
       const newPlan = { week: { ...plan.week, [day]: data.day } }
       setPlan(newPlan)
-      // Persist updated plan
-      if (user?.id && planId) {
-        await apiFetch("/api/meal-plan", {
-          method: "PATCH",
-          body: JSON.stringify({ userId: user.id, planId, planData: newPlan, isModified: false }),
-        }).catch(() => {})
-      }
+      setHasUnsavedChanges(true)
     } catch (e: any) {
       showError(e?.message ?? "Network error", "Meal Plan")
     } finally { setReplacingDay(false) }
@@ -395,15 +452,10 @@ export default function MealPlanScreen() {
     const newPlan = { week: { ...plan.week, [replaceDay]: { ...dayPlan, meals: newMeals } } }
     const modified = !candidate.fits
     setPlan(newPlan)
+    setHasUnsavedChanges(true)
     if (modified) setIsModified(true)
     setShowCandidates(false)
     setReplaceCandidates([])
-    if (user?.id && planId) {
-      await apiFetch("/api/meal-plan", {
-        method: "PATCH",
-        body: JSON.stringify({ userId: user.id, planId, planData: newPlan, isModified: modified }),
-      }).catch(() => {})
-    }
   }
 
   const fetchSavedPlans = async () => {
@@ -480,21 +532,37 @@ export default function MealPlanScreen() {
   const loadSavedPlan = (savedPlan: any) => {
     setShowPlansModal(false)
     setPlan(savedPlan.plan_data)
+    setOriginalPlan(savedPlan.plan_data)
     setPlanId(savedPlan.id)
+    setSavedPlanName(savedPlan.name ?? null)
     setFiltersJson(savedPlan.filters_json ?? null)
     setIsModified(savedPlan.is_modified ?? false)
+    setHasUnsavedChanges(false)
+    setExpandedDay(null)
+  }
+
+  const clearPlan = () => {
+    setPlan(null)
+    setPlanId(null)
+    setOriginalPlan(null)
+    setSavedPlanName(null)
+    setHasUnsavedChanges(false)
+    setIsModified(false)
     setExpandedDay(null)
   }
 
   const openPath = (p: Path) => {
     const doOpen = () => {
-      setPlan(null)
-      setPlanId(null)
+      clearPlan()
       setPath(p ?? null)
       setCustomStep("nutrition")
       setShowCreateOptions(false)
       setAiPreset(""); setAiGoal(""); setAiError("")
       if (p !== null) setModalOpen(true)
+    }
+    if (plan && hasUnsavedChanges && planId) {
+      setShowExitGuard(true)
+      return
     }
     if (plan) {
       Alert.alert(
@@ -570,10 +638,20 @@ export default function MealPlanScreen() {
         <Text style={s.title}>Meal Plan</Text>
         {plan && !loading && (
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <TouchableOpacity style={s.regenBtn} onPress={openSaveModal}>
-              <Ionicons name="bookmark-outline" size={16} color={colors.primary} />
-              <Text style={s.regenBtnText}>Save</Text>
-            </TouchableOpacity>
+            {!planId && (
+              <TouchableOpacity style={s.regenBtn} onPress={openSaveModal}>
+                <Ionicons name="bookmark-outline" size={16} color={colors.primary} />
+                <Text style={s.regenBtnText}>Save</Text>
+              </TouchableOpacity>
+            )}
+            {planId && hasUnsavedChanges && (
+              <TouchableOpacity style={[s.regenBtn, { borderColor: "#f59e0b" }]} onPress={handleSaveChanges} disabled={saving}>
+                {saving ? <ActivityIndicator size="small" color="#f59e0b" /> : <>
+                  <Ionicons name="cloud-upload-outline" size={16} color="#f59e0b" />
+                  <Text style={[s.regenBtnText, { color: "#f59e0b" }]}>Save changes</Text>
+                </>}
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={s.regenBtn} onPress={() => openPath(null)}>
               <Ionicons name="refresh" size={16} color={colors.primary} />
               <Text style={s.regenBtnText}>New plan</Text>
@@ -639,11 +717,17 @@ export default function MealPlanScreen() {
       )}
 
       {/* Plan results */}
-      {plan && !loading && (
+      {plan && !loading && (<>
         <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+
+          {/* Plan name — plain text, no card */}
+          {savedPlanName && (
+            <Text style={{ color: colors.text, fontSize: 22, fontWeight: "800", marginTop: 8, paddingHorizontal: 2 }}>{savedPlanName}</Text>
+          )}
+
           {/* Filter drift warning */}
           {isModified && (
-            <TouchableOpacity style={s.driftBanner} onPress={() => {
+            <TouchableOpacity style={[s.driftBanner, { marginBottom: 36 }]} onPress={() => {
               const summary = filtersJson ? `${filtersJson.calories} kcal · ${filtersJson.diet !== "none" ? filtersJson.diet : "any diet"} · ${filtersJson.mealsPerDay} meals/day` : "Custom filters"
               Alert.alert("Filters Modified", `Original filters: ${summary}\n\nSome meals in this plan no longer match the original criteria.`, [{ text: "OK" }])
             }}>
@@ -657,10 +741,16 @@ export default function MealPlanScreen() {
             const dayPlan = plan.week[key]
             if (!dayPlan) return null
             const isExpanded = expandedDay === day
+            const changedDays = getChangedDays(originalPlan, plan)
+            const isDayChanged = changedDays.has(key)
+            const changedMeals = getChangedMeals(originalPlan, plan, key)
             return (
               <View key={day} style={s.dayCard}>
                 <TouchableOpacity style={s.dayHeader} onPress={() => setExpandedDay(isExpanded ? null : day)} activeOpacity={0.8}>
                   <Text style={s.dayName}>{day}</Text>
+                  {isDayChanged && (
+                    <Ionicons name="warning" size={14} color="#f59e0b" style={{ marginLeft: 4, marginRight: 2 }} />
+                  )}
                   <View style={s.dayNutrients}>
                     <Text style={s.nutrientText}>{Math.round(dayPlan.nutrients.calories)} cal</Text>
                     <Text style={s.nutrientDot}>·</Text>
@@ -694,6 +784,9 @@ export default function MealPlanScreen() {
                           <Text style={s.mealTitle} numberOfLines={2}>{meal.title}</Text>
                           <Text style={s.mealMeta}>{meal.readyInMinutes} min · {meal.servings} servings</Text>
                         </View>
+                        {changedMeals.has(i) && (
+                          <Ionicons name="warning" size={14} color="#f59e0b" style={{ marginRight: 4 }} />
+                        )}
                         {/* Replace meal button */}
                         {filtersJson && (
                           <TouchableOpacity style={s.replaceMealBtn} onPress={() => {
@@ -721,8 +814,18 @@ export default function MealPlanScreen() {
               </View>
             )
           })}
+
         </ScrollView>
-      )}
+        {savedPlans.length > 0 && (
+          <TouchableOpacity
+            style={[s.generateBtnLarge, { margin: spacing.md, backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.border }]}
+            onPress={openSavedPlans}
+            activeOpacity={0.8}
+          >
+            <Text style={[s.generateBtnText, { color: colors.text }]}>Show all my plans</Text>
+          </TouchableOpacity>
+        )}
+      </> )}
 
       {/* ── Modal — AI path ─────────────────────────────────────────── */}
       <Modal visible={modalOpen && path === "ai"} animationType="slide" presentationStyle="pageSheet">
@@ -1161,6 +1264,40 @@ export default function MealPlanScreen() {
               </View>
             </Modal>
           </SafeAreaView>
+      </Modal>
+
+      {/* ── Exit guard modal ────────────────────────────────────────── */}
+      <Modal visible={showExitGuard} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
+          <View style={[s.modalContainer, { borderRadius: radius.lg, padding: spacing.lg, maxWidth: 340, width: "100%" }]}>
+            <Text style={[s.modalTitle, { textAlign: "center", marginBottom: 8 }]}>Unsaved changes</Text>
+            <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, marginBottom: 24 }}>
+              {`You made changes to "${savedPlanName ?? "this plan"}". Would you like to save them before leaving?`}
+            </Text>
+            <TouchableOpacity
+              style={[s.generateBtnLarge, { marginBottom: 10 }]}
+              onPress={async () => {
+                setShowExitGuard(false)
+                await handleSaveChanges()
+              }}
+              disabled={saving}
+            >
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.generateBtnText}>Save changes</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.destructive, marginBottom: 10 }]}
+              onPress={() => { setShowExitGuard(false); setHasUnsavedChanges(false) }}
+            >
+              <Text style={[s.generateBtnText, { color: colors.destructive }]}>Discard changes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.border }]}
+              onPress={() => setShowExitGuard(false)}
+            >
+              <Text style={[s.generateBtnText, { color: colors.text }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Meal Planner" />

@@ -21,6 +21,9 @@ export default function DraggableList<T>({
   const dragY = useRef(new Animated.Value(0)).current
   const startY = useRef(0)
   const currentDragIndex = useRef(-1)
+  // Keep latest data accessible inside pan responder callbacks without stale closure
+  const dataRef = useRef(data)
+  dataRef.current = data
 
   const getDisplayOrder = (): number[] => {
     if (draggingIndex === -1 || hoverIndex === -1 || draggingIndex === hoverIndex) {
@@ -32,33 +35,42 @@ export default function DraggableList<T>({
     return order
   }
 
-  const makePanResponder = (index: number) =>
-    PanResponder.create({
+  // Pan responders are keyed by item key and recreated only when the key changes.
+  // Using dataRef inside callbacks avoids stale closures over index.
+  const panResponderCache = useRef<Map<string, ReturnType<typeof PanResponder.create>>>(new Map())
+
+  const getPanResponder = (itemKey: string, currentIndex: number) => {
+    if (panResponderCache.current.has(itemKey)) {
+      return panResponderCache.current.get(itemKey)!
+    }
+    const pr = PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 4,
-      onPanResponderGrant: (_, gs) => {
-        currentDragIndex.current = index
-        startY.current = index * itemHeight
+      onPanResponderGrant: () => {
+        // Read live index from dataRef at gesture start
+        const liveIndex = dataRef.current.findIndex((item) => keyExtractor(item) === itemKey)
+        currentDragIndex.current = liveIndex
+        startY.current = liveIndex * itemHeight
         dragY.setValue(0)
-        setDraggingIndex(index)
-        setHoverIndex(index)
+        setDraggingIndex(liveIndex)
+        setHoverIndex(liveIndex)
       },
       onPanResponderMove: (_, gs) => {
         dragY.setValue(gs.dy)
         const rawTarget = Math.round((startY.current + gs.dy) / itemHeight)
-        const clamped = Math.max(0, Math.min(data.length - 1, rawTarget))
+        const clamped = Math.max(0, Math.min(dataRef.current.length - 1, rawTarget))
         setHoverIndex(clamped)
       },
       onPanResponderRelease: (_, gs) => {
         const from = currentDragIndex.current
         const rawTarget = Math.round((startY.current + gs.dy) / itemHeight)
-        const to = Math.max(0, Math.min(data.length - 1, rawTarget))
+        const to = Math.max(0, Math.min(dataRef.current.length - 1, rawTarget))
         dragY.setValue(0)
         setDraggingIndex(-1)
         setHoverIndex(-1)
         currentDragIndex.current = -1
-        if (from !== to) {
-          const next = [...data]
+        if (from !== -1 && from !== to) {
+          const next = [...dataRef.current]
           const [moved] = next.splice(from, 1)
           next.splice(to, 0, moved)
           onReorder(next)
@@ -71,18 +83,23 @@ export default function DraggableList<T>({
         currentDragIndex.current = -1
       },
     })
-
-  const panResponders = useRef<ReturnType<typeof PanResponder.create>[]>([])
-  // Rebuild pan responders only when data length changes
-  if (panResponders.current.length !== data.length) {
-    panResponders.current = data.map((_, i) => makePanResponder(i))
+    panResponderCache.current.set(itemKey, pr)
+    return pr
   }
+
+  // Evict cache entries for keys no longer in data
+  const currentKeys = new Set(data.map(keyExtractor))
+  panResponderCache.current.forEach((_, k) => {
+    if (!currentKeys.has(k)) panResponderCache.current.delete(k)
+  })
 
   const displayOrder = getDisplayOrder()
 
   return (
     <View style={{ position: "relative", height: itemHeight * data.length }}>
       {displayOrder.map((dataIdx, displayPos) => {
+        const item = data[dataIdx]
+        const itemKey = keyExtractor(item)
         const isDragging = dataIdx === draggingIndex
         const top = isDragging
           ? Animated.add(new Animated.Value(draggingIndex * itemHeight), dragY)
@@ -90,7 +107,7 @@ export default function DraggableList<T>({
 
         return (
           <Animated.View
-            key={keyExtractor(data[dataIdx])}
+            key={itemKey}
             style={{
               position: "absolute",
               top,
@@ -101,9 +118,9 @@ export default function DraggableList<T>({
               opacity: isDragging ? 0.92 : 1,
               elevation: isDragging ? 8 : 0,
             }}
-            {...panResponders.current[dataIdx].panHandlers}
+            {...getPanResponder(itemKey, dataIdx).panHandlers}
           >
-            {renderItem(data[dataIdx], dataIdx, isDragging)}
+            {renderItem(item, dataIdx, isDragging)}
           </Animated.View>
         )
       })}
