@@ -142,6 +142,7 @@ export default function MealPlanScreen() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "folder"; folder: string } | { type: "plan"; plan: any } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [showFolderPicker, setShowFolderPicker] = useState(false)
+  const [planActions, setPlanActions] = useState<{ plan: any; mode: "move" | "copy" } | null>(null)
 
   const [showCreateOptions, setShowCreateOptions] = useState(false)
 
@@ -481,6 +482,48 @@ export default function MealPlanScreen() {
       setPlanOrder(prev => { const next = { ...prev }; delete next[folder]; return next })
     } catch { /* non-fatal */ }
     finally { setDeleting(false); setDeleteConfirm(null) }
+  }
+
+  const handleMovePlan = async (plan: any, targetFolder: string) => {
+    if (!user?.id) return
+    try {
+      await apiFetch("/api/meal-plan", {
+        method: "PATCH",
+        body: JSON.stringify({ userId: user.id, planId: plan.id, planData: plan.plan_data, isModified: plan.is_modified ?? false, folder: targetFolder }),
+      })
+      setSavedPlans(prev => prev.map((p: any) => p.id === plan.id ? { ...p, folder: targetFolder } : p))
+      setFolderOrder(prev => prev.includes(targetFolder) ? prev : [...prev, targetFolder])
+      setPlanOrder(prev => {
+        const oldFolder = plan.folder ?? "Uncategorised"
+        const next = { ...prev }
+        next[oldFolder] = (next[oldFolder] ?? []).filter((id: string) => id !== plan.id)
+        next[targetFolder] = [...(next[targetFolder] ?? []), plan.id]
+        return next
+      })
+    } catch { /* non-fatal */ }
+    finally { setPlanActions(null) }
+  }
+
+  const handleCopyPlan = async (plan: any, targetFolder: string) => {
+    if (!user?.id) return
+    try {
+      const res = await apiFetch("/api/meal-plan", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.id,
+          weekStart: new Date().toISOString(),
+          planData: plan.plan_data,
+          name: `${plan.name ?? "Plan"} (copy)`,
+          folder: targetFolder,
+          filtersJson: plan.filters_json,
+        }),
+      })
+      if (res.ok) {
+        setFolderOrder(prev => prev.includes(targetFolder) ? prev : [...prev, targetFolder])
+        fetchSavedPlans()
+      }
+    } catch { /* non-fatal */ }
+    finally { setPlanActions(null) }
   }
 
   const openSaveModal = () => {
@@ -1187,14 +1230,22 @@ export default function MealPlanScreen() {
                             </View>
                           )}
                           <TouchableOpacity
-                            onPress={() => setDeleteConfirm({ type: "plan", plan: savedPlan })}
+                            onPress={() => Alert.alert(
+                              savedPlan.name ?? "Plan",
+                              undefined,
+                              [
+                                { text: "Move to folder", onPress: () => setPlanActions({ plan: savedPlan, mode: "move" }) },
+                                { text: "Copy to folder", onPress: () => setPlanActions({ plan: savedPlan, mode: "copy" }) },
+                                { text: "Delete", style: "destructive", onPress: () => setDeleteConfirm({ type: "plan", plan: savedPlan }) },
+                                { text: "Cancel", style: "cancel" },
+                              ]
+                            )}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={{ padding: 4, marginRight: 6 }}
+                            style={{ padding: 4, marginRight: 2 }}
                           >
-                            <Ionicons name="trash-outline" size={18} color={colors.destructive} />
+                            <Ionicons name="ellipsis-vertical" size={18} color={colors.muted} />
                           </TouchableOpacity>
-                          <Ionicons name="reorder-three-outline" size={20} color={colors.muted} style={{ marginRight: 4 }} />
-                          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                          <Ionicons name="reorder-three-outline" size={20} color={colors.muted} />
                         </TouchableOpacity>
                       </View>
                     )
@@ -1202,6 +1253,51 @@ export default function MealPlanScreen() {
                 />
               </ScrollView>
             )}
+            {/* Move / Copy to folder picker */}
+            <Modal visible={!!planActions} transparent animationType="slide">
+              <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.55)" }}>
+                <View style={[s.modalContainer, { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: "65%" }]}>
+                  <View style={[s.modalHeader, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                    <TouchableOpacity onPress={() => setPlanActions(null)}>
+                      <Ionicons name="close" size={22} color={colors.text} />
+                    </TouchableOpacity>
+                    <Text style={s.modalTitle}>
+                      {planActions?.mode === "move" ? "Move to folder" : "Copy to folder"}
+                    </Text>
+                    <View style={{ width: 22 }} />
+                  </View>
+                  <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+                    {folderOrder
+                      .filter(f => planActions?.mode === "copy" || f !== (planActions?.plan?.folder ?? "Uncategorised"))
+                      .map(folder => (
+                        <TouchableOpacity
+                          key={folder}
+                          style={s.folderCard}
+                          onPress={() => {
+                            if (!planActions) return
+                            planActions.mode === "move"
+                              ? handleMovePlan(planActions.plan, folder)
+                              : handleCopyPlan(planActions.plan, folder)
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22", width: 40, height: 40, borderRadius: 10 }]}>
+                            <Ionicons name="folder" size={20} color={colors.primary} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.folderName}>{folder}</Text>
+                            <Text style={s.folderCount}>
+                              {savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length} plan{savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length !== 1 ? "s" : ""}
+                            </Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                        </TouchableOpacity>
+                      ))}
+                  </ScrollView>
+                </View>
+              </View>
+            </Modal>
+
             {/* Delete confirmation */}
             <Modal visible={!!deleteConfirm} transparent animationType="fade">
               <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
@@ -1254,7 +1350,7 @@ export default function MealPlanScreen() {
 
       {/* ── Exit guard modal ────────────────────────────────────────── */}
       <Modal visible={showExitGuard} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.78)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
           <View style={{
             backgroundColor: colors.background,
             borderRadius: 16,
