@@ -34,11 +34,6 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(
       `INSERT INTO meal_plans (user_id, week_start, plan_data, name, folder, filters_json, is_modified)
        VALUES ($1, $2, $3, $4, $5, $6, FALSE)
-       ON CONFLICT (user_id, week_start)
-       DO UPDATE SET plan_data = $3, name = COALESCE($4, meal_plans.name),
-         folder = COALESCE($5, meal_plans.folder),
-         filters_json = COALESCE($6, meal_plans.filters_json),
-         created_at = NOW()
        RETURNING *`,
       [userId, weekStart, JSON.stringify(planData), name ?? null, folder ?? null, filtersJson ? JSON.stringify(filtersJson) : null]
     )
