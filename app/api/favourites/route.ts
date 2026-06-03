@@ -18,18 +18,33 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, recipeId, recipeTitle, recipeImage, readyInMinutes, servings } = await request.json()
+    const { userId, recipeId, recipeTitle, recipeImage, readyInMinutes, servings, tags } = await request.json()
     if (!userId || !recipeId) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     await pool.query(
-      `INSERT INTO favourites (user_id, recipe_id, recipe_title, recipe_image, ready_in_minutes, servings)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (user_id, recipe_id) DO NOTHING`,
-      [userId, String(recipeId), recipeTitle, recipeImage, readyInMinutes, servings]
+      `INSERT INTO favourites (user_id, recipe_id, recipe_title, recipe_image, ready_in_minutes, servings, tags)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (user_id, recipe_id) DO UPDATE SET tags = $7`,
+      [userId, String(recipeId), recipeTitle, recipeImage, readyInMinutes, servings, tags ?? []]
     )
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error(err)
     return NextResponse.json({ error: "Failed to add favourite" }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { userId, recipeId, tags } = await request.json()
+    if (!userId || !recipeId || !Array.isArray(tags)) return NextResponse.json({ error: "userId, recipeId, tags required" }, { status: 400 })
+    await pool.query(
+      "UPDATE favourites SET tags = $3 WHERE user_id = $1 AND recipe_id = $2",
+      [userId, String(recipeId), tags]
+    )
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error(err)
+    return NextResponse.json({ error: "Failed to update tags" }, { status: 500 })
   }
 }
 

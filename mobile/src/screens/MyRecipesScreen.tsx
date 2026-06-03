@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react"
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, ScrollView, Alert } from "react-native"
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, ScrollView, Alert, TextInput } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
@@ -17,6 +17,7 @@ type Recipe = {
   image: string
   readyInMinutes: number
   servings: number
+  tags: string[]
   // tried fields
   triedOn?: string
   satisfaction?: number
@@ -28,6 +29,7 @@ type Recipe = {
 }
 
 const DIFFICULTIES = ["Very Easy", "Easy", "Moderate", "Difficult", "Very Difficult"]
+const SUGGESTED_TAGS = ["Romantic", "Weekend", "Treat", "Kids", "Quick", "Healthy", "Comfort", "Batch Cook"]
 
 function Stars({ rating, onPress, colors }: { rating: number; onPress?: (v: number) => void; colors: any }) {
   return (
@@ -51,11 +53,19 @@ export default function MyRecipesScreen() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<Filter>("all")
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
+  const [showTagDropdown, setShowTagDropdown] = useState(false)
 
   // rating modal
   const [ratingModal, setRatingModal] = useState(false)
   const [selected, setSelected] = useState<Recipe | null>(null)
   const [ratingValues, setRatingValues] = useState({ satisfaction: 0, timeAccuracy: 0, difficulty: "Moderate" })
+
+  // tag edit modal
+  const [tagEditModal, setTagEditModal] = useState(false)
+  const [tagEditRecipe, setTagEditRecipe] = useState<Recipe | null>(null)
+  const [editingTags, setEditingTags] = useState<string[]>([])
+  const [customTag, setCustomTag] = useState("")
 
   const fetchAll = useCallback(async () => {
     if (!user) return
@@ -77,6 +87,7 @@ export default function MyRecipesScreen() {
           image: f.recipe_image,
           readyInMinutes: f.ready_in_minutes,
           servings: f.servings,
+          tags: f.tags ?? [],
           isSaved: true,
           isTried: false,
         })
@@ -94,10 +105,10 @@ export default function MyRecipesScreen() {
           map.set(t.recipe_id, {
             recipeId: t.recipe_id,
             title: t.recipe_title,
-            // Spoonacular image CDN — works for any recipe ID
             image: `https://spoonacular.com/recipeImages/${t.recipe_id}-312x231.jpg`,
             readyInMinutes: t.estimated_time ?? 0,
             servings: 0,
+            tags: [],
             isSaved: false,
             isTried: true,
             triedOn: t.tried_on,
@@ -119,14 +130,18 @@ export default function MyRecipesScreen() {
     fetchAll()
   }, [user, fetchAll]))
 
+  // All tags across saved recipes for the filter dropdown
+  const allTags = Array.from(new Set(recipes.filter(r => r.isSaved).flatMap(r => r.tags))).sort()
+
   const filtered = recipes.filter(r => {
-    if (filter === "saved") return r.isSaved
-    if (filter === "tried") return r.isTried
+    if (filter === "saved" && !r.isSaved) return false
+    if (filter === "tried" && !r.isTried) return false
+    if (tagFilter && !r.tags.includes(tagFilter)) return false
     return true
   })
 
   const removeSaved = async (recipeId: string) => {
-    setRecipes(prev => prev.map(r => r.recipeId === recipeId ? { ...r, isSaved: false } : r).filter(r => r.isSaved || r.isTried))
+    setRecipes(prev => prev.map(r => r.recipeId === recipeId ? { ...r, isSaved: false, tags: [] } : r).filter(r => r.isSaved || r.isTried))
     await apiFetch("/api/favourites", { method: "DELETE", body: JSON.stringify({ userId: user!.id, recipeId }) })
   }
 
@@ -163,6 +178,23 @@ export default function MyRecipesScreen() {
     }
   }
 
+  const openTagEdit = (recipe: Recipe) => {
+    setTagEditRecipe(recipe)
+    setEditingTags([...recipe.tags])
+    setCustomTag("")
+    setTagEditModal(true)
+  }
+
+  const saveTagEdit = async () => {
+    if (!tagEditRecipe || !user) return
+    await apiFetch("/api/favourites", {
+      method: "PATCH",
+      body: JSON.stringify({ userId: user.id, recipeId: tagEditRecipe.recipeId, tags: editingTags }),
+    })
+    setRecipes(prev => prev.map(r => r.recipeId === tagEditRecipe.recipeId ? { ...r, tags: editingTags } : r))
+    setTagEditModal(false)
+  }
+
   const savedCount = recipes.filter(r => r.isSaved).length
   const triedCount = recipes.filter(r => r.isTried).length
 
@@ -176,25 +208,56 @@ export default function MyRecipesScreen() {
         <Text style={s.headerCount}>{savedCount} saved · {triedCount} tried</Text>
       </View>
 
-      {/* Filter tabs */}
-      <View style={s.tabs}>
-        {(["all", "saved", "tried"] as Filter[]).map(f => (
-          <TouchableOpacity key={f} style={[s.tab, filter === f && s.tabActive]} onPress={() => setFilter(f)}>
-            <Text style={[s.tabText, filter === f && s.tabTextActive]}>
-              {f === "all" ? "All" : f === "saved" ? `Saved (${savedCount})` : `Tried (${triedCount})`}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Filter row */}
+      <View style={s.filterRow}>
+        <View style={s.tabs}>
+          {(["all", "saved", "tried"] as Filter[]).map(f => (
+            <TouchableOpacity key={f} style={[s.tab, filter === f && s.tabActive]} onPress={() => setFilter(f)}>
+              <Text style={[s.tabText, filter === f && s.tabTextActive]}>
+                {f === "all" ? "All" : f === "saved" ? `Saved (${savedCount})` : `Tried (${triedCount})`}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Tag filter dropdown */}
+        {allTags.length > 0 && (
+          <View>
+            <TouchableOpacity
+              style={[s.tagFilterBtn, tagFilter && { borderColor: colors.primary, backgroundColor: colors.primary + "18" }]}
+              onPress={() => setShowTagDropdown(v => !v)}
+            >
+              <Ionicons name="pricetag-outline" size={13} color={tagFilter ? colors.primary : colors.mutedForeground} />
+              <Text style={[s.tagFilterText, tagFilter && { color: colors.primary }]}>{tagFilter ?? "Tag"}</Text>
+              <Ionicons name={showTagDropdown ? "chevron-up" : "chevron-down"} size={12} color={tagFilter ? colors.primary : colors.mutedForeground} />
+            </TouchableOpacity>
+            {showTagDropdown && (
+              <View style={s.tagDropdown}>
+                <TouchableOpacity style={s.tagDropdownItem} onPress={() => { setTagFilter(null); setShowTagDropdown(false) }}>
+                  <Text style={[s.tagDropdownText, !tagFilter && { color: colors.primary, fontWeight: "700" }]}>All tags</Text>
+                </TouchableOpacity>
+                {allTags.map(tag => (
+                  <TouchableOpacity key={tag} style={s.tagDropdownItem} onPress={() => { setTagFilter(tag); setShowTagDropdown(false) }}>
+                    <Text style={[s.tagDropdownText, tagFilter === tag && { color: colors.primary, fontWeight: "700" }]}>{tag}</Text>
+                    {tagFilter === tag && <Ionicons name="checkmark" size={14} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {filtered.length === 0 ? (
         <View style={s.empty}>
           <Ionicons name={filter === "tried" ? "time-outline" : "heart-outline"} size={56} color={colors.muted} />
-          <Text style={s.emptyTitle}>{filter === "tried" ? "No tried recipes yet" : filter === "saved" ? "No saved recipes yet" : "No recipes yet"}</Text>
+          <Text style={s.emptyTitle}>{tagFilter ? `No recipes tagged "${tagFilter}"` : filter === "tried" ? "No tried recipes yet" : filter === "saved" ? "No saved recipes yet" : "No recipes yet"}</Text>
           <Text style={s.emptySubText}>{filter === "tried" ? "Recipes you cook will appear here." : "Save recipes you love to find them easily."}</Text>
-          <TouchableOpacity style={s.browseBtn} onPress={() => navigation.navigate("Search")}>
-            <Text style={s.browseBtnText}>Browse Recipes</Text>
-          </TouchableOpacity>
+          {!tagFilter && (
+            <TouchableOpacity style={s.browseBtn} onPress={() => navigation.navigate("Search")}>
+              <Text style={s.browseBtnText}>Browse Recipes</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <FlatList
@@ -226,19 +289,29 @@ export default function MyRecipesScreen() {
                         <Text style={[s.badgeText, s.badgeTriedText]}>Tried</Text>
                       </View>
                     )}
+                    {item.tags.map(tag => (
+                      <View key={tag} style={s.tagBadge}>
+                        <Text style={s.tagBadgeText}>{tag}</Text>
+                      </View>
+                    ))}
                   </View>
                   <View style={s.metaRow}>
                     {item.readyInMinutes > 0 && <View style={s.metaChip}><Ionicons name="time-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.readyInMinutes} min</Text></View>}
-                  {item.servings > 0 && <View style={s.metaChip}><Ionicons name="people-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.servings} servings</Text></View>}
+                    {item.servings > 0 && <View style={s.metaChip}><Ionicons name="people-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.servings} servings</Text></View>}
                     {item.triedOn && <View style={s.metaChip}><Ionicons name="calendar-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.triedOn.split("T")[0]}</Text></View>}
                   </View>
                 </View>
                 {/* Actions */}
                 <View style={s.cardActions}>
                   {item.isSaved && (
-                    <TouchableOpacity onPress={() => removeSaved(item.recipeId)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="heart" size={20} color={colors.primary} />
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity onPress={() => openTagEdit(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="pricetag-outline" size={18} color={colors.mutedForeground} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => removeSaved(item.recipeId)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="heart" size={20} color={colors.primary} />
+                      </TouchableOpacity>
+                    </>
                   )}
                   {item.isTried && (
                     <TouchableOpacity onPress={() => openRating(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -303,6 +376,77 @@ export default function MyRecipesScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Tag edit modal */}
+      <Modal visible={tagEditModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setTagEditModal(false)}>
+        <SafeAreaView style={s.modal}>
+          <View style={s.modalHeader}>
+            <TouchableOpacity onPress={() => setTagEditModal(false)}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={s.modalTitle}>Edit Tags</Text>
+            <TouchableOpacity onPress={saveTagEdit}>
+              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: "700" }}>Save</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 16 }} keyboardShouldPersistTaps="handled">
+            {tagEditRecipe && <Text style={s.modalRecipeName}>{tagEditRecipe.title}</Text>}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {SUGGESTED_TAGS.map(tag => {
+                const active = editingTags.includes(tag)
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    onPress={() => setEditingTags(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
+                    style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: active ? colors.primary : colors.border, backgroundColor: active ? colors.primary + "18" : colors.card }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: active ? colors.primary : colors.mutedForeground }}>{tag}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TextInput
+                style={{ flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, backgroundColor: colors.card, fontSize: 14 }}
+                value={customTag}
+                onChangeText={setCustomTag}
+                placeholder="Custom tag…"
+                placeholderTextColor={colors.muted}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  const t = customTag.trim()
+                  if (t && !editingTags.includes(t)) setEditingTags(prev => [...prev, t])
+                  setCustomTag("")
+                }}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: colors.primary, paddingHorizontal: 16, justifyContent: "center", borderRadius: radius.md }}
+                onPress={() => {
+                  const t = customTag.trim()
+                  if (t && !editingTags.includes(t)) setEditingTags(prev => [...prev, t])
+                  setCustomTag("")
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "700" }}>Add</Text>
+              </TouchableOpacity>
+            </View>
+            {editingTags.length > 0 && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {editingTags.map(tag => (
+                  <TouchableOpacity
+                    key={tag}
+                    onPress={() => setEditingTags(prev => prev.filter(t => t !== tag))}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, backgroundColor: colors.primary }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{tag}</Text>
+                    <Ionicons name="close" size={13} color="#fff" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -313,11 +457,17 @@ const makeStyles = (colors: any) => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   headerTitle: { fontSize: 20, fontWeight: "800", color: colors.text },
   headerCount: { fontSize: 13, color: colors.mutedForeground },
-  tabs: { flexDirection: "row", paddingHorizontal: spacing.md, paddingTop: 12, paddingBottom: 4, gap: 8 },
+  filterRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.md, paddingTop: 12, paddingBottom: 4 },
+  tabs: { flexDirection: "row", gap: 8 },
   tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
   tabActive: { borderColor: colors.primary, backgroundColor: colors.primary },
   tabText: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground },
   tabTextActive: { color: "#fff" },
+  tagFilterBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
+  tagFilterText: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground },
+  tagDropdown: { position: "absolute", right: 0, top: 38, zIndex: 100, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, minWidth: 150, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 8, elevation: 8 },
+  tagDropdownItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.border },
+  tagDropdownText: { fontSize: 14, color: colors.text },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
   emptyTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
   emptySubText: { fontSize: 14, color: colors.mutedForeground, textAlign: "center" },
@@ -329,11 +479,13 @@ const makeStyles = (colors: any) => StyleSheet.create({
   cardImagePlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: colors.border },
   cardBody: { flex: 1, padding: spacing.sm },
   cardTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 4 },
-  badges: { flexDirection: "row", gap: 6, marginBottom: 4 },
+  badges: { flexDirection: "row", gap: 6, marginBottom: 4, flexWrap: "wrap" },
   badge: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: colors.primary + "18", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 99 },
   badgeText: { fontSize: 10, fontWeight: "700", color: colors.primary },
   badgeTried: { backgroundColor: "#dcfce7" },
   badgeTriedText: { color: "#16a34a" },
+  tagBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.border },
+  tagBadgeText: { fontSize: 10, fontWeight: "600", color: colors.mutedForeground },
   metaRow: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
   metaChip: { flexDirection: "row", alignItems: "center", gap: 3 },
   metaText: { fontSize: 11, color: colors.mutedForeground },

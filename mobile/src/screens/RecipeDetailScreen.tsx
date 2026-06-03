@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from "react"
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Modal, Animated
+  Image, ActivityIndicator, Alert, Modal, Animated, TextInput
 } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { apiFetch, API_BASE_URL } from "../lib/api"
@@ -55,6 +56,9 @@ export default function RecipeDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("overview")
   const [favourited, setFavourited] = useState(false)
+  const [showTagPicker, setShowTagPicker] = useState(false)
+  const [pendingTags, setPendingTags] = useState<string[]>([])
+  const [customTag, setCustomTag] = useState("")
   const [isTried, setIsTried] = useState(false)
   const [addedIngredients, setAddedIngredients] = useState<Set<string>>(new Set())
   const [addingAll, setAddingAll] = useState(false)
@@ -133,12 +137,20 @@ export default function RecipeDetailScreen() {
       await apiFetch("/api/favourites", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: recipe.id }) })
       setFavourited(false)
     } else {
-      await apiFetch("/api/favourites", {
-        method: "POST",
-        body: JSON.stringify({ userId: user.id, recipeId: recipe.id, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, servings: recipe.servings }),
-      })
-      setFavourited(true)
+      setPendingTags([])
+      setCustomTag("")
+      setShowTagPicker(true)
     }
+  }
+
+  const saveFavouriteWithTags = async (tags: string[]) => {
+    if (!user || !recipe) return
+    setShowTagPicker(false)
+    await apiFetch("/api/favourites", {
+      method: "POST",
+      body: JSON.stringify({ userId: user.id, recipeId: recipe.id, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, servings: recipe.servings, tags }),
+    })
+    setFavourited(true)
   }
 
   const toggleIngredient = async (name: string, amount: string) => {
@@ -843,6 +855,96 @@ export default function RecipeDetailScreen() {
       </ScrollView>
 
       {renderCheckModal()}
+
+      {/* ── Tag picker modal (shown when saving a recipe) ─────────── */}
+      <Modal visible={showTagPicker} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <TouchableOpacity onPress={() => setShowTagPicker(false)}>
+              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>Skip</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Add tags</Text>
+            <TouchableOpacity onPress={() => saveFavouriteWithTags(pendingTags)}>
+              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: "700" }}>Save</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 16 }} keyboardShouldPersistTaps="handled">
+            <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Choose tags to help you find this recipe later. You can always edit them.</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {["Romantic", "Weekend", "Treat", "Kids", "Quick", "Healthy", "Comfort", "Batch Cook"].map(tag => {
+                const active = pendingTags.includes(tag)
+                return (
+                  <TouchableOpacity
+                    key={tag}
+                    onPress={() => setPendingTags(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99,
+                      borderWidth: 1.5,
+                      borderColor: active ? colors.primary : colors.border,
+                      backgroundColor: active ? colors.primary + "18" : colors.card,
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: active ? colors.primary : colors.mutedForeground }}>{tag}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            <View>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>Custom tag</Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TextInput
+                  style={{ flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, backgroundColor: colors.card, fontSize: 14 }}
+                  value={customTag}
+                  onChangeText={setCustomTag}
+                  placeholder="e.g. Date night, Post-gym…"
+                  placeholderTextColor={colors.muted}
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    const t = customTag.trim()
+                    if (t && !pendingTags.includes(t)) setPendingTags(prev => [...prev, t])
+                    setCustomTag("")
+                  }}
+                />
+                <TouchableOpacity
+                  style={{ backgroundColor: colors.primary, paddingHorizontal: 16, justifyContent: "center", borderRadius: radius.md }}
+                  onPress={() => {
+                    const t = customTag.trim()
+                    if (t && !pendingTags.includes(t)) setPendingTags(prev => [...prev, t])
+                    setCustomTag("")
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700" }}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            {pendingTags.length > 0 && (
+              <View>
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>Selected</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {pendingTags.map(tag => (
+                    <TouchableOpacity
+                      key={tag}
+                      onPress={() => setPendingTags(prev => prev.filter(t => t !== tag))}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, backgroundColor: colors.primary, }}
+                    >
+                      <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{tag}</Text>
+                      <Ionicons name="close" size={13} color="#fff" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+          <View style={{ padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
+            <TouchableOpacity
+              style={{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.md, alignItems: "center" }}
+              onPress={() => saveFavouriteWithTags(pendingTags)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Save recipe{pendingTags.length > 0 ? ` with ${pendingTags.length} tag${pendingTags.length > 1 ? "s" : ""}` : ""}</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </>
   )
 }
