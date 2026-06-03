@@ -19,10 +19,9 @@ async function fetchNutritionBulk(apiKey: string, ids: number[]): Promise<Record
 }
 
 function getNutrient(recipe: any, name: string): number {
+  // Spoonacular informationBulk returns nutrition per serving already — do not multiply by servings
   const n = recipe?.nutrition?.nutrients?.find((x: any) => x.name.toLowerCase() === name.toLowerCase())
-  const amount = n?.amount ?? 0
-  const servings = recipe?.servings ?? 1
-  return amount * servings
+  return n?.amount ?? 0
 }
 
 // Map our filter keys to Spoonacular complexSearch param names and nutrient display names
@@ -108,8 +107,7 @@ export async function POST(request: NextRequest) {
     const candidateSummaries = candidates.slice(0, 5).map((c: any, i: number) => {
       const n = c.nutrition?.nutrients ?? []
       const get = (name: string) => (n.find((x: any) => x.name.toLowerCase() === name.toLowerCase())?.amount ?? 0)
-      const servings = c.servings ?? 1
-      return `${i + 1}. ${c.title} — ${(get("calories") * servings).toFixed(0)} kcal, ${(get("protein") * servings).toFixed(1)}g protein, ${(get("carbohydrates") * servings).toFixed(1)}g carbs, ${(get("fat") * servings).toFixed(1)}g fat`
+      return `${i + 1}. ${c.title} — ${get("calories").toFixed(0)} kcal, ${get("protein").toFixed(1)}g protein, ${get("carbohydrates").toFixed(1)}g carbs, ${get("fat").toFixed(1)}g fat`
     }).join("\n")
 
     const prompt = `You are validating meal replacement candidates for a meal plan.

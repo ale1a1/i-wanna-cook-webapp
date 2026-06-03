@@ -1408,6 +1408,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   candidateCard: { flexDirection: "row", alignItems: "center", borderRadius: radius.lg, borderWidth: 1.5, padding: spacing.md, gap: 12 },
   candidateFits: { backgroundColor: "#f0fdf4", borderColor: "#16a34a" },
   candidateWarn: { backgroundColor: "#fffbeb", borderColor: "#f59e0b" },
-  candidateTitle: { fontSize: 14, fontWeight: "600", color: colors.text },
-  candidateWarning: { fontSize: 12, color: "#b45309", marginTop: 4 },
+  candidateTitle: { fontSize: 14, fontWeight: "600", color: "#1a1a1a" },
+  candidateWarning: { fontSize: 12, color: "#92400e", marginTop: 4 },
 })
