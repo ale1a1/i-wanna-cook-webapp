@@ -148,6 +148,13 @@ AI recipe instruction enrichment
 For recipes with 50–70% of ingredients mentioned in steps, pass to Claude Haiku to enrich instructions.
 Cost tracking required — log each enrichment call (recipe_id, timestamp, tokens_used) before enabling broadly.
 
+AI wine pairing fallback
+When Spoonacular returns no wine results for a recipe, fall back to Claude (Haiku) to suggest 2–3 wines.
+Response is a simple list: wine name + one-line reason + a Google search link (e.g. google.com/search?q=...)
+so the user can find it without us serving an image or needing a richer data model. Keeps token cost minimal.
+Reuse the existing wine pairing card layout if data is rich enough; otherwise render as a plain labelled list
+with the AI-generated tag shown. Only fires when Spoonacular returns an empty array — no double-calling.
+
 Analytics
 Track searches, saves, completions, premium conversion, trial retention, meal plan usage, shopping list engagement.
 

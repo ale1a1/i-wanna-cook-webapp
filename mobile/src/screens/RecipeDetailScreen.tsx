@@ -493,13 +493,13 @@ export default function RecipeDetailScreen() {
 
     // Done summary
     if (checkStep === "done") {
-      const missing = pendingSubstitutions.length
+      const toBuy = quickListAdded.length
       return (
         <Modal visible animationType="fade" transparent={false} statusBarTranslucent>
           <View style={[s.checkScreen, { backgroundColor: colors.background }]}>
-            <Ionicons name="checkmark-circle" size={64} color={colors.primary} style={{ marginBottom: 16 }} />
+            <Ionicons name={toBuy === 0 ? "checkmark-circle" : "cart"} size={64} color={colors.primary} style={{ marginBottom: 16 }} />
             <Text style={[s.checkIngredient, { color: colors.text, textAlign: "center" }]}>
-              {missing === 0 ? "You have everything!" : `${missing} substitution${missing > 1 ? "s" : ""} applied`}
+              {toBuy === 0 ? "You have everything!" : `You need to buy ${toBuy} ingredient${toBuy > 1 ? "s" : ""}`}
             </Text>
             {sessionSubstitutions.length > 0 && (
               <View style={s.subsList}>
@@ -510,9 +510,20 @@ export default function RecipeDetailScreen() {
                 ))}
               </View>
             )}
-            <TouchableOpacity style={[s.sheetBtn, { backgroundColor: colors.primary, marginTop: 32, paddingHorizontal: 48, alignSelf: "stretch", marginHorizontal: 24 }]} onPress={() => setCheckStep(null)} activeOpacity={0.8}>
-              <Text style={s.sheetBtnText}>Open recipe</Text>
-            </TouchableOpacity>
+            {toBuy > 0 ? (
+              <>
+                <TouchableOpacity style={[s.sheetBtn, { backgroundColor: colors.primary, marginTop: 32, alignSelf: "stretch", marginHorizontal: 24 }]} onPress={() => { setCheckStep(null); navigation.navigate("QuickShoppingList") }} activeOpacity={0.8}>
+                  <Text style={s.sheetBtnText}>Check Quick Shopping List</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.sheetBtn, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.border, marginTop: 12, alignSelf: "stretch", marginHorizontal: 24 }]} onPress={() => setCheckStep(null)} activeOpacity={0.8}>
+                  <Text style={[s.sheetBtnText, { color: colors.text, fontSize: 14 }]}>Open recipe</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity style={[s.sheetBtn, { backgroundColor: colors.primary, marginTop: 32, paddingHorizontal: 48, alignSelf: "stretch", marginHorizontal: 24 }]} onPress={() => setCheckStep(null)} activeOpacity={0.8}>
+                <Text style={s.sheetBtnText}>Open recipe</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </Modal>
       )

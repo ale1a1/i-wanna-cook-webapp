@@ -110,3 +110,7 @@ ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS folder TEXT;
 ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS filters_json JSONB;
 ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS is_modified BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Migration: allow multiple plans per user (drop week_start uniqueness, widen to timestamp)
+ALTER TABLE meal_plans DROP CONSTRAINT IF EXISTS meal_plans_user_id_week_start_key;
+ALTER TABLE meal_plans ALTER COLUMN week_start TYPE TIMESTAMP USING week_start::TIMESTAMP;

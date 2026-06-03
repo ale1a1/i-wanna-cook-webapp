@@ -10,6 +10,7 @@ import { useGlobalError } from "../context/GlobalErrorContext"
 import PaywallModal from "../components/PaywallModal"
 import { apiFetch, API_BASE_URL } from "../lib/api"
 import { spacing, radius } from "../lib/theme"
+import DraggableList from "../components/DraggableList"
 
 let SpeechRecognitionModule: any = null
 try {
@@ -32,6 +33,18 @@ const AI_PRESETS = ["Kids", "Weight Loss", "Mass Gaining", "Endurance Sport", "H
 const MEAL_LABELS = ["Breakfast", "Lunch", "Dinner", "Snack", "Extra", "Extra 2"]
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 const SUGGESTED_FOLDERS = ["Bulking", "Weight Loss", "Maintenance", "Family", "Endurance", "Custom"]
+
+function formatSavedAt(raw: string | undefined | null): string {
+  if (!raw) return ""
+  const d = new Date(raw)
+  if (isNaN(d.getTime())) return raw
+  const dd = String(d.getDate()).padStart(2, "0")
+  const mm = String(d.getMonth() + 1).padStart(2, "0")
+  const yy = String(d.getFullYear()).slice(-2)
+  const hh = String(d.getHours()).padStart(2, "0")
+  const min = String(d.getMinutes()).padStart(2, "0")
+  return `${dd}-${mm}-${yy} ${hh}:${min}`
+}
 
 function suggestMeals(goal: string): string {
   const lower = goal.toLowerCase()
@@ -93,6 +106,11 @@ export default function MealPlanScreen() {
   const [savedPlans, setSavedPlans] = useState<any[]>([])
   const [plansLoading, setPlansLoading] = useState(false)
   const [openFolder, setOpenFolder] = useState<string | null>(null)
+  const [folderOrder, setFolderOrder] = useState<string[]>([])
+  const [planOrder, setPlanOrder] = useState<Record<string, string[]>>({})
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "folder"; folder: string } | { type: "plan"; plan: any } | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [showFolderPicker, setShowFolderPicker] = useState(false)
 
   const [showCreateOptions, setShowCreateOptions] = useState(false)
 
@@ -237,19 +255,21 @@ export default function MealPlanScreen() {
 
   const handleSavePlan = async () => {
     if (!user?.id || !plan) return
-    setSaving(true)
     const folder = saveFolder === "Custom" ? saveFolderCustom.trim() : saveFolder
+    if (!saveName.trim()) {
+      Alert.alert("Name required", "Please enter a name for this plan.")
+      return
+    }
+    if (!folder) {
+      Alert.alert("Folder required", "Please select or enter a folder.")
+      return
+    }
+    setSaving(true)
     try {
-      // Monday of current week — getDay() returns 0 for Sunday, so treat Sunday as day 7
-      const today = new Date()
-      const day = today.getDay() === 0 ? 7 : today.getDay()
-      const weekStart = new Date(today)
-      weekStart.setDate(today.getDate() - day + 1)
-      const weekStartStr = weekStart.toISOString().split("T")[0]
+      const weekStartStr = new Date().toISOString()
 
-      const res = await fetch(`${API_BASE_URL}/api/meal-plan`, {
+      const res = await apiFetch("/api/meal-plan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           weekStart: weekStartStr,
@@ -264,13 +284,17 @@ export default function MealPlanScreen() {
         if (saved?.plan?.id) setPlanId(saved.plan.id)
         setSaving(false)
         setShowSaveModal(false)
-        Alert.alert("Saved!", saveName.trim() ? `"${saveName.trim()}" saved to your plans.` : "Plan saved.")
+        Alert.alert("Saved!", `"${saveName.trim()}" saved to your plans.`)
         return
       }
-    } catch { /* non-fatal */ }
-    setSaving(false)
-    setShowSaveModal(false)
-    Alert.alert("Save failed", "Could not save the plan. Please try again.")
+      const errData = await res.json().catch(() => null)
+      throw new Error(errData?.error ?? `HTTP ${res.status}`)
+    } catch (e: any) {
+      console.error("Save plan failed:", e?.message)
+      Alert.alert("Save failed", e?.message ?? "Could not save the plan. Please try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleAiGenerate = async () => {
@@ -388,9 +412,63 @@ export default function MealPlanScreen() {
     try {
       const res = await apiFetch(`/api/meal-plan?userId=${user.id}&isPremium=${isPremium}`, { screen: "Meal Plan" })
       const data = await res.json()
-      setSavedPlans(data.plans ?? [])
+      const plans: any[] = data.plans ?? []
+      setSavedPlans(plans)
+      const folders = Array.from(new Set(plans.map((p: any) => p.folder ?? "Uncategorised"))) as string[]
+      setFolderOrder(prev => {
+        const existing = prev.filter(f => folders.includes(f))
+        const newFolders = folders.filter(f => !existing.includes(f))
+        return [...existing, ...newFolders]
+      })
+      setPlanOrder(prev => {
+        const next: Record<string, string[]> = {}
+        for (const folder of folders) {
+          const ids = plans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).map((p: any) => p.id)
+          const existing = (prev[folder] ?? []).filter((id: string) => ids.includes(id))
+          const newIds = ids.filter((id: string) => !existing.includes(id))
+          next[folder] = [...existing, ...newIds]
+        }
+        return next
+      })
     } catch { /* non-fatal */ }
     finally { setPlansLoading(false) }
+  }
+
+  const handleDeletePlan = async (plan: any) => {
+    if (!user?.id) return
+    setDeleting(true)
+    try {
+      await apiFetch("/api/meal-plan", { method: "DELETE", body: JSON.stringify({ userId: user.id, planId: plan.id }) })
+      setSavedPlans(prev => prev.filter((p: any) => p.id !== plan.id))
+      setPlanOrder(prev => {
+        const folder = plan.folder ?? "Uncategorised"
+        return { ...prev, [folder]: (prev[folder] ?? []).filter((id: string) => id !== plan.id) }
+      })
+    } catch { /* non-fatal */ }
+    finally { setDeleting(false); setDeleteConfirm(null) }
+  }
+
+  const handleDeleteFolder = async (folder: string) => {
+    if (!user?.id) return
+    setDeleting(true)
+    try {
+      const plansInFolder = savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder)
+      await Promise.all(plansInFolder.map((p: any) =>
+        apiFetch("/api/meal-plan", { method: "DELETE", body: JSON.stringify({ userId: user.id, planId: p.id }) })
+      ))
+      setSavedPlans(prev => prev.filter((p: any) => (p.folder ?? "Uncategorised") !== folder))
+      setFolderOrder(prev => prev.filter(f => f !== folder))
+      setPlanOrder(prev => { const next = { ...prev }; delete next[folder]; return next })
+    } catch { /* non-fatal */ }
+    finally { setDeleting(false); setDeleteConfirm(null) }
+  }
+
+  const openSaveModal = () => {
+    setSaveName("")
+    setSaveFolder("")
+    setSaveFolderCustom("")
+    setShowSaveModal(true)
+    if (savedPlans.length === 0) fetchSavedPlans()
   }
 
   const openSavedPlans = () => {
@@ -424,7 +502,7 @@ export default function MealPlanScreen() {
         "Your current plan will be replaced. Save it first?",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Save first", onPress: () => setShowSaveModal(true) },
+          { text: "Save first", onPress: openSaveModal },
           { text: "Discard", style: "destructive", onPress: doOpen },
         ]
       )
@@ -492,7 +570,7 @@ export default function MealPlanScreen() {
         <Text style={s.title}>Meal Plan</Text>
         {plan && !loading && (
           <View style={{ flexDirection: "row", gap: 8 }}>
-            <TouchableOpacity style={s.regenBtn} onPress={() => setShowSaveModal(true)}>
+            <TouchableOpacity style={s.regenBtn} onPress={openSaveModal}>
               <Ionicons name="bookmark-outline" size={16} color={colors.primary} />
               <Text style={s.regenBtnText}>Save</Text>
             </TouchableOpacity>
@@ -825,17 +903,34 @@ export default function MealPlanScreen() {
             <View style={{ width: 24 }} />
             <Text style={s.modalTitle}>Save Plan</Text>
             <TouchableOpacity onPress={() => setShowSaveModal(false)}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>Skip</Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>Cancel</Text>
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }} keyboardShouldPersistTaps="handled">
-            <Text style={s.aiIntro}>Give this plan a name and optionally assign it to a folder.</Text>
+            <Text style={s.aiIntro}>Give this plan a name and assign it to a folder.</Text>
             <View>
-              <Text style={s.settingLabel}>Plan name (optional)</Text>
+              <Text style={s.settingLabel}>Plan name <Text style={{ color: colors.destructive }}>*</Text></Text>
               <TextInput style={s.textField} value={saveName} onChangeText={setSaveName} placeholder="e.g. Bulk Week 1, Cut Phase..." placeholderTextColor={colors.muted} />
             </View>
             <View>
-              <Text style={s.settingLabel}>Folder (optional)</Text>
+              <Text style={s.settingLabel}>Folder <Text style={{ color: colors.destructive }}>*</Text></Text>
+              {/* Existing folders */}
+              {folderOrder.length > 0 && (
+                <TouchableOpacity
+                  style={[s.textField, { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }]}
+                  onPress={() => setShowFolderPicker(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ color: saveFolder && !SUGGESTED_FOLDERS.includes(saveFolder) && saveFolder !== "Custom" ? colors.text : colors.muted, fontSize: 15 }}>
+                    {saveFolder && !SUGGESTED_FOLDERS.includes(saveFolder) && saveFolder !== "Custom"
+                      ? saveFolder
+                      : "Choose an existing folder…"}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={colors.muted} />
+                </TouchableOpacity>
+              )}
+              {/* New folder chips */}
+              <Text style={[s.settingLabel, { fontSize: 12, marginBottom: 6 }]}>Or create new</Text>
               <View style={s.aiChipsRow}>
                 {SUGGESTED_FOLDERS.map(f => (
                   <TouchableOpacity key={f} style={[s.aiChip, saveFolder === f && s.aiChipActive]} onPress={() => setSaveFolder(saveFolder === f ? "" : f)}>
@@ -854,6 +949,42 @@ export default function MealPlanScreen() {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* ── Existing folder picker (from save modal) ───────────────── */}
+      <Modal visible={showFolderPicker} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
+          <View style={[s.modalContainer, { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: "70%" }]}>
+            <View style={[s.modalHeader, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+              <View style={{ width: 24 }} />
+              <Text style={s.modalTitle}>Choose Folder</Text>
+              <TouchableOpacity onPress={() => setShowFolderPicker(false)}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+              {folderOrder.map(folder => (
+                <TouchableOpacity
+                  key={folder}
+                  style={[s.folderCard, saveFolder === folder && { borderColor: colors.primary, borderWidth: 2 }]}
+                  onPress={() => { setSaveFolder(folder); setShowFolderPicker(false) }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22", width: 40, height: 40, borderRadius: 10 }]}>
+                    <Ionicons name="folder" size={20} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.folderName}>{folder}</Text>
+                    <Text style={s.folderCount}>
+                      {savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length} plan{savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length !== 1 ? "s" : ""}
+                    </Text>
+                  </View>
+                  {saveFolder === folder && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       {/* ── Replace meal candidates modal ───────────────────────────── */}
@@ -889,77 +1020,147 @@ export default function MealPlanScreen() {
 
       {/* ── Saved Plans browser ─────────────────────────────────── */}
       <Modal visible={showPlansModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={s.modalContainer} edges={["top"]}>
-          <View style={s.modalHeader}>
-            <TouchableOpacity onPress={() => {
-              if (openFolder !== null) setOpenFolder(null)
-              else setShowPlansModal(false)
-            }}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={s.modalTitle}>{openFolder ?? "Saved Plans"}</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          {plansLoading ? (
-            <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
-          ) : savedPlans.length === 0 ? (
-            <View style={s.center}>
-              <Ionicons name="folder-open-outline" size={52} color={colors.muted} />
-              <Text style={{ color: colors.mutedForeground, fontSize: 15, marginTop: 12 }}>No saved plans yet</Text>
-              <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>Generate a plan and tap Save to keep it here.</Text>
+          <SafeAreaView style={s.modalContainer} edges={["top"]}>
+            <View style={s.modalHeader}>
+              <TouchableOpacity onPress={() => {
+                if (openFolder !== null) setOpenFolder(null)
+                else setShowPlansModal(false)
+              }}>
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={s.modalTitle}>{openFolder ?? "Saved Plans"}</Text>
+              <View style={{ width: 24 }} />
             </View>
-          ) : openFolder === null ? (
-            // Folder list view
-            <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
-              {(() => {
-                const folders = Array.from(new Set(savedPlans.map((p: any) => p.folder ?? "Uncategorised")))
-                return folders.map(folder => {
-                  const count = savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length
-                  return (
-                    <TouchableOpacity key={folder} style={s.folderCard} onPress={() => setOpenFolder(folder)} activeOpacity={0.8}>
-                      <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22", width: 44, height: 44, borderRadius: 12 }]}>
-                        <Ionicons name="folder" size={22} color={colors.primary} />
+
+            {plansLoading ? (
+              <View style={s.center}><ActivityIndicator size="large" color={colors.primary} /></View>
+            ) : savedPlans.length === 0 ? (
+              <View style={s.center}>
+                <Ionicons name="folder-open-outline" size={52} color={colors.muted} />
+                <Text style={{ color: colors.mutedForeground, fontSize: 15, marginTop: 12 }}>No saved plans yet</Text>
+                <Text style={{ color: colors.muted, fontSize: 13, marginTop: 6 }}>Generate a plan and tap Save to keep it here.</Text>
+              </View>
+            ) : openFolder === null ? (
+              // Draggable folder list — drag to reorder
+              <ScrollView contentContainerStyle={{ padding: spacing.md }}>
+                <DraggableList
+                  data={folderOrder}
+                  keyExtractor={(folder) => folder}
+                  itemHeight={82}
+                  onReorder={setFolderOrder}
+                  renderItem={(folder, _, isDragging) => {
+                    const count = savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length
+                    return (
+                      <View style={{ paddingBottom: 10 }}>
+                        <TouchableOpacity
+                          style={[s.folderCard, isDragging && { elevation: 8, opacity: 0.92 }]}
+                          onPress={() => setOpenFolder(folder)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22", width: 44, height: 44, borderRadius: 12 }]}>
+                            <Ionicons name="folder" size={22} color={colors.primary} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.folderName}>{folder}</Text>
+                            <Text style={s.folderCount}>{count} plan{count !== 1 ? "s" : ""}</Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => setDeleteConfirm({ type: "folder", folder })}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={{ padding: 4, marginRight: 6 }}
+                          >
+                            <Ionicons name="trash-outline" size={18} color={colors.destructive} />
+                          </TouchableOpacity>
+                          <Ionicons name="reorder-three-outline" size={20} color={colors.muted} style={{ marginRight: 4 }} />
+                          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                        </TouchableOpacity>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.folderName}>{folder}</Text>
-                        <Text style={s.folderCount}>{count} plan{count !== 1 ? "s" : ""}</Text>
+                    )
+                  }}
+                />
+              </ScrollView>
+            ) : (
+              // Draggable plans inside a folder — drag to reorder
+              <ScrollView contentContainerStyle={{ padding: spacing.md }}>
+                <DraggableList
+                  data={(planOrder[openFolder] ?? []).map((id: string) => savedPlans.find((p: any) => p.id === id)).filter(Boolean) as any[]}
+                  keyExtractor={(item: any) => item.id}
+                  itemHeight={98}
+                  onReorder={(newData: any[]) => setPlanOrder(prev => ({ ...prev, [openFolder!]: newData.map((p: any) => p.id) }))}
+                  renderItem={(savedPlan: any, _, isDragging) => {
+                    const filters = savedPlan.filters_json
+                    const subtitle = filters
+                      ? `${filters.calories ?? "?"} kcal · ${filters.mealsPerDay ?? 3} meals/day · ${filters.diet !== "none" && filters.diet ? filters.diet : "any diet"}`
+                      : ""
+                    return (
+                      <View style={{ paddingBottom: 10 }}>
+                        <TouchableOpacity
+                          style={[s.planCard, isDragging && { elevation: 8, opacity: 0.92 }]}
+                          onPress={() => loadSavedPlan(savedPlan)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.planName}>{savedPlan.name ?? "Unnamed plan"}</Text>
+                            {!!subtitle && <Text style={s.planSubtitle}>{subtitle}</Text>}
+                            <Text style={s.planDate}>{formatSavedAt(savedPlan.created_at)}</Text>
+                          </View>
+                          {savedPlan.is_modified && (
+                            <View style={s.modifiedBadge}>
+                              <Text style={s.modifiedBadgeText}>Modified</Text>
+                            </View>
+                          )}
+                          <TouchableOpacity
+                            onPress={() => setDeleteConfirm({ type: "plan", plan: savedPlan })}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={{ padding: 4, marginRight: 6 }}
+                          >
+                            <Ionicons name="trash-outline" size={18} color={colors.destructive} />
+                          </TouchableOpacity>
+                          <Ionicons name="reorder-three-outline" size={20} color={colors.muted} style={{ marginRight: 4 }} />
+                          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                        </TouchableOpacity>
                       </View>
-                      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                    )
+                  }}
+                />
+              </ScrollView>
+            )}
+            {/* Delete confirmation */}
+            <Modal visible={!!deleteConfirm} transparent animationType="fade">
+              <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
+                <View style={[s.modalContainer, { borderRadius: radius.lg, padding: spacing.lg, maxWidth: 340, width: "100%" }]}>
+                  <Text style={[s.modalTitle, { textAlign: "center", marginBottom: 8 }]}>
+                    {deleteConfirm?.type === "folder" ? "Delete folder?" : "Delete plan?"}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, marginBottom: 24 }}>
+                    {deleteConfirm?.type === "folder"
+                      ? `"${deleteConfirm.folder}" and all its plans will be permanently deleted.`
+                      : `"${deleteConfirm?.plan?.name ?? "This plan"}" will be permanently deleted.`}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      style={[s.generateBtnLarge, { flex: 1, backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.border }]}
+                      onPress={() => setDeleteConfirm(null)}
+                      disabled={deleting}
+                    >
+                      <Text style={[s.generateBtnText, { color: colors.text }]}>Cancel</Text>
                     </TouchableOpacity>
-                  )
-                })
-              })()}
-            </ScrollView>
-          ) : (
-            // Plans inside a folder
-            <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
-              {savedPlans
-                .filter((p: any) => (p.folder ?? "Uncategorised") === openFolder)
-                .map((savedPlan: any) => {
-                  const filters = savedPlan.filters_json
-                  const subtitle = filters
-                    ? `${filters.calories ?? "?"} kcal · ${filters.mealsPerDay ?? 3} meals/day · ${filters.diet !== "none" && filters.diet ? filters.diet : "any diet"}`
-                    : savedPlan.week_start
-                  return (
-                    <TouchableOpacity key={savedPlan.id} style={s.planCard} onPress={() => loadSavedPlan(savedPlan)} activeOpacity={0.8}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.planName}>{savedPlan.name ?? "Unnamed plan"}</Text>
-                        <Text style={s.planSubtitle}>{subtitle}</Text>
-                        <Text style={s.planDate}>{savedPlan.week_start}</Text>
-                      </View>
-                      {savedPlan.is_modified && (
-                        <View style={s.modifiedBadge}>
-                          <Text style={s.modifiedBadgeText}>Modified</Text>
-                        </View>
-                      )}
-                      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                    <TouchableOpacity
+                      style={[s.generateBtnLarge, { flex: 1, backgroundColor: colors.destructive }]}
+                      onPress={() => {
+                        if (!deleteConfirm) return
+                        if (deleteConfirm.type === "folder") handleDeleteFolder(deleteConfirm.folder)
+                        else handleDeletePlan(deleteConfirm.plan)
+                      }}
+                      disabled={deleting}
+                    >
+                      {deleting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.generateBtnText}>Delete</Text>}
                     </TouchableOpacity>
-                  )
-                })}
-            </ScrollView>
-          )}
-        </SafeAreaView>
+                  </View>
+                </View>
+              </View>
+            </Modal>
+          </SafeAreaView>
       </Modal>
 
       <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Meal Planner" />
