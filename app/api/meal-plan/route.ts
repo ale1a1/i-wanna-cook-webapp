@@ -45,18 +45,18 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  // Save user changes — updates plan_data, sets is_modified based on filter drift, never touches original_plan_data
+  // Save user changes — updates plan_data, is_modified, and optionally folder. Never touches original_plan_data.
   try {
-    const { userId, planId, planData, isModified } = await request.json()
+    const { userId, planId, planData, isModified, folder } = await request.json()
     if (!userId || !planId || !planData) {
       return NextResponse.json({ error: "userId, planId, planData required" }, { status: 400 })
     }
     const result = await pool.query(
       `UPDATE meal_plans
-       SET plan_data = $3, is_modified = $4
+       SET plan_data = $3, is_modified = $4, folder = COALESCE($5, folder)
        WHERE id = $2 AND user_id = $1
        RETURNING *`,
-      [userId, planId, JSON.stringify(planData), isModified ?? false]
+      [userId, planId, JSON.stringify(planData), isModified ?? false, folder ?? null]
     )
     if (result.rowCount === 0) return NextResponse.json({ error: "Plan not found" }, { status: 404 })
     return NextResponse.json({ plan: result.rows[0] })
