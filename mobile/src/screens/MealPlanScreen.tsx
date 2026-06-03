@@ -344,10 +344,11 @@ export default function MealPlanScreen() {
     try {
       const res = await apiFetch("/api/meal-plan", {
         method: "PATCH",
-        body: JSON.stringify({ userId: user.id, planId, planData: plan, isModified }),
+        body: JSON.stringify({ userId: user.id, planId, planData: plan, isModified: false }),
       })
       if (res.ok) {
         setOriginalPlan(plan)
+        setIsModified(false)
         setHasUnsavedChanges(false)
         Alert.alert("Saved!", "Your changes have been saved.")
       } else {
@@ -398,6 +399,7 @@ export default function MealPlanScreen() {
       if (!res.ok) { showError(data.error ?? "Could not replace day", "Meal Plan"); return }
       const newPlan = { week: { ...plan.week, [day]: data.day } }
       setPlan(newPlan)
+      setIsModified(true)
       setHasUnsavedChanges(true)
     } catch (e: any) {
       showError(e?.message ?? "Network error", "Meal Plan")
@@ -450,10 +452,9 @@ export default function MealPlanScreen() {
       i === replaceMealIndex ? { id: candidate.id, title: candidate.title, readyInMinutes: candidate.readyInMinutes ?? 0, servings: candidate.servings ?? 1 } : m
     )
     const newPlan = { week: { ...plan.week, [replaceDay]: { ...dayPlan, meals: newMeals } } }
-    const modified = !candidate.fits
     setPlan(newPlan)
+    setIsModified(true)
     setHasUnsavedChanges(true)
-    if (modified) setIsModified(true)
     setShowCandidates(false)
     setReplaceCandidates([])
   }
@@ -532,7 +533,8 @@ export default function MealPlanScreen() {
   const loadSavedPlan = (savedPlan: any) => {
     setShowPlansModal(false)
     setPlan(savedPlan.plan_data)
-    setOriginalPlan(savedPlan.plan_data)
+    // Use the frozen original snapshot if available, fall back to plan_data for old records
+    setOriginalPlan(savedPlan.original_plan_data ?? savedPlan.plan_data)
     setPlanId(savedPlan.id)
     setSavedPlanName(savedPlan.name ?? null)
     setFiltersJson(savedPlan.filters_json ?? null)
