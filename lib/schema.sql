@@ -117,3 +117,6 @@ ALTER TABLE meal_plans ALTER COLUMN week_start TYPE TIMESTAMP USING week_start::
 
 -- Migration: store original plan snapshot so change-tracking works after reload
 ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS original_plan_data JSONB;
+
+-- Migration: tags on saved recipes
+ALTER TABLE favourites ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
