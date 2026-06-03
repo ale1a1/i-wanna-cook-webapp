@@ -19,7 +19,7 @@ Before carrying on with any MUST items, fully test the meal plan feature end-to-
   - Save plan with name + folder (new folder and existing folder)
   - Browse saved plans — folder list, plan list, drag reorder, delete folder, delete plan
   - Load a saved plan — verify name shows, Save button is hidden
-  - Replace a meal and a full day — verify amber warning icons appear on changed day + meals
+  - Replace a meal — verify green checkmark icons appear on changed day header + meal row
   - Save changes via "Save changes" button — verify icons disappear and plan updates in DB
   - Exit with unsaved changes — verify exit guard modal fires (via New plan + tab navigation)
   - Timestamp formatting on saved plans (dd-mm-yy HH:MM)
