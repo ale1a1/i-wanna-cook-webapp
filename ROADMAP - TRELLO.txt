@@ -11,20 +11,37 @@ not considered "web app features" and changes to them apply to both platforms.
 LIST: MUST — Before Launch
 ================================================================
 
---- ⚠️ IMMEDIATE NEXT STEP ---
+--- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
 
-Meal plan feature testing
-Before carrying on with any MUST items, fully test the meal plan feature end-to-end:
+Meal planner — thorough testing
   - Generate a plan (AI goal + custom paths)
-  - Save plan with name + folder (new folder and existing folder)
-  - Browse saved plans — folder list, plan list, drag reorder, delete folder, delete plan
-  - Load a saved plan — verify name shows, Save button is hidden
-  - Replace a meal — verify green checkmark icons appear on changed day header + meal row
-  - Save changes via "Save changes" button — verify icons disappear and plan updates in DB
-  - Exit with unsaved changes — verify exit guard modal fires (via New plan + tab navigation)
-  - Timestamp formatting on saved plans (dd-mm-yy HH:MM)
-  - Required fields on save modal (name + folder — both must be non-empty)
-Only proceed with MUST items below once all of the above pass without bugs.
+  - Save with name + folder (new + existing folder via picker)
+  - Browse saved plans — folder list, plan list, drag reorder
+  - Move to folder / Copy to folder via plan card ... menu
+  - Delete folder, delete plan (from list and from plan view)
+  - Load a saved plan — verify name shows, Save button hidden
+  - Replace a meal — green checkmark on changed day + meal row
+  - Save changes — icons disappear, DB updated
+  - Reload plan — green icons persist (original_plan_data in DB)
+  - Exit with unsaved changes — exit guard modal fires
+  - Timestamp formatting (dd-mm-yy HH:MM)
+  - Required name + folder on save modal enforced
+  - Replacement candidates all green (within original filters)
+
+My Recipes — thorough testing
+  - Save a recipe — tag picker opens (pageSheet)
+  - Select suggested + custom tags — saved correctly
+  - Skip tags — recipe saved with no tags
+  - Tags show as grey chips on cards
+  - Tag filter dropdown works with Saved/Tried tabs
+  - Edit tags via pricetag icon — PATCH updates correctly
+  - Unsave a recipe — disappears correctly
+
+Home screen update
+The home screen still shows original early-development features.
+Update it to reflect what the app actually does now: meal planner,
+fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
+Pre-launch blocker — first impressions matter.
 
 --- Subscription & Payments ---
 
@@ -103,11 +120,6 @@ Spoonacular endpoint: GET /food/ingredients/autocomplete?query=&number=5.
 Macro and nutrition tracking
 Daily targets for calories, protein, carbs, fat. Track meals logged against targets.
 Show trends over time. Premium.
-
-Recipe collections
-Organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday".
-First collection free, more = premium.
-
 
 --- Review & Enhance ---
 
@@ -363,25 +375,32 @@ Weekly AI Meal Planner — full v2 ✅
   Two-path generation: AI Goal and Customise (4-step wizard).
   Meals per day picker: 3/4/5/6. Calorie options up to 5000 kcal.
   AI path auto-suggests meals/day based on goal.
-  Calories always displayed at exact user target (backend scales Spoonacular output).
-  Extra meals (4-6) fetched as snack-sized slots via complexSearch, carved from daily budget.
-  Save plan: name + folder (Bulking / Weight Loss / etc).
-  Save button in top bar. New plan warns before discarding (Save / Discard / Cancel).
-  Replace meal: remaining daily nutrient budget calculated, Spoonacular searched within window,
-    Claude validates fit at +-10% across all constraints. Override allowed with warning.
-  Replace full day: re-generates with original filters, falls back to duplicate closest day.
-  Filter drift warning: amber badge when swaps deviate from original criteria.
-  DB: meal_plans extended with name, folder, filters_json, is_modified.
-  filters_json stores all wizard inputs incl. all macros/micros/vitamins/minerals.
+  Calories always at exact user target. Extra meals carved from daily budget.
 
-Meal Plan — Replace meal / Replace full day ✅
-Meal Plan — Saved plans, folders, and filter drift warning ✅
-Meal plan save weekStart bug fix ✅ (Sunday was computing next Monday — fixed)
-Meal plan save confirmation alert ✅
-Meal plan saved plans browser ✅
-  Home screen: Saved Plans card → folder list → plans inside each folder.
-  Plan card shows name, filters summary, date, modified badge.
-  Tapping loads plan back into active view.
-My Recipes card image layout fix ✅ (flush top-left, CDN images for tried-only)
+Meal plan save & folder system ✅
+  Name + folder required. Save button hidden after saving.
+  Folder picker in save modal (existing + new). Drag reorder folders and plans.
+  Plan card ... menu: Move to folder, Copy to folder, Delete.
+  Delete folder/plan with confirmation. Plan name shown at top of plan view.
+  Timestamps formatted dd-mm-yy HH:MM.
+
+Meal plan change tracking & save changes ✅
+  original_plan_data frozen in DB. Diff drives green checkmark icons on changed days/meals.
+  Green "Plan modified" banner. Amber "Save changes" button when unsaved.
+  Exit guard modal on navigation away with unsaved changes.
+
+Meal plan replace meal ✅
+  Uses original filters + per-meal calorie budget. All candidates green (within original criteria).
+  Claude validation removed (was unreliable). Instant selection, no warning modal.
+
+Scan the fridge — done screen ✅
+  Shows "You need to buy N ingredients" with Quick Shopping List link, or "You have everything!"
+
+My Recipes — tags ✅
+  Tag picker on save (pageSheet). Suggested + custom tags. Grey chip display on cards.
+  Tag filter dropdown. Edit tags via pricetag icon.
+
+My Recipes card image layout fix ✅
 Claude failure owner alerts ✅ (email on 401/429/529 — lib/alertOwner.ts)
-Build fix ✅ (@anthropic-ai/sdk missing from package.json — broke all Amplify builds)
+Build fix ✅ (@anthropic-ai/sdk missing from package.json)
+Recipe collections superseded by My Recipes tags ✅
