@@ -11,20 +11,41 @@ not considered "web app features" and changes to them apply to both platforms.
 LIST: MUST — Before Launch
 ================================================================
 
---- ⚠️ IMMEDIATE NEXT STEP ---
+--- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
 
-Meal plan feature testing
-Before carrying on with any MUST items, fully test the meal plan feature end-to-end:
+Meal planner — thorough testing
+Test the full meal plan feature end-to-end before building anything else:
   - Generate a plan (AI goal + custom paths)
   - Save plan with name + folder (new folder and existing folder)
-  - Browse saved plans — folder list, plan list, drag reorder, delete folder, delete plan
-  - Load a saved plan — verify name shows, Save button is hidden
-  - Replace a meal — verify green checkmark icons appear on changed day header + meal row
-  - Save changes via "Save changes" button — verify icons disappear and plan updates in DB
-  - Exit with unsaved changes — verify exit guard modal fires (via New plan + tab navigation)
+  - Save into an existing folder via the folder picker in the save modal
+  - Browse saved plans — folder list, plan list, drag reorder
+  - Move to folder / Copy to folder via plan card ... menu
+  - Delete folder, delete plan (from list and from plan view inline delete)
+  - Load a saved plan — verify name shows at top, Save button is hidden
+  - Replace a meal — verify green checkmark icon appears on changed day + meal row
+  - Save changes via "Save changes" amber button — verify icons disappear, DB updated
+  - Reload the plan — verify green icons still show (original_plan_data persists)
+  - Exit with unsaved changes — verify exit guard modal fires (New plan + tab navigation)
   - Timestamp formatting on saved plans (dd-mm-yy HH:MM)
-  - Required fields on save modal (name + folder — both must be non-empty)
-Only proceed with MUST items below once all of the above pass without bugs.
+  - Required name + folder on save modal (both non-empty enforced)
+  - Replacement candidates all show green (within original filters)
+
+My Recipes — thorough testing
+Test the full My Recipes + tagging feature:
+  - Save a recipe — verify tag picker appears (pageSheet modal)
+  - Select suggested tags + add a custom tag — verify saved correctly
+  - Skip tags — verify recipe saved with no tags
+  - View My Recipes — verify tags show as grey chips on cards
+  - Tag filter dropdown appears only when at least one tagged recipe exists
+  - Filter by tag — verify only tagged recipes shown, works with Saved/Tried tabs
+  - Edit tags via pricetag icon — verify PATCH updates correctly
+  - Unsave a recipe — verify it disappears from the list correctly
+
+Home screen update
+The home screen still describes the original early features and does not reflect what the app
+actually does today. Update the home screen content to accurately showcase the current full
+feature set: meal planner, fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
+This is a pre-launch blocker — first impressions matter.
 
 --- Subscription & Payments ---
 
@@ -103,11 +124,6 @@ Spoonacular endpoint: GET /food/ingredients/autocomplete?query=&number=5.
 Macro and nutrition tracking
 Daily targets for calories, protein, carbs, fat. Track meals logged against targets.
 Show trends over time. Premium.
-
-Recipe collections
-Organise favourites into custom named folders — "Weeknight dinners", "Date night", "Batch cooking Sunday".
-First collection free, more = premium.
-
 
 --- Review & Enhance ---
 
@@ -494,38 +510,61 @@ AI path auto-suggests meals/day based on goal (Mass Gaining → 5, Weight Loss �
 Backend: one main Spoonacular call at exact daily target for 3 meals; extra meals (4-6) fetched
 separately via complexSearch as snack-sized slots carved from within the daily budget.
 Displayed calories always scaled to exactly match the user's target.
-Save plan: name + folder (Bulking / Weight Loss / etc). Save button always visible in top bar.
-New plan button warns before discarding current plan (Save / Discard / Cancel).
-Replace meal: calculates remaining daily nutrient budget, searches Spoonacular within that window,
-Claude validates fit within ±10% tolerance across all constraints. Override allowed with warning.
-Replace full day: re-generates using original filters, falls back to duplicating closest day.
-Filter drift warning: amber badge when swaps deviate from original criteria. Taps to show summary.
-DB: meal_plans table extended with name, folder, filters_json, is_modified columns.
-filters_json stores all wizard inputs: calories, diet, cuisine, intolerances, excludes, mealsPerDay,
-and all macros/micros (protein, carbs, fat, sat fat, fiber, sugar, cholesterol, sodium,
-vitamins A/C/D/B6/B12, minerals calcium/iron/magnesium/potassium/zinc).
 
-Cooking mode
+Meal plan save & folder system ✅
+  Save plan requires a name + folder (both enforced). Save button hidden once saved.
+  Folder picker in save modal shows existing folders plus suggested + custom new folder chips.
+  Saved plans browser: folder list → plans inside folder. Drag to reorder folders and plans.
+  Plan card ... menu: Move to folder, Copy to folder, Delete.
+  Delete folder (removes all plans inside) and delete individual plan, both with confirmation modal.
+  Plan name shown as large text at top of plan view once saved.
+  Timestamp on saved plan cards formatted as dd-mm-yy HH:MM.
+
+Meal plan change tracking & save changes ✅
+  originalPlan frozen at save time in DB (original_plan_data column). Never overwritten.
+  On reload, diff between original_plan_data and plan_data drives the green checkmark icons.
+  Green checkmark on day header and individual meal row for each changed meal.
+  Green "Plan modified — all changes within original filters" banner at top.
+  Amber "Save changes" button in top bar when saved plan has unsaved changes.
+  Exit guard modal when navigating away with unsaved changes (also fires on tab navigation).
+
+Meal plan replace meal ✅
+  Candidates searched using original filters + per-meal calorie budget (daily / mealsPerDay).
+  Spoonacular enforces filter constraints server-side — all candidates always within original criteria.
+  Claude validation removed (was unreliable and producing false warnings). All candidates green.
+  Confirmation of selection is instant — no warning modal.
+
+Cooking mode ✅
 Fullscreen step-by-step view. Swipe navigation.
 
-Voice cooking
+Voice cooking ✅
 Reads steps aloud. Voice commands. Powered by expo-speech.
 
-AI ingredient photo scanner
+AI ingredient photo scanner ✅
 Camera or photo library. Up to 10 images per session. Review and remove detected ingredients.
 3-tier search fallback so scanned ingredients always find results.
 
-Premium tier infrastructure
+Scan the fridge — done screen ✅
+  After checking all ingredients: shows "You need to buy N ingredients" with link to Quick Shopping List.
+  Or "You have everything!" if nothing is missing.
+
+Premium tier infrastructure ✅
 DB-based subscription tracking. Paywall modal wired up.
 
-AI Fridge Scan → Ingredient Check → Recipe Flow (Core Feature)
+AI Fridge Scan → Ingredient Check → Recipe Flow ✅
 Full end-to-end flow: scan fridge → detected ingredients as chips → remove/add → match all/some →
 results → "Cook it now?" → check ingredients one by one → AI suggests substitutes → Use it / Buy it →
 session saved server-side. Quick Shopping List for missing ingredients.
 
-Recipe search quality filter
+Recipe search quality filter ✅
 Removes recipes with poor instructions: min 4 steps + at least 50% of ingredients mentioned in steps.
 Auto-refills to minimum 12 quality results per page.
+
+My Recipes — tags ✅
+  Saving a recipe opens a tag picker (pageSheet) before saving.
+  Suggested tags: Romantic, Weekend, Treat, Kids, Quick, Healthy, Comfort, Batch Cook. Plus custom.
+  Tags shown as grey chips on recipe cards. Editable via pricetag icon on each card.
+  Tag filter dropdown in filter row — filters recipes by tag, works alongside Saved/Tried tabs.
 
 Auto logout when JWT expires ✅
 Registration disclaimer checkbox ✅
@@ -550,13 +589,7 @@ Wine pairing breakfast guard ✅
 AI ingredient substitute suggestion ✅
 Quick Shopping List ✅
 Active Recipe Session ✅
-Claude failure owner alerts ✅ (lib/alertOwner.ts — email on 401/429/529, all 4 Claude routes wired)
-Meal plan save weekStart bug fix ✅ (Sunday was computing next Monday — fixed)
-Meal plan save confirmation alert ✅ (success/failure feedback to user)
-Meal plan saved plans browser ✅
-  Home screen has "Saved Plans" card alongside AI Goal and Customise.
-  Tapping opens a folder browser — folders listed with plan count.
-  Tapping a folder shows plans inside: name, calorie/meals/diet subtitle, date, modified badge.
-  Tapping a plan loads it back into the active view with all filters and modified state restored.
-My Recipes card image layout fix ✅ (image flush top-left, CDN images for tried-only recipes)
-Build fix ✅ (@anthropic-ai/sdk added to package.json — was missing, broke Amplify builds)
+Claude failure owner alerts ✅ (lib/alertOwner.ts — email on 401/429/529)
+My Recipes card image layout fix ✅
+Build fix ✅ (@anthropic-ai/sdk missing from package.json)
+Recipe collections removed from MUST ✅ (superseded by My Recipes tags feature)
