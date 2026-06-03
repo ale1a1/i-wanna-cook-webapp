@@ -31,11 +31,12 @@ export async function POST(request: NextRequest) {
     if (!userId || !weekStart || !planData) {
       return NextResponse.json({ error: "userId, weekStart, planData required" }, { status: 400 })
     }
+    const planJson = JSON.stringify(planData)
     const result = await pool.query(
-      `INSERT INTO meal_plans (user_id, week_start, plan_data, name, folder, filters_json, is_modified)
-       VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+      `INSERT INTO meal_plans (user_id, week_start, plan_data, original_plan_data, name, folder, filters_json, is_modified)
+       VALUES ($1, $2, $3, $3, $4, $5, $6, FALSE)
        RETURNING *`,
-      [userId, weekStart, JSON.stringify(planData), name ?? null, folder ?? null, filtersJson ? JSON.stringify(filtersJson) : null]
+      [userId, weekStart, planJson, name ?? null, folder ?? null, filtersJson ? JSON.stringify(filtersJson) : null]
     )
     return NextResponse.json({ plan: result.rows[0] })
   } catch {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  // Update plan_data (after a replace swap) and mark is_modified if filters were overridden
+  // Save user changes — updates plan_data, sets is_modified based on filter drift, never touches original_plan_data
   try {
     const { userId, planId, planData, isModified } = await request.json()
     if (!userId || !planId || !planData) {
@@ -52,7 +53,7 @@ export async function PATCH(request: NextRequest) {
     }
     const result = await pool.query(
       `UPDATE meal_plans
-       SET plan_data = $3, is_modified = CASE WHEN $4 THEN TRUE ELSE is_modified END
+       SET plan_data = $3, is_modified = $4
        WHERE id = $2 AND user_id = $1
        RETURNING *`,
       [userId, planId, JSON.stringify(planData), isModified ?? false]
