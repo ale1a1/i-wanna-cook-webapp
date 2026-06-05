@@ -51,7 +51,7 @@ const Tab = createBottomTabNavigator()
 
 const OVERFLOW_ITEMS_DEFAULT = [
   { name: "MyRecipes", icon: "bookmark-outline" as const, label: "My Recipes" },
-  { name: "MealPlan", icon: "calendar-outline" as const, label: "Meal Plan" },
+  { name: "MealPlan", icon: "calendar-outline" as const, label: "Meal Plans" },
   { name: "Profile", icon: "person-outline" as const, label: "Profile" },
 ]
 

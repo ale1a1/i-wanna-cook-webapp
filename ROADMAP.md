@@ -13,23 +13,6 @@ LIST: MUST — Before Launch
 
 --- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
 
-Meal planner — thorough testing
-Test the full meal plan feature end-to-end before building anything else:
-  - Generate a plan (AI goal + custom paths)
-  - Save plan with name + folder (new folder and existing folder)
-  - Save into an existing folder via the folder picker in the save modal
-  - Browse saved plans — folder list, plan list, drag reorder
-  - Move to folder / Copy to folder via plan card ... menu
-  - Delete folder, delete plan (from list and from plan view inline delete)
-  - Load a saved plan — verify name shows at top, Save button is hidden
-  - Replace a meal — verify green checkmark icon appears on changed day + meal row
-  - Save changes via "Save changes" amber button — verify icons disappear, DB updated
-  - Reload the plan — verify green icons still show (original_plan_data persists)
-  - Exit with unsaved changes — verify exit guard modal fires (New plan + tab navigation)
-  - Timestamp formatting on saved plans (dd-mm-yy HH:MM)
-  - Required name + folder on save modal (both non-empty enforced)
-  - Replacement candidates all show green (within original filters)
-
 My Recipes — thorough testing
 Test the full My Recipes + tagging feature:
   - Save a recipe — verify tag picker appears (pageSheet modal)
@@ -527,6 +510,8 @@ Meal plan change tracking & save changes ✅
   Green "Plan modified — all changes within original filters" banner at top.
   Amber "Save changes" button in top bar when saved plan has unsaved changes.
   Exit guard modal when navigating away with unsaved changes (also fires on tab navigation).
+  Exit guard also fires on brand-new unsaved plans (no planId) — "Save plan" or "Discard & leave".
+  Both guard modals: dark backdrop, close by tapping outside or swipe-back, no Cancel button.
 
 Meal plan replace meal ✅
   Candidates searched using original filters + per-meal calorie budget (daily / mealsPerDay).
@@ -587,6 +572,9 @@ Advanced search filter panel ✅ (5 collapsible sections, macros/micros premium-
 AI Suggestions in search filter panel ✅ (preset chips + free text + voice, Claude Haiku)
 Wine pairing breakfast guard ✅
 AI ingredient substitute suggestion ✅
+Meal Plans nav tab + header rename ✅
+  Nav tab, top bar header, and home view all say "Meal Plans". Home view shows two buttons directly
+  (Create Plan, Browse Saved Plans) with no repeated title or subtitle text.
 Quick Shopping List ✅
 Active Recipe Session ✅
 Claude failure owner alerts ✅ (lib/alertOwner.ts — email on 401/429/529)

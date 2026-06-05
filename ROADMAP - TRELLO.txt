@@ -13,21 +13,6 @@ LIST: MUST — Before Launch
 
 --- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
 
-Meal planner — thorough testing
-  - Generate a plan (AI goal + custom paths)
-  - Save with name + folder (new + existing folder via picker)
-  - Browse saved plans — folder list, plan list, drag reorder
-  - Move to folder / Copy to folder via plan card ... menu
-  - Delete folder, delete plan (from list and from plan view)
-  - Load a saved plan — verify name shows, Save button hidden
-  - Replace a meal — green checkmark on changed day + meal row
-  - Save changes — icons disappear, DB updated
-  - Reload plan — green icons persist (original_plan_data in DB)
-  - Exit with unsaved changes — exit guard modal fires
-  - Timestamp formatting (dd-mm-yy HH:MM)
-  - Required name + folder on save modal enforced
-  - Replacement candidates all green (within original filters)
-
 My Recipes — thorough testing
   - Save a recipe — tag picker opens (pageSheet)
   - Select suggested + custom tags — saved correctly
@@ -388,6 +373,8 @@ Meal plan change tracking & save changes ✅
   original_plan_data frozen in DB. Diff drives green checkmark icons on changed days/meals.
   Green "Plan modified" banner. Amber "Save changes" button when unsaved.
   Exit guard modal on navigation away with unsaved changes.
+  Exit guard also fires for brand-new unsaved plans — "Save plan" or "Discard & leave".
+  Both guard modals: dark backdrop, dismiss by tapping outside or swipe-back, no Cancel button.
 
 Meal plan replace meal ✅
   Uses original filters + per-meal calorie budget. All candidates green (within original criteria).
@@ -404,3 +391,5 @@ My Recipes card image layout fix ✅
 Claude failure owner alerts ✅ (email on 401/429/529 — lib/alertOwner.ts)
 Build fix ✅ (@anthropic-ai/sdk missing from package.json)
 Recipe collections superseded by My Recipes tags ✅
+Meal Plans nav + header rename ✅ (tab, top bar, home view all say "Meal Plans"; home shows two buttons directly)
+Meal planner — QA tested ✅ (all flows verified: generate, save, browse, replace, change tracking, exit guards)

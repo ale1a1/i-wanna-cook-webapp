@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert, TextInput } from "react-native"
+import React, { useState, useCallback, useEffect, useRef } from "react"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert, TextInput, BackHandler } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
@@ -85,7 +85,7 @@ type DayPlan = { meals: Meal[]; nutrients: { calories: number; protein: number; 
 type WeekPlan = { week: Record<string, DayPlan> }
 type FiltersJson = Record<string, any>
 type Path = null | "ai" | "custom"
-type CustomStep = "nutrition" | "diet" | "macros" | "micros"
+type CustomStep = "nutrition" | "diet" | "macros" | "micros" | "meals"
 
 export default function MealPlanScreen() {
   const { colors } = useTheme()
@@ -105,6 +105,7 @@ export default function MealPlanScreen() {
   const [isModified, setIsModified] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showExitGuard, setShowExitGuard] = useState(false)
+  const [showNewPlanExitGuard, setShowNewPlanExitGuard] = useState(false)
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -134,6 +135,7 @@ export default function MealPlanScreen() {
 
   // saved plans browser
   const [showPlansModal, setShowPlansModal] = useState(false)
+  const [planOpenedFromFolder, setPlanOpenedFromFolder] = useState<string | null | undefined>(undefined)
   const [savedPlans, setSavedPlans] = useState<any[]>([])
   const [plansLoading, setPlansLoading] = useState(false)
   const [openFolder, setOpenFolder] = useState<string | null>(null)
@@ -143,6 +145,16 @@ export default function MealPlanScreen() {
   const [deleting, setDeleting] = useState(false)
   const [showFolderPicker, setShowFolderPicker] = useState(false)
   const [planActions, setPlanActions] = useState<{ plan: any; mode: "move" | "copy" } | null>(null)
+
+  // plan actions modal (replaces Alert.alert three-dots menu)
+  const [planActionsModal, setPlanActionsModal] = useState<{ plan: any; step: "menu" | "rename" | "move" | "copy" } | null>(null)
+  const [renameValue, setRenameValue] = useState("")
+  const [renaming, setRenaming] = useState(false)
+
+  // folder actions modal
+  const [folderActionsModal, setFolderActionsModal] = useState<{ folder: string; step: "menu" | "rename" } | null>(null)
+  const [folderRenameValue, setFolderRenameValue] = useState("")
+  const [folderRenaming, setFolderRenaming] = useState(false)
 
   const [showCreateOptions, setShowCreateOptions] = useState(false)
 
@@ -186,15 +198,40 @@ export default function MealPlanScreen() {
     if (plan && savedPlans.length === 0 && user?.id) fetchSavedPlans()
   }, [plan])
 
-  // Exit guard — intercept tab/stack navigation away when there are unsaved changes
+  const backStateRef = useRef({ plan: null as any, hasUnsavedChanges: false, planId: null as string | null, showPlansModal: false, showSaveModal: false, showMealsModal: false, modalOpen: false, planOpenedFromFolder: undefined as string | null | undefined, showCreateOptions: false })
+  backStateRef.current = { plan, hasUnsavedChanges, planId, showPlansModal, showSaveModal, showMealsModal, modalOpen, planOpenedFromFolder, showCreateOptions }
+
   useEffect(() => {
-    if (!hasUnsavedChanges || !planId) return
-    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
-      e.preventDefault()
-      setShowExitGuard(true)
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      const { plan, hasUnsavedChanges, planId, showPlansModal, showSaveModal, showMealsModal, modalOpen, planOpenedFromFolder, showCreateOptions } = backStateRef.current
+      if (showCreateOptions) { setShowCreateOptions(false); return true }
+      if (!plan) return false
+      if (showPlansModal || showSaveModal || showMealsModal || modalOpen) return false
+      if (plan && !planId) {
+        setShowNewPlanExitGuard(true)
+      } else if (hasUnsavedChanges && planId) {
+        setShowExitGuard(true)
+      } else {
+        if (planOpenedFromFolder !== undefined) {
+          setOpenFolder(planOpenedFromFolder)
+          setPlanOpenedFromFolder(undefined)
+          setShowPlansModal(true)
+          setTimeout(() => {
+            setPlan(null); setPlanId(null); setOriginalPlan(null)
+            setSavedPlanName(null); setHasUnsavedChanges(false)
+            setIsModified(false); setExpandedDay(null)
+          }, 350)
+        } else {
+          setPlan(null); setPlanId(null); setOriginalPlan(null)
+          setSavedPlanName(null); setHasUnsavedChanges(false)
+          setIsModified(false); setExpandedDay(null)
+          setPlanOpenedFromFolder(undefined)
+        }
+      }
+      return true
     })
-    return unsubscribe
-  }, [hasUnsavedChanges, planId, navigation])
+    return () => sub.remove()
+  }, [])
 
   const startVoiceInput = useCallback(async () => {
     if (!SpeechRecognitionModule) return
@@ -259,8 +296,9 @@ export default function MealPlanScreen() {
   const generatePlan = useCallback(async (params: { calories: string; diet: string; exclude: string }, meals: string) => {
     if (!isPremium) { setShowPaywall(true); return }
     setLoading(true)
-    setShowMealsModal(false)
     setModalOpen(false)
+    setShowCreateOptions(false)
+    setCustomStep("nutrition")
     const filters = buildFiltersJson(params, meals)
     try {
       const urlParams = new URLSearchParams({ targetCalories: params.calories, timeFrame: "week", mealsPerDay: meals })
@@ -370,18 +408,24 @@ export default function MealPlanScreen() {
       const suggested = suggestMeals(goal)
       setMealsPerDay(suggested)
       setPendingParams(resolved)
-      setModalOpen(false)
-      setShowMealsModal(true)
+      setCustomStep("meals")
     } catch { setAiError("Something went wrong. Please try again.") }
     finally { setAiLoading(false) }
+  }
+
+  const handleCustomModalBack = () => {
+    if (customStep === "nutrition") { setModalOpen(false); setShowCreateOptions(true) }
+    else if (customStep === "diet") setCustomStep("nutrition")
+    else if (customStep === "macros") setCustomStep("diet")
+    else if (customStep === "micros") setCustomStep("macros")
+    else if (customStep === "meals") setCustomStep("micros")
   }
 
   const handleCustomGenerate = () => {
     const params = { calories, diet, exclude }
     setPendingParams(params)
     setMealsPerDay("3")
-    setModalOpen(false)
-    setShowMealsModal(true)
+    setCustomStep("meals")
   }
 
   // ── Replace full day ──────────────────────────────────────────────────
@@ -465,6 +509,7 @@ export default function MealPlanScreen() {
         const folder = plan.folder ?? "Uncategorised"
         return { ...prev, [folder]: (prev[folder] ?? []).filter((id: string) => id !== plan.id) }
       })
+      if (plan.id === planId) clearPlan()
     } catch { /* non-fatal */ }
     finally { setDeleting(false); setDeleteConfirm(null) }
   }
@@ -526,6 +571,40 @@ export default function MealPlanScreen() {
     finally { setPlanActions(null) }
   }
 
+  const handleRenamePlan = async (plan: any, newName: string) => {
+    if (!user?.id || !newName.trim()) return
+    setRenaming(true)
+    try {
+      await apiFetch("/api/meal-plan", {
+        method: "PATCH",
+        body: JSON.stringify({ userId: user.id, planId: plan.id, planData: plan.plan_data, isModified: plan.is_modified ?? false, name: newName.trim() }),
+      })
+      setSavedPlans(prev => prev.map((p: any) => p.id === plan.id ? { ...p, name: newName.trim() } : p))
+      setPlanActionsModal(null)
+    } catch { /* non-fatal */ }
+    finally { setRenaming(false) }
+  }
+
+  const handleRenameFolder = async (oldName: string, newName: string) => {
+    if (!user?.id || !newName.trim() || newName.trim() === oldName) return
+    setFolderRenaming(true)
+    try {
+      const plansInFolder = savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === oldName)
+      await Promise.all(plansInFolder.map((p: any) =>
+        apiFetch("/api/meal-plan", { method: "PATCH", body: JSON.stringify({ userId: user.id, planId: p.id, planData: p.plan_data, isModified: p.is_modified ?? false, folder: newName.trim() }) })
+      ))
+      setSavedPlans(prev => prev.map((p: any) => (p.folder ?? "Uncategorised") === oldName ? { ...p, folder: newName.trim() } : p))
+      setFolderOrder(prev => prev.map(f => f === oldName ? newName.trim() : f))
+      setPlanOrder(prev => {
+        const next = { ...prev }
+        if (next[oldName]) { next[newName.trim()] = next[oldName]; delete next[oldName] }
+        return next
+      })
+      setFolderActionsModal(null)
+    } catch { /* non-fatal */ }
+    finally { setFolderRenaming(false) }
+  }
+
   const openSaveModal = () => {
     setSaveName("")
     setSaveFolder("")
@@ -541,9 +620,9 @@ export default function MealPlanScreen() {
   }
 
   const loadSavedPlan = (savedPlan: any) => {
+    setPlanOpenedFromFolder(openFolder) // null = group list, string = inside a group
     setShowPlansModal(false)
     setPlan(savedPlan.plan_data)
-    // Use the frozen original snapshot if available, fall back to plan_data for old records
     setOriginalPlan(savedPlan.original_plan_data ?? savedPlan.plan_data)
     setPlanId(savedPlan.id)
     setSavedPlanName(savedPlan.name ?? null)
@@ -553,7 +632,8 @@ export default function MealPlanScreen() {
     setExpandedDay(null)
   }
 
-  const clearPlan = () => {
+  const resetPlanState = () => {
+    setPlanOpenedFromFolder(undefined)
     setPlan(null)
     setPlanId(null)
     setOriginalPlan(null)
@@ -563,12 +643,50 @@ export default function MealPlanScreen() {
     setExpandedDay(null)
   }
 
+  const doClearPlan = () => {
+    if (planOpenedFromFolder !== undefined) {
+      setOpenFolder(planOpenedFromFolder)
+      setPlanOpenedFromFolder(undefined)
+      setShowPlansModal(true)
+      setTimeout(() => {
+        setPlan(null)
+        setPlanId(null)
+        setOriginalPlan(null)
+        setSavedPlanName(null)
+        setHasUnsavedChanges(false)
+        setIsModified(false)
+        setExpandedDay(null)
+      }, 350)
+    } else {
+      setPlanOpenedFromFolder(undefined)
+      setPlan(null)
+      setPlanId(null)
+      setOriginalPlan(null)
+      setSavedPlanName(null)
+      setHasUnsavedChanges(false)
+      setIsModified(false)
+      setExpandedDay(null)
+    }
+  }
+
+  const clearPlan = () => {
+    if (plan && !planId) {
+      setShowNewPlanExitGuard(true)
+      return
+    }
+    if (hasUnsavedChanges && planId) {
+      setShowExitGuard(true)
+      return
+    }
+    doClearPlan()
+  }
+
   const openPath = (p: Path) => {
     const doOpen = () => {
-      clearPlan()
+      resetPlanState()
       setPath(p ?? null)
       setCustomStep("nutrition")
-      setShowCreateOptions(false)
+      // keep showCreateOptions true while modal is open — cleared when modal closes or plan generates
       setAiPreset(""); setAiGoal(""); setAiError("")
       if (p !== null) setModalOpen(true)
     }
@@ -647,9 +765,15 @@ export default function MealPlanScreen() {
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
       <View style={s.topBar}>
-        <Text style={s.title}>Meal Plan</Text>
-        {plan && !loading && (
-          <View style={{ flexDirection: "row", gap: 8 }}>
+        {plan && !loading ? (<>
+          {/* Left: back arrow */}
+          <TouchableOpacity onPress={clearPlan} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          {/* Centre: plan name as page title */}
+          <Text style={s.topBarTitle} numberOfLines={1}>{`Plan: ${savedPlanName ?? "Unsaved"}`}</Text>
+          {/* Right: actions */}
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
             {!planId && (
               <TouchableOpacity style={s.regenBtn} onPress={openSaveModal}>
                 <Ionicons name="bookmark-outline" size={16} color={colors.primary} />
@@ -664,19 +788,32 @@ export default function MealPlanScreen() {
                 </>}
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={s.regenBtn} onPress={() => openPath(null)}>
-              <Ionicons name="refresh" size={16} color={colors.primary} />
-              <Text style={s.regenBtnText}>New plan</Text>
-            </TouchableOpacity>
+            {planId && (
+              <TouchableOpacity
+                onPress={() => {
+                  setRenameValue(savedPlanName ?? "")
+                  setPlanActionsModal({ plan: { id: planId, name: savedPlanName, plan_data: plan, filters_json: filtersJson, is_modified: isModified }, step: "menu" })
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
+              </TouchableOpacity>
+            )}
           </View>
+        </>) : showCreateOptions ? (<>
+          <TouchableOpacity onPress={() => setShowCreateOptions(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={s.topBarTitle}>Create Plan</Text>
+          <View style={{ width: 24 }} />
+        </>) : (
+          <Text style={s.title}>Meal Plans</Text>
         )}
       </View>
 
       {/* Home */}
       {!plan && !loading && !showCreateOptions && (
         <View style={s.homeContent}>
-          <Text style={s.homeTitle}>Meal Plan</Text>
-          <Text style={s.homeSub}>What would you like to do?</Text>
           <TouchableOpacity style={s.bigBtn} onPress={() => setShowCreateOptions(true)} activeOpacity={0.85}>
             <Ionicons name="add-circle-outline" size={28} color="#fff" />
             <Text style={s.bigBtnText}>Create Plan</Text>
@@ -691,12 +828,7 @@ export default function MealPlanScreen() {
       {/* Create Plan options */}
       {!plan && !loading && showCreateOptions && (
         <ScrollView contentContainerStyle={s.homeContent}>
-          <TouchableOpacity onPress={() => setShowCreateOptions(false)} style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <Ionicons name="arrow-back" size={18} color={colors.mutedForeground} />
-            <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Back</Text>
-          </TouchableOpacity>
-          <Text style={s.homeTitle}>Create Plan</Text>
-          <Text style={s.homeSub}>Choose how you want to build your week.</Text>
+          <Text style={s.homeSub}>Choose how you want to build your plan.</Text>
           <TouchableOpacity style={s.pathCard} onPress={() => openPath("ai")} activeOpacity={0.85}>
             <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22" }]}>
               <Ionicons name="sparkles" size={28} color={colors.primary} />
@@ -731,30 +863,6 @@ export default function MealPlanScreen() {
       {/* Plan results */}
       {plan && !loading && (<>
         <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
-
-          {/* Plan name — plain text with inline delete */}
-          {savedPlanName && (
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8, paddingHorizontal: 2 }}>
-              <Text style={{ color: colors.text, fontSize: 22, fontWeight: "800", flex: 1 }}>{savedPlanName}</Text>
-              <TouchableOpacity
-                onPress={() => Alert.alert(
-                  "Delete plan?",
-                  `"${savedPlanName}" will be permanently deleted.`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Delete", style: "destructive", onPress: async () => {
-                      await apiFetch("/api/meal-plan", { method: "DELETE", body: JSON.stringify({ userId: user!.id, planId }) })
-                      setSavedPlans(prev => prev.filter((p: any) => p.id !== planId))
-                      clearPlan()
-                    }},
-                  ]
-                )}
-                hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
-              >
-                <Ionicons name="trash-outline" size={18} color={colors.destructive} />
-              </TouchableOpacity>
-            </View>
-          )}
 
           {/* Plan modified banner */}
           {isModified && (
@@ -833,75 +941,92 @@ export default function MealPlanScreen() {
           })}
 
         </ScrollView>
-        {savedPlans.length > 0 && (
-          <TouchableOpacity
-            style={[s.generateBtnLarge, { margin: spacing.md, backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.border }]}
-            onPress={openSavedPlans}
-            activeOpacity={0.8}
-          >
-            <Text style={[s.generateBtnText, { color: colors.text }]}>Show all my plans</Text>
-          </TouchableOpacity>
-        )}
       </> )}
 
       {/* ── Modal — AI path ─────────────────────────────────────────── */}
-      <Modal visible={modalOpen && path === "ai"} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={modalOpen && path === "ai"} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (customStep === "meals") setCustomStep("nutrition"); else { setModalOpen(false); setShowCreateOptions(true) } }}>
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
-            <TouchableOpacity onPress={() => setModalOpen(false)}><Ionicons name="arrow-back" size={24} color={colors.text} /></TouchableOpacity>
-            <Text style={s.modalTitle}>AI Goal</Text>
+            <TouchableOpacity onPress={() => { if (customStep === "meals") setCustomStep("nutrition"); else { setModalOpen(false); setShowCreateOptions(true) } }}><Ionicons name="arrow-back" size={24} color={colors.text} /></TouchableOpacity>
+            <Text style={s.modalTitle}>{customStep === "meals" ? "Meals per Day" : "AI Goal"}</Text>
             <View style={{ width: 24 }} />
           </View>
-          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }} keyboardShouldPersistTaps="handled">
-            <Text style={s.aiIntro}>Pick a preset or describe your goal. The AI will set the best plan parameters for you.</Text>
-            <View style={s.aiChipsRow}>
-              {AI_PRESETS.map(p => (
-                <TouchableOpacity key={p} style={[s.aiChip, aiPreset === p && s.aiChipActive]} onPress={() => { setAiPreset(aiPreset === p ? "" : p); setAiGoal("") }}>
-                  <Text style={[s.aiChipText, aiPreset === p && s.aiChipTextActive]}>{p}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View>
-              <Text style={s.settingLabel}>Or describe your goal</Text>
-              <View style={s.aiInputRow}>
-                <TextInput style={s.aiInput} value={aiGoal} onChangeText={v => { setAiPreset(""); setAiGoal(v.trim().split(/\s+/).length > 30 ? v.trim().split(/\s+/).slice(0, 30).join(" ") : v) }} placeholder="e.g. lose weight, high protein, low carb..." placeholderTextColor={colors.muted} editable={!aiLoading} />
-                <TouchableOpacity style={[s.aiMicBtn, isListening && s.aiMicBtnActive]} onPress={isListening ? stopVoiceInput : startVoiceInput} disabled={aiLoading}>
-                  <Ionicons name={isListening ? "stop" : "mic"} size={18} color="#fff" />
-                </TouchableOpacity>
+          {customStep !== "meals" ? (<>
+            <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }} keyboardShouldPersistTaps="handled">
+              <Text style={s.aiIntro}>Pick a preset or describe your goal. The AI will set the best plan parameters for you.</Text>
+              <View style={s.aiChipsRow}>
+                {AI_PRESETS.map(p => (
+                  <TouchableOpacity key={p} style={[s.aiChip, aiPreset === p && s.aiChipActive]} onPress={() => { setAiPreset(aiPreset === p ? "" : p); setAiGoal("") }}>
+                    <Text style={[s.aiChipText, aiPreset === p && s.aiChipTextActive]}>{p}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
+              <View>
+                <Text style={s.settingLabel}>Or describe your goal</Text>
+                <View style={s.aiInputRow}>
+                  <TextInput style={s.aiInput} value={aiGoal} onChangeText={v => { setAiPreset(""); setAiGoal(v.trim().split(/\s+/).length > 30 ? v.trim().split(/\s+/).slice(0, 30).join(" ") : v) }} placeholder="e.g. lose weight, high protein, low carb..." placeholderTextColor={colors.muted} editable={!aiLoading} />
+                  <TouchableOpacity style={[s.aiMicBtn, isListening && s.aiMicBtnActive]} onPress={isListening ? stopVoiceInput : startVoiceInput} disabled={aiLoading}>
+                    <Ionicons name={isListening ? "stop" : "mic"} size={18} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {aiError ? <Text style={s.errorText}>{aiError}</Text> : null}
+            </ScrollView>
+            <View style={s.modalFooter}>
+              <TouchableOpacity style={[s.generateBtnLarge, (!aiPreset && !aiGoal.trim() || aiLoading) && s.btnDisabled]} onPress={handleAiGenerate} disabled={(!aiPreset && !aiGoal.trim()) || aiLoading}>
+                {aiLoading ? <ActivityIndicator color="#fff" /> : (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Ionicons name="sparkles" size={18} color="#fff" />
+                    <Text style={s.generateBtnText}>Next →</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
             </View>
-            {aiError ? <Text style={s.errorText}>{aiError}</Text> : null}
-          </ScrollView>
-          <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.generateBtnLarge, (!aiPreset && !aiGoal.trim() || aiLoading) && s.btnDisabled]} onPress={handleAiGenerate} disabled={(!aiPreset && !aiGoal.trim()) || aiLoading}>
-              {aiLoading ? <ActivityIndicator color="#fff" /> : (
+          </>) : (<>
+            <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 12 }}>
+              <Text style={s.aiIntro}>How many meals a day would you like?</Text>
+              <View style={{ gap: 10, marginTop: 8 }}>
+                {MEALS_PER_DAY_OPTIONS.map(opt => (
+                  <TouchableOpacity key={opt.value} style={[s.mealsOption, mealsPerDay === opt.value && s.mealsOptionActive]} onPress={() => setMealsPerDay(opt.value)} activeOpacity={0.8}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.mealsOptionLabel, mealsPerDay === opt.value && s.mealsOptionLabelActive]}>{opt.label}</Text>
+                      <Text style={s.mealsOptionDesc}>{opt.desc}</Text>
+                    </View>
+                    {mealsPerDay === opt.value && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <View style={s.modalFooter}>
+              <TouchableOpacity style={s.generateBtnLarge} onPress={() => pendingParams && generatePlan(pendingParams, mealsPerDay)}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Ionicons name="sparkles" size={18} color="#fff" />
-                  <Text style={s.generateBtnText}>Next →</Text>
+                  <Text style={s.generateBtnText}>Generate Plan</Text>
                 </View>
-              )}
-            </TouchableOpacity>
-          </View>
+              </TouchableOpacity>
+            </View>
+          </>)}
         </SafeAreaView>
       </Modal>
 
       {/* ── Modal — Custom path ──────────────────────────────────────── */}
-      <Modal visible={modalOpen && path === "custom"} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={modalOpen && path === "custom"} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleCustomModalBack}>
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
             <TouchableOpacity onPress={() => {
-              if (customStep === "nutrition") setModalOpen(false)
+              if (customStep === "nutrition") { setModalOpen(false); setShowCreateOptions(true) }
               else if (customStep === "diet") setCustomStep("nutrition")
               else if (customStep === "macros") setCustomStep("diet")
-              else setCustomStep("macros")
+              else if (customStep === "micros") setCustomStep("macros")
+              else if (customStep === "meals") setCustomStep("micros")
             }}>
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={s.modalTitle}>
-              {customStep === "nutrition" ? "Nutrition" : customStep === "diet" ? "Diet & Cuisine" : customStep === "macros" ? "Macronutrients" : "Micronutrients"}
+              {customStep === "nutrition" ? "Nutrition" : customStep === "diet" ? "Diet & Cuisine" : customStep === "macros" ? "Macronutrients" : customStep === "micros" ? "Micronutrients" : "Meals per Day"}
             </Text>
             <Text style={s.stepIndicator}>
-              {customStep === "nutrition" ? "1/4" : customStep === "diet" ? "2/4" : customStep === "macros" ? "3/4" : "4/4"}
+              {customStep === "nutrition" ? "1/5" : customStep === "diet" ? "2/5" : customStep === "macros" ? "3/5" : customStep === "micros" ? "4/5" : "5/5"}
             </Text>
           </View>
           <ScrollView contentContainerStyle={{ paddingVertical: spacing.md, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
@@ -971,60 +1096,40 @@ export default function MealPlanScreen() {
                 <NutritionInput label="Zinc" minKey="minZinc" maxKey="maxZinc" unit="mg" />
               </View>
             )}
+            {customStep === "meals" && (
+              <View style={{ padding: spacing.md, gap: 10, marginTop: 8 }}>
+                <Text style={s.aiIntro}>How many meals a day would you like?</Text>
+                {MEALS_PER_DAY_OPTIONS.map(opt => (
+                  <TouchableOpacity key={opt.value} style={[s.mealsOption, mealsPerDay === opt.value && s.mealsOptionActive]} onPress={() => setMealsPerDay(opt.value)} activeOpacity={0.8}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.mealsOptionLabel, mealsPerDay === opt.value && s.mealsOptionLabelActive]}>{opt.label}</Text>
+                      <Text style={s.mealsOptionDesc}>{opt.desc}</Text>
+                    </View>
+                    {mealsPerDay === opt.value && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </ScrollView>
           <View style={s.modalFooter}>
             {customStep === "nutrition" && <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("diet")}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
             {customStep === "diet" && <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("macros")}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
             {customStep === "macros" && <TouchableOpacity style={s.generateBtnLarge} onPress={() => setCustomStep("micros")}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
             {customStep === "micros" && <TouchableOpacity style={s.generateBtnLarge} onPress={handleCustomGenerate}><Text style={s.generateBtnText}>Next →</Text></TouchableOpacity>}
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* ── Meals per day modal ──────────────────────────────────────── */}
-      <Modal visible={showMealsModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={s.modalContainer} edges={["top"]}>
-          <View style={s.modalHeader}>
-            <TouchableOpacity onPress={() => { setShowMealsModal(false); setModalOpen(true) }}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <Text style={s.modalTitle}>Meals per Day</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 12 }}>
-            <Text style={s.aiIntro}>How many meals a day would you like?</Text>
-            <View style={{ gap: 10, marginTop: 8 }}>
-              {MEALS_PER_DAY_OPTIONS.map(opt => (
-                <TouchableOpacity key={opt.value} style={[s.mealsOption, mealsPerDay === opt.value && s.mealsOptionActive]} onPress={() => setMealsPerDay(opt.value)} activeOpacity={0.8}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.mealsOptionLabel, mealsPerDay === opt.value && s.mealsOptionLabelActive]}>{opt.label}</Text>
-                    <Text style={s.mealsOptionDesc}>{opt.desc}</Text>
-                  </View>
-                  {mealsPerDay === opt.value && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-          <View style={s.modalFooter}>
-            <TouchableOpacity style={s.generateBtnLarge} onPress={() => pendingParams && generatePlan(pendingParams, mealsPerDay)}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Ionicons name="sparkles" size={18} color="#fff" />
-                <Text style={s.generateBtnText}>Generate Plan</Text>
-              </View>
-            </TouchableOpacity>
+            {customStep === "meals" && <TouchableOpacity style={s.generateBtnLarge} onPress={() => pendingParams && generatePlan(pendingParams, mealsPerDay)}><View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}><Ionicons name="sparkles" size={18} color="#fff" /><Text style={s.generateBtnText}>Generate Plan</Text></View></TouchableOpacity>}
           </View>
         </SafeAreaView>
       </Modal>
 
       {/* ── Save plan modal ──────────────────────────────────────────── */}
-      <Modal visible={showSaveModal} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={showSaveModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSaveModal(false)}>
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
-            <View style={{ width: 24 }} />
-            <Text style={s.modalTitle}>Save Plan</Text>
-            <TouchableOpacity onPress={() => setShowSaveModal(false)}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>Cancel</Text>
+            <TouchableOpacity onPress={() => setShowSaveModal(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
+            <Text style={s.modalTitle}>Save Plan</Text>
+            <View style={{ width: 24 }} />
           </View>
           <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }} keyboardShouldPersistTaps="handled">
             <Text style={s.aiIntro}>Give this plan a name and assign it to a folder.</Text>
@@ -1139,7 +1244,7 @@ export default function MealPlanScreen() {
       </Modal>
 
       {/* ── Saved Plans browser ─────────────────────────────────── */}
-      <Modal visible={showPlansModal} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={showPlansModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (openFolder !== null) setOpenFolder(null); else setShowPlansModal(false) }}>
           <SafeAreaView style={s.modalContainer} edges={["top"]}>
             <View style={s.modalHeader}>
               <TouchableOpacity onPress={() => {
@@ -1148,7 +1253,7 @@ export default function MealPlanScreen() {
               }}>
                 <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={s.modalTitle}>{openFolder ?? "Saved Plans"}</Text>
+              <Text style={s.modalTitle}>{openFolder ? `Group: ${openFolder}` : "Saved Plans Groups"}</Text>
               <View style={{ width: 24 }} />
             </View>
 
@@ -1166,12 +1271,12 @@ export default function MealPlanScreen() {
                 <DraggableList
                   data={folderOrder}
                   keyExtractor={(folder) => folder}
-                  itemHeight={82}
+                  itemHeight={90}
                   onReorder={setFolderOrder}
                   renderItem={(folder, _, isDragging) => {
                     const count = savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length
                     return (
-                      <View style={{ paddingBottom: 10 }}>
+                      <View style={{ paddingBottom: 18 }}>
                         <TouchableOpacity
                           style={[s.folderCard, isDragging && { elevation: 8, opacity: 0.92 }]}
                           onPress={() => setOpenFolder(folder)}
@@ -1185,14 +1290,12 @@ export default function MealPlanScreen() {
                             <Text style={s.folderCount}>{count} plan{count !== 1 ? "s" : ""}</Text>
                           </View>
                           <TouchableOpacity
-                            onPress={() => setDeleteConfirm({ type: "folder", folder })}
+                            onPress={() => { setFolderRenameValue(folder); setFolderActionsModal({ folder, step: "menu" }) }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={{ padding: 4, marginRight: 6 }}
+                            style={{ padding: 4 }}
                           >
-                            <Ionicons name="trash-outline" size={18} color={colors.destructive} />
+                            <Ionicons name="ellipsis-vertical" size={18} color={colors.muted} />
                           </TouchableOpacity>
-                          <Ionicons name="reorder-three-outline" size={20} color={colors.muted} style={{ marginRight: 4 }} />
-                          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
                         </TouchableOpacity>
                       </View>
                     )
@@ -1202,10 +1305,11 @@ export default function MealPlanScreen() {
             ) : (
               // Draggable plans inside a folder — drag to reorder
               <ScrollView contentContainerStyle={{ padding: spacing.md }}>
+                <Text style={[s.settingLabel, { marginBottom: spacing.md }]}>Plans:</Text>
                 <DraggableList
                   data={(planOrder[openFolder] ?? []).map((id: string) => savedPlans.find((p: any) => p.id === id)).filter(Boolean) as any[]}
                   keyExtractor={(item: any) => item.id}
-                  itemHeight={98}
+                  itemHeight={106}
                   onReorder={(newData: any[]) => setPlanOrder(prev => ({ ...prev, [openFolder!]: newData.map((p: any) => p.id) }))}
                   renderItem={(savedPlan: any, _, isDragging) => {
                     const filters = savedPlan.filters_json
@@ -1213,7 +1317,7 @@ export default function MealPlanScreen() {
                       ? `${filters.calories ?? "?"} kcal · ${filters.mealsPerDay ?? 3} meals/day · ${filters.diet !== "none" && filters.diet ? filters.diet : "any diet"}`
                       : ""
                     return (
-                      <View style={{ paddingBottom: 10 }}>
+                      <View style={{ paddingBottom: 18 }}>
                         <TouchableOpacity
                           style={[s.planCard, isDragging && { elevation: 8, opacity: 0.92 }]}
                           onPress={() => loadSavedPlan(savedPlan)}
@@ -1230,22 +1334,12 @@ export default function MealPlanScreen() {
                             </View>
                           )}
                           <TouchableOpacity
-                            onPress={() => Alert.alert(
-                              savedPlan.name ?? "Plan",
-                              undefined,
-                              [
-                                { text: "Move to folder", onPress: () => setPlanActions({ plan: savedPlan, mode: "move" }) },
-                                { text: "Copy to folder", onPress: () => setPlanActions({ plan: savedPlan, mode: "copy" }) },
-                                { text: "Delete", style: "destructive", onPress: () => setDeleteConfirm({ type: "plan", plan: savedPlan }) },
-                                { text: "Cancel", style: "cancel" },
-                              ]
-                            )}
+                            onPress={() => { setRenameValue(savedPlan.name ?? ""); setPlanActionsModal({ plan: savedPlan, step: "menu" }) }}
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             style={{ padding: 4, marginRight: 2 }}
                           >
                             <Ionicons name="ellipsis-vertical" size={18} color={colors.muted} />
                           </TouchableOpacity>
-                          <Ionicons name="reorder-three-outline" size={20} color={colors.muted} />
                         </TouchableOpacity>
                       </View>
                     )
@@ -1253,49 +1347,68 @@ export default function MealPlanScreen() {
                 />
               </ScrollView>
             )}
-            {/* Move / Copy to folder picker */}
-            <Modal visible={!!planActions} transparent animationType="slide">
-              <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.55)" }}>
-                <View style={[s.modalContainer, { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: "65%" }]}>
+            {/* Folder actions modal — menu / rename */}
+            <Modal visible={!!folderActionsModal} transparent animationType="slide">
+              <TouchableOpacity style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.75)" }} activeOpacity={1} onPress={() => setFolderActionsModal(null)}>
+                <TouchableOpacity activeOpacity={1} style={[s.modalContainer, { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: "70%", flex: 0 }]}>
                   <View style={[s.modalHeader, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-                    <TouchableOpacity onPress={() => setPlanActions(null)}>
-                      <Ionicons name="close" size={22} color={colors.text} />
-                    </TouchableOpacity>
+                    {folderActionsModal?.step === "rename" ? (
+                      <TouchableOpacity onPress={() => setFolderActionsModal(m => m ? { ...m, step: "menu" } : null)}>
+                        <Ionicons name="arrow-back" size={22} color={colors.text} />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={{ width: 22 }} />
+                    )}
                     <Text style={s.modalTitle}>
-                      {planActions?.mode === "move" ? "Move to folder" : "Copy to folder"}
+                      {folderActionsModal?.step === "rename" ? "Rename group" : folderActionsModal?.folder ?? "Group"}
                     </Text>
                     <View style={{ width: 22 }} />
                   </View>
-                  <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
-                    {folderOrder
-                      .filter(f => planActions?.mode === "copy" || f !== (planActions?.plan?.folder ?? "Uncategorised"))
-                      .map(folder => (
-                        <TouchableOpacity
-                          key={folder}
-                          style={s.folderCard}
-                          onPress={() => {
-                            if (!planActions) return
-                            planActions.mode === "move"
-                              ? handleMovePlan(planActions.plan, folder)
-                              : handleCopyPlan(planActions.plan, folder)
-                          }}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22", width: 40, height: 40, borderRadius: 10 }]}>
-                            <Ionicons name="folder" size={20} color={colors.primary} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.folderName}>{folder}</Text>
-                            <Text style={s.folderCount}>
-                              {savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length} plan{savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length !== 1 ? "s" : ""}
-                            </Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-                        </TouchableOpacity>
-                      ))}
-                  </ScrollView>
-                </View>
-              </View>
+
+                  {folderActionsModal?.step === "menu" && (
+                    <View style={{ padding: spacing.md, gap: 10 }}>
+                      <TouchableOpacity
+                        style={s.actionMenuItem}
+                        onPress={() => setFolderActionsModal(m => m ? { ...m, step: "rename" } : null)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="pencil-outline" size={20} color={colors.text} />
+                        <Text style={s.actionMenuLabel}>Rename</Text>
+                        <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[s.actionMenuItem, { borderColor: colors.destructive + "55" }]}
+                        onPress={() => { setFolderActionsModal(null); setDeleteConfirm({ type: "folder", folder: folderActionsModal!.folder }) }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="trash-outline" size={20} color={colors.destructive} />
+                        <Text style={[s.actionMenuLabel, { color: colors.destructive }]}>Delete</Text>
+                        <Ionicons name="chevron-forward" size={18} color={colors.destructive + "88"} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {folderActionsModal?.step === "rename" && (
+                    <View style={{ padding: spacing.md, gap: 16 }}>
+                      <TextInput
+                        style={s.textField}
+                        value={folderRenameValue}
+                        onChangeText={setFolderRenameValue}
+                        placeholder="Group name..."
+                        placeholderTextColor={colors.muted}
+                        autoFocus
+                      />
+                      <TouchableOpacity
+                        style={[s.generateBtnLarge, (!folderRenameValue.trim() || folderRenaming) && s.btnDisabled]}
+                        onPress={() => folderActionsModal && handleRenameFolder(folderActionsModal.folder, folderRenameValue)}
+                        disabled={!folderRenameValue.trim() || folderRenaming}
+                      >
+                        {folderRenaming ? <ActivityIndicator color="#fff" /> : <Text style={s.generateBtnText}>Save</Text>}
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </TouchableOpacity>
             </Modal>
 
             {/* Delete confirmation */}
@@ -1348,10 +1461,87 @@ export default function MealPlanScreen() {
           </SafeAreaView>
       </Modal>
 
+      {/* ── Plan actions modal — menu / rename / move / copy ─────────── */}
+      <Modal visible={!!planActionsModal} transparent animationType="slide">
+        <TouchableOpacity style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.75)" }} activeOpacity={1} onPress={() => setPlanActionsModal(null)}>
+          <TouchableOpacity activeOpacity={1} style={[s.modalContainer, { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: "70%", flex: 0 }]}>
+            <View style={[s.modalHeader, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+              {planActionsModal?.step !== "menu" ? (
+                <TouchableOpacity onPress={() => setPlanActionsModal(m => m ? { ...m, step: "menu" } : null)}>
+                  <Ionicons name="arrow-back" size={22} color={colors.text} />
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: 22 }} />
+              )}
+              <Text style={s.modalTitle}>
+                {planActionsModal?.step === "rename" ? "Rename" : planActionsModal?.step === "move" ? "Move to group" : planActionsModal?.step === "copy" ? "Copy to group" : planActionsModal?.plan?.name ?? "Plan"}
+              </Text>
+              <View style={{ width: 22 }} />
+            </View>
+
+            {/* Menu step */}
+            {planActionsModal?.step === "menu" && (
+              <View style={{ padding: spacing.md, gap: 10 }}>
+                <TouchableOpacity style={s.actionMenuItem} onPress={() => setPlanActionsModal(m => m ? { ...m, step: "rename" } : null)} activeOpacity={0.8}>
+                  <Ionicons name="pencil-outline" size={20} color={colors.text} />
+                  <Text style={s.actionMenuLabel}>Rename</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                </TouchableOpacity>
+                <TouchableOpacity style={s.actionMenuItem} onPress={() => setPlanActionsModal(m => m ? { ...m, step: "copy" } : null)} activeOpacity={0.8}>
+                  <Ionicons name="copy-outline" size={20} color={colors.text} />
+                  <Text style={s.actionMenuLabel}>Copy to group</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                </TouchableOpacity>
+                <TouchableOpacity style={s.actionMenuItem} onPress={() => setPlanActionsModal(m => m ? { ...m, step: "move" } : null)} activeOpacity={0.8}>
+                  <Ionicons name="arrow-redo-outline" size={20} color={colors.text} />
+                  <Text style={s.actionMenuLabel}>Move to group</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.actionMenuItem, { borderColor: colors.destructive + "55" }]} onPress={() => { const p = planActionsModal?.plan; setPlanActionsModal(null); setDeleteConfirm({ type: "plan", plan: p }) }} activeOpacity={0.8}>
+                  <Ionicons name="trash-outline" size={20} color={colors.destructive} />
+                  <Text style={[s.actionMenuLabel, { color: colors.destructive }]}>Delete</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.destructive + "88"} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Rename step */}
+            {planActionsModal?.step === "rename" && (
+              <View style={{ padding: spacing.md, gap: 16 }}>
+                <TextInput style={s.textField} value={renameValue} onChangeText={setRenameValue} placeholder="Plan name..." placeholderTextColor={colors.muted} autoFocus />
+                <TouchableOpacity style={[s.generateBtnLarge, (!renameValue.trim() || renaming) && s.btnDisabled]} onPress={() => planActionsModal && handleRenamePlan(planActionsModal.plan, renameValue)} disabled={!renameValue.trim() || renaming}>
+                  {renaming ? <ActivityIndicator color="#fff" /> : <Text style={s.generateBtnText}>Save</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Move / Copy step */}
+            {(planActionsModal?.step === "move" || planActionsModal?.step === "copy") && (
+              <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+                {folderOrder
+                  .filter(f => planActionsModal.step === "copy" || f !== (planActionsModal.plan?.folder ?? "Uncategorised"))
+                  .map(folder => (
+                    <TouchableOpacity key={folder} style={s.folderCard} onPress={() => { if (!planActionsModal) return; planActionsModal.step === "move" ? handleMovePlan(planActionsModal.plan, folder) : handleCopyPlan(planActionsModal.plan, folder); setPlanActionsModal(null) }} activeOpacity={0.8}>
+                      <View style={[s.pathIconBg, { backgroundColor: colors.primary + "22", width: 40, height: 40, borderRadius: 10 }]}>
+                        <Ionicons name="folder" size={20} color={colors.primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.folderName}>{folder}</Text>
+                        <Text style={s.folderCount}>{savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length} plan{savedPlans.filter((p: any) => (p.folder ?? "Uncategorised") === folder).length !== 1 ? "s" : ""}</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+                    </TouchableOpacity>
+                  ))}
+              </ScrollView>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* ── Exit guard modal ────────────────────────────────────────── */}
-      <Modal visible={showExitGuard} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.78)", justifyContent: "center", alignItems: "center", padding: spacing.lg }}>
-          <View style={{
+      <Modal visible={showExitGuard} transparent animationType="fade" onRequestClose={() => setShowExitGuard(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.88)", justifyContent: "center", alignItems: "center", padding: spacing.lg }} activeOpacity={1} onPress={() => setShowExitGuard(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()} style={{
             backgroundColor: colors.background,
             borderRadius: 16,
             borderWidth: 1.5,
@@ -1378,18 +1568,49 @@ export default function MealPlanScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.destructive }]}
-              onPress={() => { setShowExitGuard(false); setHasUnsavedChanges(false) }}
+              onPress={() => { setShowExitGuard(false); doClearPlan() }}
             >
               <Text style={[s.generateBtnText, { color: colors.destructive }]}>Discard & leave</Text>
             </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── New plan exit guard (unsaved, no planId) ────────────────── */}
+      <Modal visible={showNewPlanExitGuard} transparent animationType="fade" onRequestClose={() => setShowNewPlanExitGuard(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.88)", justifyContent: "center", alignItems: "center", padding: spacing.lg }} activeOpacity={1} onPress={() => setShowNewPlanExitGuard(false)}>
+          <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()} style={{
+            backgroundColor: colors.background,
+            borderRadius: 16,
+            borderWidth: 1.5,
+            borderColor: colors.border,
+            padding: spacing.lg,
+            width: "100%",
+            maxWidth: 320,
+            shadowColor: "#000",
+            shadowOpacity: 0.3,
+            shadowRadius: 16,
+            elevation: 12,
+            gap: 10,
+          }}>
+            <Text style={{ color: colors.text, fontSize: 17, fontWeight: "700", textAlign: "center", marginBottom: 4 }}>Plan not saved</Text>
+            <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 14, marginBottom: 8, lineHeight: 20 }}>
+              {"You haven't saved this plan yet. Save it before leaving or discard it?"}
+            </Text>
             <TouchableOpacity
-              style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.border }]}
-              onPress={() => setShowExitGuard(false)}
+              style={s.generateBtnLarge}
+              onPress={() => { setShowNewPlanExitGuard(false); openSaveModal() }}
             >
-              <Text style={[s.generateBtnText, { color: colors.text }]}>Cancel</Text>
+              <Text style={s.generateBtnText}>Save plan</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+            <TouchableOpacity
+              style={[s.generateBtnLarge, { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.destructive }]}
+              onPress={() => { setShowNewPlanExitGuard(false); doClearPlan() }}
+            >
+              <Text style={[s.generateBtnText, { color: colors.destructive }]}>Discard & leave</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} featureName="Meal Planner" />
@@ -1401,6 +1622,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   title: { fontSize: 20, fontWeight: "800", color: colors.text },
+  topBarTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.text, textAlign: "center", marginHorizontal: 8 },
   regenBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 7 },
   regenBtnText: { color: colors.primary, fontWeight: "600", fontSize: 13 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
@@ -1460,6 +1682,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   generateBtnLarge: { backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.md, alignItems: "center" },
   generateBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   btnDisabled: { opacity: 0.4 },
+  subtleBtn: { flex: 1, paddingVertical: 9, borderRadius: radius.md, alignItems: "center", borderWidth: 1.5, borderColor: colors.primary, backgroundColor: "transparent" },
+  subtleBtnText: { color: colors.primary, fontWeight: "600", fontSize: 13 },
   aiIntro: { fontSize: 14, color: colors.mutedForeground, lineHeight: 20 },
   aiChipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   aiChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99, borderWidth: 1.5, borderColor: colors.primary },
@@ -1501,4 +1725,6 @@ const makeStyles = (colors: any) => StyleSheet.create({
   candidateWarn: { backgroundColor: "#fffbeb", borderColor: "#f59e0b" },
   candidateTitle: { fontSize: 14, fontWeight: "600", color: "#1a1a1a" },
   candidateWarning: { fontSize: 12, color: "#92400e", marginTop: 4 },
+  actionMenuItem: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, padding: spacing.md },
+  actionMenuLabel: { flex: 1, fontSize: 15, fontWeight: "600", color: colors.text },
 })
