@@ -13,22 +13,61 @@ LIST: MUST — Before Launch
 
 --- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
 
-My Recipes — thorough testing
-Test the full My Recipes + tagging feature:
-  - Save a recipe — verify tag picker appears (pageSheet modal)
-  - Select suggested tags + add a custom tag — verify saved correctly
-  - Skip tags — verify recipe saved with no tags
-  - View My Recipes — verify tags show as grey chips on cards
-  - Tag filter dropdown appears only when at least one tagged recipe exists
-  - Filter by tag — verify only tagged recipes shown, works with Saved/Tried tabs
-  - Edit tags via pricetag icon — verify PATCH updates correctly
-  - Unsave a recipe — verify it disappears from the list correctly
+My Recipes — test the new flow
+Test the full Search → My Recipes flow end to end:
+  - Search for a recipe — cards show no save buttons (clean list view only)
+  - Open a recipe detail — "Add to Try List" and "Mark as Tried" buttons visible in action bar
+  - Add to Try List — folder picker opens (Main List, existing folder, or new folder)
+  - Fix: user must be forced to enter a folder name when "New Folder" is selected
+    (both Add to Try List and Mark as Tried — currently can confirm with empty name)
+  - Mark as Tried — same folder-picker flow, separate Tried list
+  - My Recipes home — two large buttons: To Try and Tried with recipe counts
+  - Tap To Try — folder browser: Main List + named folders with counts
+  - Inside a folder — recipe list; filter chips appear for diet/cuisine/prep filters stored with recipes
+  - Move recipe to different folder via ellipsis menu → Move
+  - Mark a To Try recipe as Tried via the checkmark icon on the card
+  - Rename a folder — ellipsis on folder card → Rename
+  - Delete a folder — removes all recipes inside with confirmation
 
 Home screen update
 The home screen still describes the original early features and does not reflect what the app
 actually does today. Update the home screen content to accurately showcase the current full
 feature set: meal planner, fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
 This is a pre-launch blocker — first impressions matter.
+
+--- Navigation & UX ---
+
+Navigation audit — back gestures and close buttons
+Some screens use X button (blocks swipe-back gesture), others rely on swipe-left. Needs a full audit
+before launch. Swipe-back should work on all stack screens; modals should have X. Recipe detail,
+cooking mode, login modal, profile modals all need checking.
+
+--- Emails ---
+
+Fortnightly re-engagement email
+Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
+
+--- Search ---
+
+Ingredient autocomplete — search & meal planner
+When typing in the Ingredients field (search) or the Exclude Ingredients field (meal planner), query
+Spoonacular's autocomplete ingredient endpoint in real time and show suggestions below the input.
+Reduces typos and ensures ingredient names match Spoonacular's DB exactly. Shared reusable component.
+Spoonacular endpoint: GET /food/ingredients/autocomplete?query=&number=5.
+
+Wine search — empty state + Claude fallback
+When Spoonacular returns no wine pairing results, currently the screen is blank. Two fixes needed:
+1. MUST — show a clear empty state message ("No wine pairings found for this recipe") instead of blank.
+2. SHOULD — when Spoonacular returns empty, fall back to Claude (Haiku) to suggest 2–3 wines.
+   Response: wine name + one-line reason + Google search link so user can find it.
+   Reuse existing wine card layout where possible; otherwise render as a plain labelled list with an
+   "AI suggested" tag shown. Only fires when Spoonacular returns empty — no double-calling.
+
+--- Meal & Nutrition ---
+
+Macro and nutrition tracking
+Daily targets for calories, protein, carbs, fat. Track meals logged against targets.
+Show trends over time. Premium.
 
 --- Subscription & Payments ---
 
@@ -81,32 +120,6 @@ Complete for both Google Play and App Store submission.
 
 Google Play developer account
 One-time $25 fee.
-
---- Navigation & UX ---
-
-Navigation audit — back gestures and close buttons
-Some screens use X button (blocks swipe-back gesture), others rely on swipe-left. Needs a full audit
-before launch. Swipe-back should work on all stack screens; modals should have X. Recipe detail,
-cooking mode, login modal, profile modals all need checking.
-
---- Emails ---
-
-Fortnightly re-engagement email
-Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
-
---- Search ---
-
-Ingredient autocomplete — search & meal planner
-When typing in the Ingredients field (search) or the Exclude Ingredients field (meal planner), query
-Spoonacular's autocomplete ingredient endpoint in real time and show suggestions below the input.
-Reduces typos and ensures ingredient names match Spoonacular's DB exactly. Shared reusable component.
-Spoonacular endpoint: GET /food/ingredients/autocomplete?query=&number=5.
-
---- Meal & Nutrition ---
-
-Macro and nutrition tracking
-Daily targets for calories, protein, carbs, fat. Track meals logged against targets.
-Show trends over time. Premium.
 
 --- Review & Enhance ---
 
@@ -162,12 +175,8 @@ AI recipe instruction enrichment
 For recipes with 50–70% of ingredients mentioned in steps, pass to Claude Haiku to enrich instructions.
 Cost tracking required — log each enrichment call (recipe_id, timestamp, tokens_used) before enabling broadly.
 
-AI wine pairing fallback
-When Spoonacular returns no wine results for a recipe, fall back to Claude (Haiku) to suggest 2–3 wines.
-Response is a simple list: wine name + one-line reason + a Google search link (e.g. google.com/search?q=...)
-so the user can find it without us serving an image or needing a richer data model. Keeps token cost minimal.
-Reuse the existing wine pairing card layout if data is rich enough; otherwise render as a plain labelled list
-with the AI-generated tag shown. Only fires when Spoonacular returns an empty array — no double-calling.
+AI wine pairing fallback — Claude suggestion when Spoonacular returns empty
+Moved to MUST (empty state fix) + SHOULD (Claude fallback). See MUST section above.
 
 Analytics
 Track searches, saves, completions, premium conversion, trial retention, meal plan usage, shopping list engagement.
@@ -471,10 +480,12 @@ Recipe detail pages
 Nutrition panel (calories, protein, fat with saturated fat breakdown, carbs — per serving), ingredients list,
 step-by-step instructions. Substitutions banner when active.
 
-My Recipes — unified Saved + Tried screen
-Single screen replaces separate Favourites and Tried tabs. Filter tabs: All / Saved (N) / Tried (N).
-Each recipe card shows Saved badge and/or Tried badge. Heart to unsave, star to rate, trash to remove from
-tried history. Tried recipes show rating summary inline. Images loaded from Spoonacular CDN for tried-only recipes.
+My Recipes — To Try / Tried folder system ✅
+Home screen with two large buttons (To Try, Tried) showing counts. Each list has a folder browser:
+Main List + named folders. Save from RecipeDetail via "Add to Try List" or "Mark as Tried" — both open
+a folder-picker modal (main list, existing folder, or new folder). Active search filters stored per recipe
+and shown as filter chips inside folder views. Move/rename/delete folders. Mark-as-tried from To Try view.
+Rating and tag editing preserved. DB: folder + search_filters columns on favourites and tried_recipes.
 
 Shopping list
 Check off items per recipe. Delete individual items or clear all.
@@ -546,10 +557,9 @@ Removes recipes with poor instructions: min 4 steps + at least 50% of ingredient
 Auto-refills to minimum 12 quality results per page.
 
 My Recipes — tags ✅
-  Saving a recipe opens a tag picker (pageSheet) before saving.
+  Tags editable via pricetag icon on recipe cards inside folder view.
   Suggested tags: Romantic, Weekend, Treat, Kids, Quick, Healthy, Comfort, Batch Cook. Plus custom.
-  Tags shown as grey chips on recipe cards. Editable via pricetag icon on each card.
-  Tag filter dropdown in filter row — filters recipes by tag, works alongside Saved/Tried tabs.
+  Tags shown as grey chips on recipe cards.
 
 Auto logout when JWT expires ✅
 Registration disclaimer checkbox ✅
