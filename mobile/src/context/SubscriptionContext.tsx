@@ -15,12 +15,12 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
 })
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [isPremium, setIsPremium] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   const checkSubscription = useCallback(async () => {
-    if (!user?.id) { setIsLoading(false); return }
+    if (!user?.id) { if (!authLoading) setIsLoading(false); return }
     try {
       const res = await fetch(`${API_BASE_URL}/api/subscription?userId=${user.id}`)
       const data = await res.json()
@@ -30,11 +30,11 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     } finally {
       setIsLoading(false)
     }
-  }, [user?.id])
+  }, [user?.id, authLoading])
 
   useEffect(() => {
     checkSubscription()
-  }, [user?.id])
+  }, [user?.id, authLoading])
 
   return (
     <SubscriptionContext.Provider value={{ isPremium, isLoading, checkSubscription }}>
