@@ -18,13 +18,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, recipeId, recipeTitle, triedOn, estimatedTime } = await request.json()
+    const { userId, recipeId, recipeTitle, recipeImage, readyInMinutes, servings, triedOn, estimatedTime, folder, searchFilters } = await request.json()
     if (!userId || !recipeId) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     await pool.query(
-      `INSERT INTO tried_recipes (user_id, recipe_id, recipe_title, tried_on, estimated_time)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO tried_recipes (user_id, recipe_id, recipe_title, tried_on, estimated_time, folder, search_filters)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (user_id, recipe_id) DO NOTHING`,
-      [userId, String(recipeId), recipeTitle, triedOn ?? new Date().toISOString().split("T")[0], estimatedTime ?? null]
+      [userId, String(recipeId), recipeTitle, triedOn ?? new Date().toISOString().split("T")[0], estimatedTime ?? readyInMinutes ?? null, folder ?? null, searchFilters ? JSON.stringify(searchFilters) : null]
     )
     return NextResponse.json({ ok: true })
   } catch (err) {
@@ -35,13 +35,27 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { userId, recipeId, satisfaction, timeAccuracy, difficulty } = await request.json()
+    const { userId, recipeId, satisfaction, timeAccuracy, difficulty, folder, targetFolder } = await request.json()
     if (!userId || !recipeId) return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    await pool.query(
-      `UPDATE tried_recipes SET satisfaction = $3, time_accuracy = $4, difficulty = $5
-       WHERE user_id = $1 AND recipe_id = $2`,
-      [userId, String(recipeId), satisfaction, timeAccuracy, difficulty]
-    )
+
+    if (targetFolder !== undefined) {
+      await pool.query(
+        "UPDATE tried_recipes SET folder = $3 WHERE user_id = $1 AND recipe_id = $2",
+        [userId, String(recipeId), targetFolder ?? null]
+      )
+    } else if (folder !== undefined) {
+      await pool.query(
+        "UPDATE tried_recipes SET folder = $3 WHERE user_id = $1 AND recipe_id = $2",
+        [userId, String(recipeId), folder ?? null]
+      )
+    } else {
+      await pool.query(
+        `UPDATE tried_recipes SET satisfaction = $3, time_accuracy = $4, difficulty = $5
+         WHERE user_id = $1 AND recipe_id = $2`,
+        [userId, String(recipeId), satisfaction, timeAccuracy, difficulty]
+      )
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error(err)

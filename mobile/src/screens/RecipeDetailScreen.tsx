@@ -56,10 +56,15 @@ export default function RecipeDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>("overview")
   const [favourited, setFavourited] = useState(false)
-  const [showTagPicker, setShowTagPicker] = useState(false)
-  const [pendingTags, setPendingTags] = useState<string[]>([])
-  const [customTag, setCustomTag] = useState("")
   const [isTried, setIsTried] = useState(false)
+  // save-to-list modal
+  const [saveListModal, setSaveListModal] = useState<"toTry" | "tried" | null>(null)
+  const [saveFolder, setSaveFolder] = useState("")
+  const [saveFolderCustom, setSaveFolderCustom] = useState("")
+  const [savingList, setSavingList] = useState(false)
+  const [existingToTryFolders, setExistingToTryFolders] = useState<string[]>([])
+  const [existingTriedFolders, setExistingTriedFolders] = useState<string[]>([])
+  const [showFolderPicker, setShowFolderPicker] = useState(false)
   const [addedIngredients, setAddedIngredients] = useState<Set<string>>(new Set())
   const [addingAll, setAddingAll] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -110,8 +115,11 @@ export default function RecipeDetailScreen() {
     apiFetch(`/api/favourites?userId=${user.id}`)
       .then(r => r.json())
       .then(data => {
-        const ids = (data.favourites || []).map((f: any) => f.recipe_id)
+        const favs = data.favourites || []
+        const ids = favs.map((f: any) => f.recipe_id)
         setFavourited(ids.includes(String(recipe.id)))
+        const folders = Array.from(new Set(favs.map((f: any) => f.folder).filter(Boolean))) as string[]
+        setExistingToTryFolders(folders)
       }).catch(() => {})
 
     apiFetch(`/api/shopping-list?userId=${user.id}`)
@@ -126,31 +134,56 @@ export default function RecipeDetailScreen() {
     apiFetch(`/api/tried-recipes?userId=${user.id}`)
       .then(r => r.json())
       .then(data => {
-        const ids = (data.triedRecipes || []).map((t: any) => t.recipe_id)
+        const tried = data.triedRecipes || []
+        const ids = tried.map((t: any) => t.recipe_id)
         setIsTried(ids.includes(String(recipe.id)))
+        const folders = Array.from(new Set(tried.map((t: any) => t.folder).filter(Boolean))) as string[]
+        setExistingTriedFolders(folders)
       }).catch(() => {})
   }, [user, recipe?.id])
 
-  const toggleFavourite = async () => {
+  const openSaveModal = (mode: "toTry" | "tried") => {
     if (!user) { navigation.navigate("Login"); return }
-    if (favourited) {
-      await apiFetch("/api/favourites", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: recipe.id }) })
-      setFavourited(false)
-    } else {
-      setPendingTags([])
-      setCustomTag("")
-      setShowTagPicker(true)
-    }
+    setSaveFolder("")
+    setSaveFolderCustom("")
+    setSaveListModal(mode)
   }
 
-  const saveFavouriteWithTags = async (tags: string[]) => {
-    if (!user || !recipe) return
-    setShowTagPicker(false)
-    await apiFetch("/api/favourites", {
-      method: "POST",
-      body: JSON.stringify({ userId: user.id, recipeId: recipe.id, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, servings: recipe.servings, tags }),
-    })
-    setFavourited(true)
+  const confirmSaveToList = async () => {
+    if (!user || !recipe || !saveListModal) return
+    const folder = saveFolder === "__custom__" ? saveFolderCustom.trim() : saveFolder || null
+    setSavingList(true)
+    try {
+      if (saveListModal === "toTry") {
+        await apiFetch("/api/favourites", {
+          method: "POST",
+          body: JSON.stringify({ userId: user.id, recipeId: recipe.id, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, servings: recipe.servings, tags: [], folder }),
+        })
+        setFavourited(true)
+        if (folder && !existingToTryFolders.includes(folder)) setExistingToTryFolders(prev => [...prev, folder])
+      } else {
+        await apiFetch("/api/tried-recipes", {
+          method: "POST",
+          body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, folder }),
+        })
+        setIsTried(true)
+        if (folder && !existingTriedFolders.includes(folder)) setExistingTriedFolders(prev => [...prev, folder])
+      }
+      setSaveListModal(null)
+    } catch { Alert.alert("Error", "Failed to save. Please try again.") }
+    finally { setSavingList(false) }
+  }
+
+  const removeFavourite = async () => {
+    if (!user) return
+    await apiFetch("/api/favourites", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: recipe.id }) })
+    setFavourited(false)
+  }
+
+  const removeTried = async () => {
+    if (!user) return
+    await apiFetch("/api/tried-recipes", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id) }) })
+    setIsTried(false)
   }
 
   const toggleIngredient = async (name: string, amount: string) => {
@@ -185,21 +218,6 @@ export default function RecipeDetailScreen() {
     setAddingAll(false)
   }
 
-  const markTried = async () => {
-    if (!user) { navigation.navigate("Login"); return }
-    const res = await apiFetch("/api/tried-recipes", {
-      method: "POST",
-      screen: "Recipe Detail",
-      body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title }),
-    })
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      showError(data?.error ?? `Error ${res.status}`, "Recipe Detail", markTried)
-      return
-    }
-    setIsTried(true)
-    Alert.alert("Marked as tried!")
-  }
 
   const fetchWinePairing = useCallback(async () => {
     if (!recipe) return
@@ -561,16 +579,22 @@ export default function RecipeDetailScreen() {
         <Image source={{ uri: recipe.image }} style={s.heroImage} resizeMode="cover" />
 
         <View style={s.actionBar}>
-          <TouchableOpacity style={[s.actionBtn, favourited && s.actionBtnActive]} onPress={toggleFavourite}>
-            <Ionicons name={favourited ? "heart" : "heart-outline"} size={20} color={favourited ? colors.primary : colors.text} />
+          <TouchableOpacity
+            style={[s.actionBtn, favourited && s.actionBtnActive]}
+            onPress={() => favourited ? removeFavourite() : openSaveModal("toTry")}
+          >
+            <Ionicons name={favourited ? "bookmark" : "bookmark-outline"} size={20} color={favourited ? colors.primary : colors.text} />
             <Text style={[s.actionBtnText, favourited && { color: colors.primary }]}>
-              {favourited ? "Saved" : "Save"}
+              {favourited ? "In Try List" : "Add to Try List"}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.actionBtn, isTried && s.actionBtnActive]} onPress={markTried}>
+          <TouchableOpacity
+            style={[s.actionBtn, isTried && s.actionBtnActive]}
+            onPress={() => isTried ? removeTried() : openSaveModal("tried")}
+          >
             <Ionicons name={isTried ? "checkmark-circle" : "checkmark-circle-outline"} size={20} color={isTried ? colors.green : colors.text} />
             <Text style={[s.actionBtnText, isTried && { color: colors.green }]}>
-              {isTried ? "Tried" : "Mark tried"}
+              {isTried ? "Tried" : "Mark as Tried"}
             </Text>
           </TouchableOpacity>
           {fromSession && (
@@ -856,95 +880,112 @@ export default function RecipeDetailScreen() {
 
       {renderCheckModal()}
 
-      {/* ── Tag picker modal (shown when saving a recipe) ─────────── */}
-      <Modal visible={showTagPicker} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <TouchableOpacity onPress={() => setShowTagPicker(false)}>
-              <Text style={{ color: colors.mutedForeground, fontSize: 15 }}>Skip</Text>
-            </TouchableOpacity>
-            <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Add tags</Text>
-            <TouchableOpacity onPress={() => saveFavouriteWithTags(pendingTags)}>
-              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: "700" }}>Save</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 16 }} keyboardShouldPersistTaps="handled">
-            <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Choose tags to help you find this recipe later. You can always edit them.</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {["Romantic", "Weekend", "Treat", "Kids", "Quick", "Healthy", "Comfort", "Batch Cook"].map(tag => {
-                const active = pendingTags.includes(tag)
-                return (
-                  <TouchableOpacity
-                    key={tag}
-                    onPress={() => setPendingTags(prev => active ? prev.filter(t => t !== tag) : [...prev, tag])}
-                    style={{
-                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 99,
-                      borderWidth: 1.5,
-                      borderColor: active ? colors.primary : colors.border,
-                      backgroundColor: active ? colors.primary + "18" : colors.card,
-                    }}
-                  >
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: active ? colors.primary : colors.mutedForeground }}>{tag}</Text>
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-            <View>
-              <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>Custom tag</Text>
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <TextInput
-                  style={{ flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, color: colors.text, backgroundColor: colors.card, fontSize: 14 }}
-                  value={customTag}
-                  onChangeText={setCustomTag}
-                  placeholder="e.g. Date night, Post-gym…"
-                  placeholderTextColor={colors.muted}
-                  returnKeyType="done"
-                  onSubmitEditing={() => {
-                    const t = customTag.trim()
-                    if (t && !pendingTags.includes(t)) setPendingTags(prev => [...prev, t])
-                    setCustomTag("")
-                  }}
-                />
+      {/* ── Save to Try List / Tried modal ── */}
+      {saveListModal && (() => {
+        const isToTry = saveListModal === "toTry"
+        const title = isToTry ? "Add to Try List" : "Mark as Tried"
+        const existingFolders = isToTry ? existingToTryFolders : existingTriedFolders
+        return (
+          <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSaveListModal(null)}>
+            <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                <TouchableOpacity onPress={() => setSaveListModal(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="arrow-back" size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>{title}</Text>
+                <View style={{ width: 24 }} />
+              </View>
+              <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }} keyboardShouldPersistTaps="handled">
+                <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }} numberOfLines={2}>{recipe?.title}</Text>
+                <View>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>Folder (optional)</Text>
+                  {existingFolders.length > 0 && (
+                    <>
+                      <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 6 }}>Existing folders</Text>
+                      <TouchableOpacity
+                        style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: colors.card, marginBottom: 12 }}
+                        onPress={() => setShowFolderPicker(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={{ color: (saveFolder && saveFolder !== "__custom__") ? colors.text : colors.muted, fontSize: 15 }}>
+                          {(saveFolder && saveFolder !== "__custom__") ? saveFolder : "Choose an existing folder…"}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color={colors.muted} />
+                      </TouchableOpacity>
+                    </>
+                  )}
+                  <Text style={{ fontSize: 12, color: colors.mutedForeground, marginBottom: 8 }}>Or add to main list / new folder</Text>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                    <TouchableOpacity
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 99, borderWidth: 1.5, borderColor: saveFolder === "" ? colors.primary : colors.border, backgroundColor: saveFolder === "" ? colors.primary : "transparent" }}
+                      onPress={() => { setSaveFolder(""); setSaveFolderCustom("") }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: saveFolder === "" ? "#fff" : colors.primary }}>Main List</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 99, borderWidth: 1.5, borderColor: saveFolder === "__custom__" ? colors.primary : colors.border, backgroundColor: saveFolder === "__custom__" ? colors.primary : "transparent" }}
+                      onPress={() => setSaveFolder("__custom__")}
+                    >
+                      <Ionicons name="add" size={14} color={saveFolder === "__custom__" ? "#fff" : colors.primary} />
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: saveFolder === "__custom__" ? "#fff" : colors.primary }}>New Folder</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {saveFolder === "__custom__" && (
+                    <TextInput
+                      style={{ borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, color: colors.text, fontSize: 15, backgroundColor: colors.card, marginTop: 10 }}
+                      value={saveFolderCustom}
+                      onChangeText={setSaveFolderCustom}
+                      placeholder="Enter folder name..."
+                      placeholderTextColor={colors.muted}
+                      autoFocus
+                    />
+                  )}
+                </View>
+              </ScrollView>
+              <View style={{ padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
                 <TouchableOpacity
-                  style={{ backgroundColor: colors.primary, paddingHorizontal: 16, justifyContent: "center", borderRadius: radius.md }}
-                  onPress={() => {
-                    const t = customTag.trim()
-                    if (t && !pendingTags.includes(t)) setPendingTags(prev => [...prev, t])
-                    setCustomTag("")
-                  }}
+                  style={{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.md, alignItems: "center", opacity: savingList ? 0.5 : 1 }}
+                  onPress={confirmSaveToList}
+                  disabled={savingList}
                 >
-                  <Text style={{ color: "#fff", fontWeight: "700" }}>Add</Text>
+                  {savingList ? <ActivityIndicator color="#fff" /> : <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>{title}</Text>}
                 </TouchableOpacity>
               </View>
-            </View>
-            {pendingTags.length > 0 && (
-              <View>
-                <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600", marginBottom: 8 }}>Selected</Text>
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {pendingTags.map(tag => (
-                    <TouchableOpacity
-                      key={tag}
-                      onPress={() => setPendingTags(prev => prev.filter(t => t !== tag))}
-                      style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, backgroundColor: colors.primary, }}
-                    >
-                      <Text style={{ color: "#fff", fontSize: 13, fontWeight: "600" }}>{tag}</Text>
-                      <Ionicons name="close" size={13} color="#fff" />
+            </SafeAreaView>
+
+            {/* Folder picker sheet */}
+            <Modal visible={showFolderPicker} transparent animationType="slide" onRequestClose={() => setShowFolderPicker(false)}>
+              <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
+                <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: "60%" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                    <View style={{ width: 24 }} />
+                    <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }}>Choose Folder</Text>
+                    <TouchableOpacity onPress={() => setShowFolderPicker(false)}>
+                      <Ionicons name="close" size={22} color={colors.text} />
                     </TouchableOpacity>
-                  ))}
+                  </View>
+                  <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 10 }}>
+                    {existingFolders.map(f => (
+                      <TouchableOpacity
+                        key={f}
+                        style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: radius.md, backgroundColor: colors.card, borderWidth: saveFolder === f ? 2 : 1, borderColor: saveFolder === f ? colors.primary : colors.border }}
+                        onPress={() => { setSaveFolder(f); setShowFolderPicker(false) }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center" }}>
+                          <Ionicons name="folder" size={20} color={colors.primary} />
+                        </View>
+                        <Text style={{ flex: 1, fontSize: 15, fontWeight: "600", color: colors.text }}>{f}</Text>
+                        {saveFolder === f && <Ionicons name="checkmark-circle" size={22} color={colors.primary} />}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
               </View>
-            )}
-          </ScrollView>
-          <View style={{ padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
-            <TouchableOpacity
-              style={{ backgroundColor: colors.primary, paddingVertical: 14, borderRadius: radius.md, alignItems: "center" }}
-              onPress={() => saveFavouriteWithTags(pendingTags)}
-            >
-              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Save recipe{pendingTags.length > 0 ? ` with ${pendingTags.length} tag${pendingTags.length > 1 ? "s" : ""}` : ""}</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </Modal>
+            </Modal>
+          </Modal>
+        )
+      })()}
     </>
   )
 }

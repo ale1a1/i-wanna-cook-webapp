@@ -120,3 +120,9 @@ ALTER TABLE meal_plans ADD COLUMN IF NOT EXISTS original_plan_data JSONB;
 
 -- Migration: tags on saved recipes
 ALTER TABLE favourites ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
+
+-- Migration: folders and search filters on saved/tried recipes
+ALTER TABLE favourites ADD COLUMN IF NOT EXISTS folder TEXT;
+ALTER TABLE favourites ADD COLUMN IF NOT EXISTS search_filters JSONB;
+ALTER TABLE tried_recipes ADD COLUMN IF NOT EXISTS folder TEXT;
+ALTER TABLE tried_recipes ADD COLUMN IF NOT EXISTS search_filters JSONB;
