@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     await pool.query(
       `INSERT INTO favourites (user_id, recipe_id, recipe_title, recipe_image, ready_in_minutes, servings, tags, folder, search_filters)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (user_id, recipe_id) DO UPDATE SET tags = $7, folder = COALESCE($8, favourites.folder), search_filters = COALESCE($9, favourites.search_filters)`,
+       ON CONFLICT (user_id, recipe_id) DO UPDATE SET tags = $7, folder = COALESCE($8, favourites.folder), search_filters = CASE WHEN $9 IS NOT NULL THEN $9 ELSE favourites.search_filters END`,
       [userId, String(recipeId), recipeTitle, recipeImage, readyInMinutes, servings, tags ?? [], folder ?? null, searchFilters ? JSON.stringify(searchFilters) : null]
     )
     return NextResponse.json({ ok: true })
