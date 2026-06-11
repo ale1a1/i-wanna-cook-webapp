@@ -159,6 +159,10 @@ export default function RecipeDetailScreen() {
           method: "POST",
           body: JSON.stringify({ userId: user.id, recipeId: recipe.id, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, servings: recipe.servings, tags: [], folder }),
         })
+        if (isTried) {
+          await apiFetch("/api/tried-recipes", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id) }) })
+          setIsTried(false)
+        }
         setFavourited(true)
         if (folder && !existingToTryFolders.includes(folder)) setExistingToTryFolders(prev => [...prev, folder])
       } else {
@@ -166,6 +170,10 @@ export default function RecipeDetailScreen() {
           method: "POST",
           body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, folder }),
         })
+        if (favourited) {
+          await apiFetch("/api/favourites", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: recipe.id }) })
+          setFavourited(false)
+        }
         setIsTried(true)
         if (folder && !existingTriedFolders.includes(folder)) setExistingTriedFolders(prev => [...prev, folder])
       }

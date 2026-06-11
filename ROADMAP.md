@@ -11,29 +11,25 @@ not considered "web app features" and changes to them apply to both platforms.
 LIST: MUST — Before Launch
 ================================================================
 
+
+
+
 --- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
 
-My Recipes — test the new flow
-Test the full Search → My Recipes flow end to end:
-  - Search for a recipe — cards show no save buttons (clean list view only)
-  - Open a recipe detail — "Add to Try List" and "Mark as Tried" buttons visible in action bar
-  - Add to Try List — folder picker opens (Main List, existing folder, or new folder)
-  - Fix: user must be forced to enter a folder name when "New Folder" is selected
-    (both Add to Try List and Mark as Tried — currently can confirm with empty name)
-  - Mark as Tried — same folder-picker flow, separate Tried list
-  - My Recipes home — two large buttons: To Try and Tried with recipe counts
-  - Tap To Try — folder browser: Main List + named folders with counts
-  - Inside a folder — recipe list; filter chips appear for diet/cuisine/prep filters stored with recipes
-  - Move recipe to different folder via ellipsis menu → Move
-  - Mark a To Try recipe as Tried via the checkmark icon on the card
-  - Rename a folder — ellipsis on folder card → Rename
-  - Delete a folder — removes all recipes inside with confirmation
+
+My Recipes
+  Test the full Search → My Recipes flow end to end: 
+  - test filters in my recipes (now they are not working...I think you need to save in the DB the saved recipes with the filters applied from search page...then when I use the filter ffearture will filter in the DB this time and retutn based on that filtering?)
+  - Move recipe to different folder 
+  - Mark a To Try recipe as Tried via checkmark icon from search page and my recipe page
+  - Rename a folder — long-press ellipsis on folder card
+  - Delete a folder — removes all recipes inside it
 
 Home screen update
-The home screen still describes the original early features and does not reflect what the app
-actually does today. Update the home screen content to accurately showcase the current full
-feature set: meal planner, fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
-This is a pre-launch blocker — first impressions matter.
+The home screen still shows original early-development features.
+Update it to reflect what the app actually does now: meal planner,
+fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
+Pre-launch blocker — first impressions matter.
 
 --- Navigation & UX ---
 
@@ -60,8 +56,8 @@ When Spoonacular returns no wine pairing results, currently the screen is blank.
 1. MUST — show a clear empty state message ("No wine pairings found for this recipe") instead of blank.
 2. SHOULD — when Spoonacular returns empty, fall back to Claude (Haiku) to suggest 2–3 wines.
    Response: wine name + one-line reason + Google search link so user can find it.
-   Reuse existing wine card layout where possible; otherwise render as a plain labelled list with an
-   "AI suggested" tag shown. Only fires when Spoonacular returns empty — no double-calling.
+   Reuse existing wine card layout where possible; otherwise plain labelled list with "AI suggested" tag.
+   Only fires when Spoonacular returns empty — no double-calling.
 
 --- Meal & Nutrition ---
 
@@ -125,10 +121,9 @@ One-time $25 fee.
 
 Endpoint enhancement audit
 Cross-reference the full Spoonacular endpoint list against SHOULD / COULD / Phase 3 features.
-Identify which planned features could be built with existing endpoints already in use, and which
-ones unlock cheap wins with minimal extra API calls. Check for any Spoonacular endpoints not yet
-used that could improve existing features (autocomplete, nutrition facts, food trivia, recipe card
-images, etc). Do this before starting any new feature work.
+Identify which planned features could be built with existing endpoints, and which unused endpoints
+unlock cheap wins. Check autocomplete, nutrition facts, food trivia, recipe card images, etc.
+Do this before starting any new feature work.
 
 
 ================================================================
@@ -136,50 +131,40 @@ LIST: SHOULD — High Priority After Launch
 ================================================================
 
 Guided Navigation (contextual help system)
-For non-obvious actions (quick shopping list cart button, substitution flow, session tabs, etc.), show a
-one-time confirmation prompt with a "Don't ask again" option. User can also tap a ? icon on any screen
-to trigger an animated walkthrough. Guided navigation toggleable in Settings. On by default for new users.
+For non-obvious actions, show a one-time confirmation prompt with a "Don't ask again" option.
+User can also tap a ? icon on any screen to trigger an animated walkthrough. Toggleable in Settings.
 
 Dietary profile
-Let users set their dietary restrictions and intolerances once in their profile — auto-applied to all
-searches and meal plans. Premium feature. Foundation for sport/fitness presets.
+Set dietary restrictions and intolerances once in profile — auto-applied to all searches and meal plans.
+Premium. Foundation for sport/fitness presets.
 
 AI chat assistant
-A conversational screen where users describe what they have or want and get recipe suggestions from Claude.
-"Something quick with chicken", "high protein after gym", "use my leftovers". Premium feature.
+Conversational screen: "Something quick with chicken", "high protein after gym", "use my leftovers".
+Claude-powered. Premium.
 
 Smart recommendations
-Suggest recipes based on the user's tried recipes and favourites history. Low API cost, high perceived value.
+Suggest recipes based on tried recipes and favourites history. Low API cost, high perceived value.
 
 Pantry tracking
-Manual ingredient inventory. Highlight items approaching expiry. Auto-suggest recipes that use what is
-about to expire. Big differentiator.
+Manual ingredient inventory. Highlight items approaching expiry. Auto-suggest recipes. Big differentiator.
 
 Full nutrition breakdown panel
-Basic panel (calories, protein, fat + sat fat, carbs, per serving) live. Full premium panel
-(fibre, sugar, RDA percentages) still to build as premium feature.
+Basic panel live. Full premium panel (fibre, sugar, RDA percentages) still to build.
 
 Chef avatar narrator for cooking mode
-A distinctive chef character shown during cooking mode. Gives the app personality. The avatar reacts
-as steps progress — idle, talking, celebrating when done.
+Distinctive chef character during cooking mode. Reacts as steps progress.
 
 Voice narrator for cooking mode
-Chef reads each step aloud using a natural-sounding voice. Users choose from a small set of voice styles.
-Powered by a TTS API (e.g. ElevenLabs or Google TTS). Replaces current basic expo-speech. Premium.
+Chef reads each step aloud. Natural-sounding voice. TTS API (ElevenLabs or Google TTS). Premium.
 
 Sentry error monitoring
-Replace current manual error reporting with Sentry. Captures crashes, JS errors, API failures with full
-stack traces. Currently errors are reported via a custom Resend email which is fragile.
+Replace current custom Resend email error reporting with Sentry. Crashes, JS errors, full stack traces.
 
 AI recipe instruction enrichment
-For recipes with 50–70% of ingredients mentioned in steps, pass to Claude Haiku to enrich instructions.
-Cost tracking required — log each enrichment call (recipe_id, timestamp, tokens_used) before enabling broadly.
-
-AI wine pairing fallback — Claude suggestion when Spoonacular returns empty
-Moved to MUST (empty state fix) + SHOULD (Claude fallback). See MUST section above.
+For recipes with 50-70% ingredients in steps, Claude Haiku enriches instructions. Cost tracking required.
 
 Analytics
-Track searches, saves, completions, premium conversion, trial retention, meal plan usage, shopping list engagement.
+Track searches, saves, completions, premium conversion, trial retention, meal plan usage.
 
 Redis caching
 Reduce Spoonacular API calls. Lower costs at scale.
@@ -193,23 +178,22 @@ LIST: COULD — Later
 ================================================================
 
 AI recipe modification
-Make it healthier, increase protein, make it vegetarian, reduce calories. One tap. Claude API. Premium only.
+Make it healthier, increase protein, make it vegetarian, reduce calories. One tap. Premium only.
 
 Push notifications
 Dinner reminders, meal plan nudges, trial expiry alerts. Drives retention.
 
 Cooking mode upgrades — individual item timers
-Set a timer for pasta, another for sauce, independently. Real cooking utility.
+Set a timer for pasta, another for sauce, independently.
 
 Voice cooking assistant Phase 2
-Always-on microphone across the whole app. Navigate by voice, search by voice, apply filters by voice.
-Persistent subtle listening indicator.
+Always-on microphone across the whole app. Navigate and search by voice.
 
 Language preference
 User selects language, persisted to profile.
 
 MFA
-Multi-factor authentication via AWS Cognito. Low priority but good for trust.
+Multi-factor authentication via AWS Cognito.
 
 Barcode scanner
 Scan groceries to add to pantry instantly.
@@ -220,13 +204,11 @@ LIST: FUTURE — Phase 3
 ================================================================
 
 Supermarket shopping list integration
-Send the in-app shopping list directly to an online supermarket for delivery or click-and-collect.
-Target UK supermarkets: Tesco, Morrisons, Aldi, Lidl, Sainsbury's. No public cart APIs exist today —
-requires partnership or aggregator (e.g. Instacart if they expand UK). Phase 3 / partnership territory.
+Send shopping list directly to an online supermarket (Tesco, Morrisons, Aldi, Lidl, Sainsbury's).
+No public cart APIs exist today — requires partnership or aggregator. Phase 3 / partnership territory.
 
 Fridge photo to full pantry state
-Already partially built — ingredient scan exists. Full "what can I cook with this?" flow using full
-pantry state. Needs Spoonacular Cook plan ($29/mo) at scale.
+Full "what can I cook with this?" flow. Needs Spoonacular Cook plan ($29/mo) at scale.
 
 Recipe collections management
 Recipe boards, folders, custom collections.
@@ -237,8 +219,7 @@ LIST: TECHNICAL DEBT
 ================================================================
 
 AWS SQS + Lambda email workers
-Queue workers for re-engagement emails. Welcome/warning/deletion emails currently fire inline.
-Re-engagement email has no trigger yet — needs a scheduled job.
+Re-engagement email needs a scheduled job. Welcome/warning/deletion currently fire inline.
 
 Push notification infrastructure
 Required before push notifications can be built.
@@ -248,206 +229,82 @@ Required before push notifications can be built.
 SERVICE FAILURE & BILLING ALERTS — MANUAL CHECKLIST
 ================================================================
 
-This section documents every paid/quota service, what breaks when it fails,
-whether the app currently alerts you, and what you need to check/pay.
-
-----------------------------------------------------------------
 1. ANTHROPIC (Claude API)
-----------------------------------------------------------------
-Cost model: pay-per-token. No hard cap — if you run out of credits the API returns 401 or 429.
-Used for: ingredient photo scanning, substitute suggestions, AI filter suggestions, meal replacement validation.
-Routes: /api/recipes/analyze-image, /api/recipes/suggest-substitute, /api/recipes/suggest-filters, /api/meal-plan/replace-meal
+Cost: pay-per-token. Runs out → 401 or 429.
+Used for: scanner, substitutes, AI filters, meal replacement validation.
+Alert: ✅ Owner email on 401/429/529 (lib/alertOwner.ts)
+Action: console.anthropic.com → top up credits
 
-What breaks when it fails:
-- Fridge scanner stops working (users get generic error)
-- AI goal interpretation silently falls back to default params
-- Substitute suggestions fail during cooking flow
-- Meal replacement validation skipped (candidates shown unvalidated)
-
-Alert to owner: ✅ IMPLEMENTED — lib/alertOwner.ts sends you a 🚨 email on 401/429/529
-  - 401 = API key invalid or missing → check ANTHROPIC_API_KEY in Amplify env vars
-  - 429 = rate limit hit → check Anthropic console, top up credits
-  - 529/503 = Anthropic overloaded → temporary, users retry
-
-Action when alerted:
-→ Go to console.anthropic.com → check usage and credits → top up if needed
-
-Gap / TODO: No alerting if the key is misconfigured on Amplify (would show as 401 on every request).
-
-----------------------------------------------------------------
 2. SPOONACULAR
-----------------------------------------------------------------
-Cost model: points-based daily quota. Free = 150pts/day. Paid plans from $29/mo.
-complexSearch = ~1pt + 0.01pt per result. Recipe detail = ~1pt.
-Used for: all recipe search, recipe detail, wine pairing, meal plan generation, ingredient autocomplete.
-Routes: /api/recipes/search, /api/recipes/[id], /api/recipes/wine-pairing, /api/meal-plan/generate, /api/meal-plan/replace-*
+Cost: points-based daily quota. Free = 150pts/day. Paid from $29/mo.
+Used for: all recipe search, detail, wine pairing, meal plan generation.
+Alert: ⚠️ PARTIAL — meal plan routes catch 402, search/detail/wine do NOT alert owner
+Action: spoonacular.com/food-api/console → check points → upgrade or wait midnight UTC
+TODO: Add 402 owner alert to /api/recipes/search, /api/recipes/[id], /api/recipes/wine-pairing
 
-What breaks when it fails (402 response):
-- Recipe search returns no results / error
-- Meal plan generation fails completely
-- Recipe detail pages fail to load
-- Wine pairing fails
+3. RESEND (email)
+Cost: free = 3,000 emails/month. Paid from $20/mo.
+Used for: welcome, trial warning, deletion, error alerts to owner.
+Alert: ❌ NOT IMPLEMENTED — Resend failures silently swallowed
+CRITICAL: if Resend fails, you stop receiving owner alerts AND user emails stop
+Action: resend.com/overview → check quota and logs → upgrade if needed
+TODO: Add console.error to all Resend .catch() blocks for CloudWatch visibility
 
-Alert to owner: ⚠️ PARTIAL
-  - Meal plan routes (generate, replace-day, replace-meal): 402 caught, returns friendly error to user
-  - Recipe search route (/api/recipes/search): 402 passed through as raw error — NO owner alert
-  - Recipe detail, wine pairing: NO 402 handling, NO owner alert
-  - NO email to you when quota is exhausted on any route
-
-Action when alerted (currently manual — check dashboard):
-→ Go to spoonacular.com/food-api/console → check daily points used
-→ Upgrade plan or wait until midnight UTC for quota reset
-
-TODO: Add checkSpoonacularError() equivalent to search, recipe detail, and wine-pairing routes.
-
-----------------------------------------------------------------
-3. RESEND (email service)
-----------------------------------------------------------------
-Cost model: free tier = 3,000 emails/month, 100/day. Paid from $20/mo.
-Used for: welcome email, trial warning email, account deletion email, error report emails to owner.
-Routes: /api/auth/register, /api/auth/login, /api/user, /api/report-error, lib/alertOwner.ts
-
-What breaks when it fails:
-- Users don't receive welcome email (non-critical, no UX block)
-- Trial warning email not sent (non-critical)
-- Deletion confirmation email not sent (non-critical)
-- Owner error alert emails stop arriving (CRITICAL — you go blind)
-- report-error emails stop arriving (you stop seeing user errors)
-
-Alert to owner: ❌ NOT IMPLEMENTED
-  - If Resend quota is exceeded or key expires, all emails silently fail
-  - No fallback, no alert (you can't alert via Resend if Resend is down)
-  - Resend errors are currently swallowed with .catch(() => {})
-
-Action when it fails:
-→ Go to resend.com/overview → check email logs and quota
-→ Upgrade plan if over limit
-→ If key expired: regenerate in Resend dashboard, update RESEND_API_KEY in Amplify env vars
-
-TODO: Add console.error logging when Resend fails so at least Amplify CloudWatch shows it.
-      Consider a secondary alert channel (e.g. a webhook to a free Slack/Discord) as fallback.
-
-----------------------------------------------------------------
 4. AWS RDS PostgreSQL
-----------------------------------------------------------------
-Cost model: always-on instance. eu-west-2. Charged per hour regardless of usage.
-If you stop paying AWS, the instance stops and ALL user data is inaccessible.
+Cost: always-on hourly charge. Stops if AWS bill unpaid.
+Used for: ALL persistent data — users, plans, favourites, shopping list, etc.
+Alert: ❌ NOT IMPLEMENTED — DB down = 500 errors to users, no owner email
+Action: AWS Console → RDS → check instance status → start if stopped
+TODO: Enable AWS CloudWatch alarm on RDS instance (free, 15 min setup)
 
-What breaks when it fails:
-- Login fails (can't fetch user profile)
-- Registration fails (can't store user)
-- All favourites, shopping list, meal plans, tried recipes return errors
-- Entire app is essentially broken for logged-in users
-
-Alert to owner: ❌ NOT IMPLEMENTED
-  - DB errors return 500 to the user and fire a report-error email (if Resend is up)
-  - No specific "DB is down" alert to you
-  - No health check endpoint
-
-Action when it fails:
-→ Go to AWS Console → RDS → check instance status
-→ If stopped: start the instance (takes ~2 min)
-→ If billing issue: pay AWS bill → instance auto-restarts
-→ If security group issue: check inbound rules allow Amplify's egress IPs
-
-TODO: Add a /api/health route that pings the DB and returns 200/500.
-      Set up AWS CloudWatch alarm on RDS — sends email when CPU/connections spike or instance stops.
-
-----------------------------------------------------------------
 5. AWS COGNITO
-----------------------------------------------------------------
-Cost model: free up to 50,000 MAUs. Paid beyond that ($0.0055/MAU).
-Used for: all user auth — register, login, email verify, forgot password, change password.
+Cost: free up to 50,000 MAUs.
+Used for: all auth — register, login, verify, forgot password.
+Alert: ❌ NOT IMPLEMENTED
+Action: AWS Console → Cognito → check User Pool + Amplify env vars
 
-What breaks when it fails:
-- Users cannot log in or register
-- Password reset fails
-- Email verification fails
+6. AWS AMPLIFY (hosting)
+Cost: pay-per-build + per-GB served.
+Alert: ❌ NOT IMPLEMENTED — build failures only visible in console
+TODO: Enable Amplify build notifications in console (1 click, free) — DO THIS NOW
 
-Alert to owner: ❌ NOT IMPLEMENTED
-  - Cognito errors return generic 500/401 to users
-  - No owner alert when Cognito is down or misconfigured
+SUMMARY — COVERAGE STATUS
+--------------------------
+Anthropic Claude  ✅ Owner email alert implemented
+Spoonacular       ⚠️ Partial (meal plan only, not search/detail)
+Resend            ❌ Silent failure
+AWS RDS           ❌ No alert (only generic 500 to user)
+AWS Cognito       ❌ No alert
+AWS Amplify       ❌ No build notifications
 
-Action when it fails:
-→ Go to AWS Console → Cognito → check User Pool status
-→ Check Amplify env vars: COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID match the pool
-→ If billing: Cognito free tier is generous, unlikely to be a cost issue at current scale
+IMMEDIATE MANUAL ACTIONS (do these now, no code needed):
+1. Enable Amplify build email notifications → Amplify console → Settings → Notifications
+2. Set up CloudWatch alarm on RDS instance → alerts when DB stops or CPU spikes
 
-----------------------------------------------------------------
-6. AWS AMPLIFY (hosting & deployment)
-----------------------------------------------------------------
-Cost model: pay-per-build + per-GB served. Low cost at current scale.
-Used for: hosting Next.js backend + auto-deploy on push to main.
-
-What breaks when it fails:
-- New deployments fail (code changes don't go live)
-- If instance is stopped: entire backend is down, app is dead
-
-Alert to owner: ❌ NOT IMPLEMENTED
-  - Build failures visible in Amplify console but no email alert
-  - No uptime monitoring
-
-Action when it fails:
-→ Go to AWS Console → Amplify → check build logs
-→ Check environment variables are all set (missing var = build passes but runtime fails)
-→ If billing: pay AWS bill
-
-TODO: Enable Amplify build notifications (Settings → Notifications → add your email).
-      This is a one-click setup in the Amplify console — do this now.
-
-----------------------------------------------------------------
-SUMMARY — ALERT COVERAGE STATUS
-----------------------------------------------------------------
-
-Service          | Quota/Billing Alert | App Error to User | Owner Email Alert
------------------|--------------------|--------------------|------------------
-Anthropic Claude | ✅ Implemented      | ✅ Generic error   | ✅ 401/429/529
-Spoonacular      | ⚠️ Partial (meal plan only) | ✅ Partial | ❌ No owner email
-Resend           | ❌ Not implemented  | N/A (email service)| ❌ Silently fails
-AWS RDS          | ❌ Not implemented  | ✅ 500 error       | ⚠️ Via report-error only
-AWS Cognito      | ❌ Not implemented  | ✅ Auth error      | ❌ No owner email
-AWS Amplify      | ❌ Not implemented  | N/A (hosting)      | ❌ No build alerts
-
-IMMEDIATE ACTIONS (do these manually now):
-1. Amplify build notifications — enable in Amplify console (1 minute, free)
-2. AWS CloudWatch RDS alarm — alert when DB stops (15 minutes, free tier)
-3. Add Spoonacular 402 handling to /api/recipes/search (code change needed)
-4. Add console.error to all Resend .catch() blocks so CloudWatch at least logs failures
+CODE TODOS:
+3. Add Spoonacular 402 owner alert to /api/recipes/search + /api/recipes/[id] + wine-pairing
+4. Add console.error to all Resend .catch() so CloudWatch at least logs failures
 
 
 ================================================================
 LIST: APIs & BREAKING POINTS
 ================================================================
 
-Spoonacular
-Used for: recipe search, recipe detail, wine pairing, meal plan generation.
-API key: SPOONACULAR_API_KEY in .env.local (server-side only, never client).
-Quota: points-based. complexSearch = 1pt + 0.01pt per result.
-Breaking points:
-- 402 → quota exhausted. Check spoonacular.com dashboard. Resets midnight UTC.
-- Search returns 0 results → too many filters combined, or ingredient names too specific.
-- mealplanner/generate overshoots calories → backend scales nutrients back to target.
+Spoonacular — SPOONACULAR_API_KEY (server-side only)
+- 402 → quota exhausted → spoonacular.com dashboard → resets midnight UTC
+- mealplanner/generate overshoots calories → backend scales back to target
 
-Claude (Anthropic)
-Used for: ingredient photo scanning, substitute suggestions, AI filter suggestions, meal replacement validation.
-API key: ANTHROPIC_API_KEY in .env.local + Amplify env vars.
-Model: claude-haiku-4-5-20251001. Always use full model ID.
-Breaking points:
-- 401 → API key missing or wrong → owner alerted via email ✅
-- 429 → rate limit hit → owner alerted via email ✅
-- 529/503 → Anthropic overloaded → owner alerted via email ✅
+Claude — Model: claude-haiku-4-5-20251001 (always full model ID)
+- 401/429/529 → owner alerted via email ✅
 
-AWS Cognito — Region: eu-west-2. Used for all auth.
-AWS RDS PostgreSQL — Region: eu-west-2. All persistent data.
-AWS Amplify — Auto-deploy on push to main.
-Resend — Transactional emails. Free tier: 3000/month, 100/day.
+AWS Cognito — eu-west-2 — all auth
+AWS RDS PostgreSQL — eu-west-2 — all data
+AWS Amplify — auto-deploy on push to main
+Resend — transactional emails (3000/month free)
 
-Expo / React Native (mobile)
-Breaking points:
-- Metro bundler crash → delete node_modules/.cache and restart.
-- Public Wi-Fi blocks LAN → use npx expo start --tunnel.
-- Android build fails → check C:\p\ short path workaround (Windows 260-char path limit).
-- Navigation crash on tab swap → check HomeTabs in App.tsx.
+Expo / React Native
+- Public Wi-Fi → npx expo start --tunnel
+- Android build → C:\p\ short path workaround
 
 
 ================================================================
@@ -455,10 +312,10 @@ PRICING
 ================================================================
 
 Free — $0
-10 searches/week, 3 scans/week, flat favourites list, basic features. 14-day trial on signup.
+10 searches/week, 3 scans/week, basic features. 14-day trial on signup.
 
 Premium — $2.49/month or $19.99/year
-Full access. Unlimited scans and searches. All premium features.
+Full access. Unlimited. All premium features.
 
 Future pricing — $4.99/month
 Once AI assistant and personalisation are live.
@@ -470,97 +327,29 @@ Once AI assistant and personalisation are live.
 LIST: ALREADY BUILT ✅
 ================================================================
 
-Recipe search with filters
-Prep time, budget, diet, cuisine, taste, healthiness, calories, protein, ingredients.
-
-Match all / Match some toggle
-When searching with multiple ingredients, toggle between matching all or some. Inline toggle above results.
-
-Recipe detail pages
-Nutrition panel (calories, protein, fat with saturated fat breakdown, carbs — per serving), ingredients list,
-step-by-step instructions. Substitutions banner when active.
-
+Recipe search with filters ✅
+Match all / Match some toggle ✅
+Recipe detail pages ✅
 My Recipes — To Try / Tried folder system ✅
-Home screen with two large buttons (To Try, Tried) showing counts. Each list has a folder browser:
-Main List + named folders. Save from RecipeDetail via "Add to Try List" or "Mark as Tried" — both open
-a folder-picker modal (main list, existing folder, or new folder). Active search filters stored per recipe
-and shown as filter chips inside folder views. Move/rename/delete folders. Mark-as-tried from To Try view.
-Rating and tag editing preserved. DB: folder + search_filters columns on favourites and tried_recipes.
-
-Shopping list
-Check off items per recipe. Delete individual items or clear all.
-
-User accounts (mobile)
-Register, login, email verify (inline code screen), forgot password (inline 2-step), change password,
-delete account. All flows handled inside the app — no browser redirect.
-
-Light / dark theme
-
-Weekly AI meal planner — full v2 ✅
-Two-path generation: AI Goal (preset chips + free text + voice → Claude interprets → generates) and
-Customise (4-step wizard: Nutrition → Diet & Cuisine → Macronutrients → Micronutrients).
-Both paths end with a shared Meals per Day picker (3/4/5/6). Calorie options up to 5000 kcal.
-AI path auto-suggests meals/day based on goal (Mass Gaining → 5, Weight Loss → 3).
-Backend: one main Spoonacular call at exact daily target for 3 meals; extra meals (4-6) fetched
-separately via complexSearch as snack-sized slots carved from within the daily budget.
-Displayed calories always scaled to exactly match the user's target.
-
-Meal plan save & folder system ✅
-  Save plan requires a name + folder (both enforced). Save button hidden once saved.
-  Folder picker in save modal shows existing folders plus suggested + custom new folder chips.
-  Saved plans browser: folder list → plans inside folder. Drag to reorder folders and plans.
-  Plan card ... menu: Move to folder, Copy to folder, Delete.
-  Delete folder (removes all plans inside) and delete individual plan, both with confirmation modal.
-  Plan name shown as large text at top of plan view once saved.
-  Timestamp on saved plan cards formatted as dd-mm-yy HH:MM.
-
-Meal plan change tracking & save changes ✅
-  originalPlan frozen at save time in DB (original_plan_data column). Never overwritten.
-  On reload, diff between original_plan_data and plan_data drives the green checkmark icons.
-  Green checkmark on day header and individual meal row for each changed meal.
-  Green "Plan modified — all changes within original filters" banner at top.
-  Amber "Save changes" button in top bar when saved plan has unsaved changes.
-  Exit guard modal when navigating away with unsaved changes (also fires on tab navigation).
-  Exit guard also fires on brand-new unsaved plans (no planId) — "Save plan" or "Discard & leave".
-  Both guard modals: dark backdrop, close by tapping outside or swipe-back, no Cancel button.
-
-Meal plan replace meal ✅
-  Candidates searched using original filters + per-meal calorie budget (daily / mealsPerDay).
-  Spoonacular enforces filter constraints server-side — all candidates always within original criteria.
-  Claude validation removed (was unreliable and producing false warnings). All candidates green.
-  Confirmation of selection is instant — no warning modal.
-
-Cooking mode ✅
-Fullscreen step-by-step view. Swipe navigation.
-
-Voice cooking ✅
-Reads steps aloud. Voice commands. Powered by expo-speech.
-
+  Home screen: two large buttons (To Try, Tried) with counts.
+  Each list: folder browser (Main List + named folders with counts).
+  Save from RecipeDetail: "Add to Try List" / "Mark as Tried" — folder-picker modal on both.
+  Active search filters stored per recipe; shown as filter chips inside folder view.
+  Move/rename/delete folders. Mark-as-tried from To Try view. Rating and tag editing preserved.
+  DB: folder + search_filters on favourites and tried_recipes tables.
+Shopping list ✅
+User accounts — register, login, verify, forgot password, change password, delete ✅
+Light / dark theme ✅
+Cooking mode — fullscreen step-by-step, swipe navigation ✅
+Voice cooking — expo-speech ✅
 AI ingredient photo scanner ✅
-Camera or photo library. Up to 10 images per session. Review and remove detected ingredients.
-3-tier search fallback so scanned ingredients always find results.
-
-Scan the fridge — done screen ✅
-  After checking all ingredients: shows "You need to buy N ingredients" with link to Quick Shopping List.
-  Or "You have everything!" if nothing is missing.
-
 Premium tier infrastructure ✅
-DB-based subscription tracking. Paywall modal wired up.
-
 AI Fridge Scan → Ingredient Check → Recipe Flow ✅
-Full end-to-end flow: scan fridge → detected ingredients as chips → remove/add → match all/some →
-results → "Cook it now?" → check ingredients one by one → AI suggests substitutes → Use it / Buy it →
-session saved server-side. Quick Shopping List for missing ingredients.
-
+Quick Shopping List ✅
+Active Recipe Session ✅
+AI ingredient substitute suggestion ✅
 Recipe search quality filter ✅
-Removes recipes with poor instructions: min 4 steps + at least 50% of ingredients mentioned in steps.
-Auto-refills to minimum 12 quality results per page.
-
-My Recipes — tags ✅
-  Tags editable via pricetag icon on recipe cards inside folder view.
-  Suggested tags: Romantic, Weekend, Treat, Kids, Quick, Healthy, Comfort, Batch Cook. Plus custom.
-  Tags shown as grey chips on recipe cards.
-
+Wine pairing breakfast guard ✅
 Auto logout when JWT expires ✅
 Registration disclaimer checkbox ✅
 14-day free trial on registration ✅
@@ -578,16 +367,43 @@ Cognito verification email branding ✅
 Trial days remaining on profile screen ✅
 Trial countdown banner on Home screen ✅
 Forgot password flow on mobile ✅
-Advanced search filter panel ✅ (5 collapsible sections, macros/micros premium-gated)
-AI Suggestions in search filter panel ✅ (preset chips + free text + voice, Claude Haiku)
-Wine pairing breakfast guard ✅
-AI ingredient substitute suggestion ✅
-Meal Plans nav tab + header rename ✅
-  Nav tab, top bar header, and home view all say "Meal Plans". Home view shows two buttons directly
-  (Create Plan, Browse Saved Plans) with no repeated title or subtitle text.
-Quick Shopping List ✅
-Active Recipe Session ✅
-Claude failure owner alerts ✅ (lib/alertOwner.ts — email on 401/429/529)
+Advanced search filter panel ✅ (5 sections, macros/micros premium-gated)
+AI Suggestions in search filter panel ✅ (preset chips + free text + voice)
+
+Weekly AI Meal Planner — full v2 ✅
+  Two-path generation: AI Goal and Customise (4-step wizard).
+  Meals per day picker: 3/4/5/6. Calorie options up to 5000 kcal.
+  AI path auto-suggests meals/day based on goal.
+  Calories always at exact user target. Extra meals carved from daily budget.
+
+Meal plan save & folder system ✅
+  Name + folder required. Save button hidden after saving.
+  Folder picker in save modal (existing + new). Drag reorder folders and plans.
+  Plan card ... menu: Move to folder, Copy to folder, Delete.
+  Delete folder/plan with confirmation. Plan name shown at top of plan view.
+  Timestamps formatted dd-mm-yy HH:MM.
+
+Meal plan change tracking & save changes ✅
+  original_plan_data frozen in DB. Diff drives green checkmark icons on changed days/meals.
+  Green "Plan modified" banner. Amber "Save changes" button when unsaved.
+  Exit guard modal on navigation away with unsaved changes.
+  Exit guard also fires for brand-new unsaved plans — "Save plan" or "Discard & leave".
+  Both guard modals: dark backdrop, dismiss by tapping outside or swipe-back, no Cancel button.
+
+Meal plan replace meal ✅
+  Uses original filters + per-meal calorie budget. All candidates green (within original criteria).
+  Claude validation removed (was unreliable). Instant selection, no warning modal.
+
+Scan the fridge — done screen ✅
+  Shows "You need to buy N ingredients" with Quick Shopping List link, or "You have everything!"
+
+My Recipes — tags ✅
+  Tag picker on save (pageSheet). Suggested + custom tags. Grey chip display on cards.
+  Tag filter dropdown. Edit tags via pricetag icon.
+
 My Recipes card image layout fix ✅
+Claude failure owner alerts ✅ (email on 401/429/529 — lib/alertOwner.ts)
 Build fix ✅ (@anthropic-ai/sdk missing from package.json)
-Recipe collections removed from MUST ✅ (superseded by My Recipes tags feature)
+Recipe collections superseded by My Recipes tags ✅
+Meal Plans nav + header rename ✅ (tab, top bar, home view all say "Meal Plans"; home shows two buttons directly)
+Meal planner — QA tested ✅ (all flows verified: generate, save, browse, replace, change tracking, exit guards)

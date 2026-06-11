@@ -64,10 +64,11 @@ export default function MyRecipesScreen() {
   const [triedRecipes, setTriedRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
 
-  // filter inside folder
+  // filters — global per list, persist across folders
   const [activeDietFilter, setActiveDietFilter] = useState<string | null>(null)
   const [activePrepFilter, setActivePrepFilter] = useState<string | null>(null)
   const [activeCuisineFilter, setActiveCuisineFilter] = useState<string | null>(null)
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
 
   // rating modal
   const [ratingModal, setRatingModal] = useState(false)
@@ -157,35 +158,40 @@ export default function MyRecipesScreen() {
     return currentRecipes.filter(r => r.folder === openFolder)
   }, [currentRecipes, openFolder])
 
-  // available filters based on stored searchFilters in current folder
-  const folderFilterOptions = useMemo(() => {
+  // filter options from the whole current list (not just current folder)
+  const listFilterOptions = useMemo(() => {
     const diets = new Set<string>()
     const preps = new Set<string>()
     const cuisines = new Set<string>()
-    for (const r of recipesInView) {
+    for (const r of currentRecipes) {
       if (r.searchFilters?.diet) diets.add(r.searchFilters.diet)
       if (r.searchFilters?.prepTime) preps.add(r.searchFilters.prepTime)
       if (r.searchFilters?.cuisine) cuisines.add(r.searchFilters.cuisine)
     }
     return { diets: Array.from(diets), preps: Array.from(preps), cuisines: Array.from(cuisines) }
-  }, [recipesInView])
+  }, [currentRecipes])
 
-  const filteredRecipes = useMemo(() => {
-    return recipesInView.filter(r => {
-      if (activeDietFilter && r.searchFilters?.diet !== activeDietFilter) return false
-      if (activePrepFilter && r.searchFilters?.prepTime !== activePrepFilter) return false
-      if (activeCuisineFilter && r.searchFilters?.cuisine !== activeCuisineFilter) return false
-      return true
-    })
-  }, [recipesInView, activeDietFilter, activePrepFilter, activeCuisineFilter])
+  const applyFilters = (recipes: Recipe[]) => recipes.filter(r => {
+    if (activeDietFilter && r.searchFilters?.diet !== activeDietFilter) return false
+    if (activePrepFilter && r.searchFilters?.prepTime !== activePrepFilter) return false
+    if (activeCuisineFilter && r.searchFilters?.cuisine !== activeCuisineFilter) return false
+    return true
+  })
+
+  const filteredRecipes = useMemo(() => applyFilters(recipesInView), [recipesInView, activeDietFilter, activePrepFilter, activeCuisineFilter])
 
   const clearFilters = () => { setActiveDietFilter(null); setActivePrepFilter(null); setActiveCuisineFilter(null) }
 
   const openFolderView = (folder: string | null, list: ListType) => {
     setActiveList(list)
     setOpenFolder(folder)
-    clearFilters()
     setViewLevel("recipes")
+  }
+
+  const switchList = (list: ListType) => {
+    setActiveList(list)
+    clearFilters()
+    setViewLevel("folders")
   }
 
   // ── REMOVE ──
@@ -266,11 +272,17 @@ export default function MyRecipesScreen() {
       {
         text: "Mark Tried", onPress: async () => {
           try {
-            await apiFetch("/api/tried-recipes", {
-              method: "POST",
-              body: JSON.stringify({ userId: user!.id, recipeId: recipe.recipeId, recipeTitle: recipe.title, folder: recipe.folder, searchFilters: recipe.searchFilters }),
-            })
-            // optionally keep in to-try or remove — keep it (user can remove separately)
+            await Promise.all([
+              apiFetch("/api/tried-recipes", {
+                method: "POST",
+                body: JSON.stringify({ userId: user!.id, recipeId: recipe.recipeId, recipeTitle: recipe.title, folder: recipe.folder, searchFilters: recipe.searchFilters }),
+              }),
+              apiFetch("/api/favourites", {
+                method: "DELETE",
+                body: JSON.stringify({ userId: user!.id, recipeId: recipe.recipeId }),
+              }),
+            ])
+            setToTryRecipes(prev => prev.filter(r => r.recipeId !== recipe.recipeId))
             const newTried: Recipe = { ...recipe, isTried: true, isSaved: false, satisfaction: undefined, timeAccuracy: undefined, difficulty: undefined }
             setTriedRecipes(prev => [newTried, ...prev.filter(r => r.recipeId !== recipe.recipeId)])
           } catch { Alert.alert("Error", "Failed to mark as tried.") }
@@ -319,26 +331,100 @@ export default function MyRecipesScreen() {
   const toTryCount = toTryRecipes.length
   const triedCount = triedRecipes.length
 
+  // shared across folders and recipes views
+  const hasFilters = !!(activeDietFilter || activePrepFilter || activeCuisineFilter)
+  const filterCount = [activeDietFilter, activePrepFilter, activeCuisineFilter].filter(Boolean).length
+  const { diets, preps, cuisines } = listFilterOptions
+  const hasFilterOptions = diets.length > 0 || preps.length > 0 || cuisines.length > 0
+
+  const filterModal = (
+    <Modal visible={filterModalOpen} transparent animationType="slide">
+      <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setFilterModalOpen(false)}>
+        <View style={s.filterSheet}>
+          <View style={s.filterSheetHandle} />
+          <View style={s.filterSheetHeader}>
+            <Text style={s.filterSheetTitle}>Filter Recipes</Text>
+            {hasFilters && (
+              <TouchableOpacity onPress={() => { clearFilters(); setFilterModalOpen(false) }}>
+                <Text style={{ color: colors.destructive, fontWeight: "600", fontSize: 14 }}>Clear all</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }}>
+            {diets.length > 0 && (
+              <View>
+                <Text style={s.filterSectionLabel}>Diet</Text>
+                <View style={s.filterChipsRow}>
+                  {diets.map(diet => (
+                    <TouchableOpacity
+                      key={diet}
+                      style={[s.filterChip, activeDietFilter === diet && s.filterChipActive]}
+                      onPress={() => setActiveDietFilter(activeDietFilter === diet ? null : diet)}
+                    >
+                      <Text style={[s.filterChipText, activeDietFilter === diet && s.filterChipTextActive]}>{DIET_LABELS[diet] ?? diet}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+            {preps.length > 0 && (
+              <View>
+                <Text style={s.filterSectionLabel}>Prep Time</Text>
+                <View style={s.filterChipsRow}>
+                  {preps.map(prep => (
+                    <TouchableOpacity
+                      key={prep}
+                      style={[s.filterChip, activePrepFilter === prep && s.filterChipActive]}
+                      onPress={() => setActivePrepFilter(activePrepFilter === prep ? null : prep)}
+                    >
+                      <Text style={[s.filterChipText, activePrepFilter === prep && s.filterChipTextActive]}>{PREP_LABELS[prep] ?? prep}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+            {cuisines.length > 0 && (
+              <View>
+                <Text style={s.filterSectionLabel}>Cuisine</Text>
+                <View style={s.filterChipsRow}>
+                  {cuisines.map(cuisine => (
+                    <TouchableOpacity
+                      key={cuisine}
+                      style={[s.filterChip, activeCuisineFilter === cuisine && s.filterChipActive]}
+                      onPress={() => setActiveCuisineFilter(activeCuisineFilter === cuisine ? null : cuisine)}
+                    >
+                      <Text style={[s.filterChipText, activeCuisineFilter === cuisine && s.filterChipTextActive]}>{cuisine.charAt(0).toUpperCase() + cuisine.slice(1)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+            {!hasFilterOptions && <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>No filter options available — save recipes with search filters to enable this.</Text>}
+          </ScrollView>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  )
+
   // ────────────────────────────────────────────
   // HOME: two big buttons
   // ────────────────────────────────────────────
   if (viewLevel === "home") {
     return (
       <SafeAreaView style={s.container} edges={["top"]}>
-        <View style={s.header}>
-          <Text style={s.headerTitle}>My Recipes</Text>
-          <Text style={s.headerCount}>{toTryCount} to try · {triedCount} tried</Text>
+        <View style={s.topBar}>
+          <Text style={s.title}>My Recipes</Text>
         </View>
-        <View style={s.homeButtons}>
-          <TouchableOpacity style={[s.homeBtn, s.homeBtnToTry]} onPress={() => { setActiveList("toTry"); setViewLevel("folders") }} activeOpacity={0.85}>
-            <Ionicons name="bookmark" size={36} color={colors.primary} />
-            <Text style={s.homeBtnTitle}>To Try</Text>
-            <Text style={s.homeBtnCount}>{toTryCount} recipe{toTryCount !== 1 ? "s" : ""}</Text>
+        <View style={s.homeContent}>
+          <TouchableOpacity style={[s.bigBtn, { backgroundColor: colors.primary }]} onPress={() => switchList("toTry")} activeOpacity={0.85}>
+            <Ionicons name="bookmark-outline" size={26} color="#fff" />
+            <Text style={s.bigBtnText}>To Try</Text>
+            <Text style={s.bigBtnCount}>({toTryCount})</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.homeBtn, s.homeBtnTried]} onPress={() => { setActiveList("tried"); setViewLevel("folders") }} activeOpacity={0.85}>
-            <Ionicons name="checkmark-circle" size={36} color="#16a34a" />
-            <Text style={[s.homeBtnTitle, { color: "#16a34a" }]}>Tried</Text>
-            <Text style={s.homeBtnCount}>{triedCount} recipe{triedCount !== 1 ? "s" : ""}</Text>
+          <TouchableOpacity style={[s.bigBtn, { backgroundColor: "#22c55e" }]} onPress={() => switchList("tried")} activeOpacity={0.85}>
+            <Ionicons name="checkmark-circle-outline" size={26} color="#fff" />
+            <Text style={s.bigBtnText}>Tried</Text>
+            <Text style={s.bigBtnCount}>({triedCount})</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -351,9 +437,12 @@ export default function MyRecipesScreen() {
   if (viewLevel === "folders") {
     const list = activeList === "toTry" ? toTryRecipes : triedRecipes
     const listFolders = Array.from(new Set(list.map(r => r.folder).filter(Boolean))) as string[]
-    const mainCount = list.filter(r => r.folder === null).length
     const listLabel = activeList === "toTry" ? "To Try" : "Tried"
-    const accentColor = activeList === "toTry" ? colors.primary : "#16a34a"
+    const accentColor = activeList === "toTry" ? colors.primary : "#22c55e"
+    const hasFilters = !!(activeDietFilter || activePrepFilter || activeCuisineFilter)
+    const filterCount = [activeDietFilter, activePrepFilter, activeCuisineFilter].filter(Boolean).length
+
+    const folderVisibleCount = (folder: string | null) => applyFilters(list.filter(r => r.folder === folder)).length
 
     return (
       <SafeAreaView style={s.container} edges={["top"]}>
@@ -362,7 +451,10 @@ export default function MyRecipesScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>{listLabel}</Text>
-          <View style={{ width: 24 }} />
+          <TouchableOpacity style={s.filterBtn} onPress={() => setFilterModalOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="options-outline" size={22} color={hasFilters ? colors.primary : colors.text} />
+            {hasFilters && <View style={s.filterBadge}><Text style={s.filterBadgeText}>{filterCount}</Text></View>}
+          </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 12 }}>
@@ -373,13 +465,13 @@ export default function MyRecipesScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.folderName}>Main List</Text>
-              <Text style={s.folderCount}>{mainCount} recipe{mainCount !== 1 ? "s" : ""}</Text>
+              <Text style={s.folderCount}>{folderVisibleCount(null)} recipe{folderVisibleCount(null) !== 1 ? "s" : ""}{hasFilters ? " (filtered)" : ""}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </TouchableOpacity>
 
           {listFolders.map(folder => {
-            const count = list.filter(r => r.folder === folder).length
+            const count = folderVisibleCount(folder)
             return (
               <View key={folder} style={s.folderRow}>
                 <TouchableOpacity style={[s.folderCard, { flex: 1 }]} onPress={() => openFolderView(folder, activeList)} activeOpacity={0.8}>
@@ -388,7 +480,7 @@ export default function MyRecipesScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={s.folderName}>{folder}</Text>
-                    <Text style={s.folderCount}>{count} recipe{count !== 1 ? "s" : ""}</Text>
+                    <Text style={s.folderCount}>{count} recipe{count !== 1 ? "s" : ""}{hasFilters ? " (filtered)" : ""}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.muted} />
                 </TouchableOpacity>
@@ -452,6 +544,7 @@ export default function MyRecipesScreen() {
             </TouchableOpacity>
           </Modal>
         )}
+        {filterModal}
       </SafeAreaView>
     )
   }
@@ -460,62 +553,23 @@ export default function MyRecipesScreen() {
   // RECIPE LIST VIEW (inside a folder)
   // ────────────────────────────────────────────
   const listLabel = activeList === "toTry" ? "To Try" : "Tried"
-  const accentColor = activeList === "toTry" ? colors.primary : "#16a34a"
-  const hasFilters = activeDietFilter || activePrepFilter || activeCuisineFilter
-  const { diets, preps, cuisines } = folderFilterOptions
-  const hasFilterOptions = diets.length > 0 || preps.length > 0 || cuisines.length > 0
+  const accentColor = activeList === "toTry" ? colors.primary : "#22c55e"
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => { setViewLevel("folders"); clearFilters() }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity onPress={() => setViewLevel("folders")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginHorizontal: 12 }}>
           <Text style={s.headerTitle}>{openFolder ?? "Main List"}</Text>
           <Text style={[s.headerCount, { marginTop: 0 }]}>{listLabel} · {filteredRecipes.length} recipe{filteredRecipes.length !== 1 ? "s" : ""}</Text>
         </View>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity style={s.filterBtn} onPress={() => setFilterModalOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Ionicons name="options-outline" size={22} color={hasFilters ? colors.primary : colors.text} />
+          {hasFilters && <View style={s.filterBadge}><Text style={s.filterBadgeText}>{filterCount}</Text></View>}
+        </TouchableOpacity>
       </View>
-
-      {/* Filter chips — only shown if there are stored filters to apply */}
-      {hasFilterOptions && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterBar}>
-          {diets.map(diet => (
-            <TouchableOpacity
-              key={diet}
-              style={[s.filterChip, activeDietFilter === diet && s.filterChipActive]}
-              onPress={() => setActiveDietFilter(activeDietFilter === diet ? null : diet)}
-            >
-              <Text style={[s.filterChipText, activeDietFilter === diet && s.filterChipTextActive]}>{DIET_LABELS[diet] ?? diet}</Text>
-            </TouchableOpacity>
-          ))}
-          {preps.map(prep => (
-            <TouchableOpacity
-              key={prep}
-              style={[s.filterChip, activePrepFilter === prep && s.filterChipActive]}
-              onPress={() => setActivePrepFilter(activePrepFilter === prep ? null : prep)}
-            >
-              <Text style={[s.filterChipText, activePrepFilter === prep && s.filterChipTextActive]}>{PREP_LABELS[prep] ?? prep}</Text>
-            </TouchableOpacity>
-          ))}
-          {cuisines.map(cuisine => (
-            <TouchableOpacity
-              key={cuisine}
-              style={[s.filterChip, activeCuisineFilter === cuisine && s.filterChipActive]}
-              onPress={() => setActiveCuisineFilter(activeCuisineFilter === cuisine ? null : cuisine)}
-            >
-              <Text style={[s.filterChipText, activeCuisineFilter === cuisine && s.filterChipTextActive]}>{cuisine.charAt(0).toUpperCase() + cuisine.slice(1)}</Text>
-            </TouchableOpacity>
-          ))}
-          {hasFilters && (
-            <TouchableOpacity style={s.clearFilterChip} onPress={clearFilters}>
-              <Ionicons name="close" size={13} color={colors.destructive} />
-              <Text style={{ fontSize: 13, color: colors.destructive, fontWeight: "600" }}>Clear</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-      )}
 
       {filteredRecipes.length === 0 ? (
         <View style={s.empty}>
@@ -554,9 +608,9 @@ export default function MyRecipesScreen() {
                   {/* stored filter badges */}
                   {item.searchFilters && (
                     <View style={s.tagsRow}>
-                      {item.searchFilters.diet && <View style={s.filterBadge}><Text style={s.filterBadgeText}>{DIET_LABELS[item.searchFilters.diet] ?? item.searchFilters.diet}</Text></View>}
-                      {item.searchFilters.cuisine && <View style={s.filterBadge}><Text style={s.filterBadgeText}>{item.searchFilters.cuisine}</Text></View>}
-                      {item.searchFilters.prepTime && <View style={s.filterBadge}><Text style={s.filterBadgeText}>{PREP_LABELS[item.searchFilters.prepTime] ?? item.searchFilters.prepTime}</Text></View>}
+                      {item.searchFilters.diet && <View style={s.searchBadge}><Text style={s.searchBadgeText}>{DIET_LABELS[item.searchFilters.diet] ?? item.searchFilters.diet}</Text></View>}
+                      {item.searchFilters.cuisine && <View style={s.searchBadge}><Text style={s.searchBadgeText}>{item.searchFilters.cuisine}</Text></View>}
+                      {item.searchFilters.prepTime && <View style={s.searchBadge}><Text style={s.searchBadgeText}>{PREP_LABELS[item.searchFilters.prepTime] ?? item.searchFilters.prepTime}</Text></View>}
                     </View>
                   )}
                 </View>
@@ -819,6 +873,7 @@ export default function MyRecipesScreen() {
           </TouchableOpacity>
         </Modal>
       )}
+      {filterModal}
     </SafeAreaView>
   )
 }
@@ -826,17 +881,18 @@ export default function MyRecipesScreen() {
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
+  topBar: { paddingHorizontal: spacing.md, paddingVertical: 14 },
+  title: { fontSize: 26, fontWeight: "800", color: colors.text },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   headerTitle: { fontSize: 20, fontWeight: "800", color: colors.text },
   headerCount: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
 
   // home
-  homeButtons: { flex: 1, flexDirection: "row", gap: spacing.md, padding: spacing.md, alignItems: "stretch" },
-  homeBtn: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, borderRadius: radius.lg, borderWidth: 2, padding: spacing.xl, backgroundColor: colors.card },
-  homeBtnToTry: { borderColor: colors.primary + "44" },
-  homeBtnTried: { borderColor: "#16a34a44" },
-  homeBtnTitle: { fontSize: 22, fontWeight: "800", color: colors.primary },
-  homeBtnCount: { fontSize: 13, color: colors.mutedForeground, fontWeight: "500" },
+  homeContent: { paddingHorizontal: spacing.md, paddingTop: spacing.xl, gap: 16 },
+  bigBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 14, borderRadius: radius.lg },
+  bigBtnSecondary: {},
+  bigBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  bigBtnCount: { fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: "500" },
 
   // folder list
   folderRow: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -846,13 +902,22 @@ const makeStyles = (colors: any) => StyleSheet.create({
   folderCount: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
   folderMenuBtn: { padding: 8 },
 
-  // filter bar (inside folder)
-  filterBar: { paddingHorizontal: spacing.md, paddingVertical: 10, gap: 8, flexDirection: "row" },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card },
+  // filter button in header
+  filterBtn: { position: "relative", padding: 2 },
+  filterBadge: { position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
+  filterBadgeText: { fontSize: 9, fontWeight: "800", color: "#fff" },
+
+  // filter bottom sheet
+  filterSheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "75%" },
+  filterSheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginTop: 10, marginBottom: 4 },
+  filterSheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: spacing.md, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  filterSheetTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+  filterSectionLabel: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
+  filterChipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
   filterChipActive: { borderColor: colors.primary, backgroundColor: colors.primary },
   filterChipText: { fontSize: 13, fontWeight: "600", color: colors.mutedForeground },
   filterChipTextActive: { color: "#fff" },
-  clearFilterChip: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, borderWidth: 1.5, borderColor: colors.destructive, backgroundColor: colors.card },
 
   // recipe card
   card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, overflow: "hidden" },
@@ -867,8 +932,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
   tagBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.border },
   tagBadgeText: { fontSize: 10, fontWeight: "600", color: colors.mutedForeground },
-  filterBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.primary + "18" },
-  filterBadgeText: { fontSize: 10, fontWeight: "600", color: colors.primary },
+  searchBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 99, backgroundColor: colors.primary + "18" },
+  searchBadgeText: { fontSize: 10, fontWeight: "600", color: colors.primary },
   cardActions: { flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: spacing.sm },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: spacing.sm, paddingBottom: spacing.sm, paddingTop: 2 },
   difficultyText: { fontSize: 12, color: colors.mutedForeground, flex: 1 },
