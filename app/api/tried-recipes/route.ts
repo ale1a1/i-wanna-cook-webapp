@@ -23,7 +23,12 @@ export async function POST(request: NextRequest) {
     await pool.query(
       `INSERT INTO tried_recipes (user_id, recipe_id, recipe_title, tried_on, estimated_time, folder, search_filters)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (user_id, recipe_id) DO NOTHING`,
+       ON CONFLICT (user_id, recipe_id) DO UPDATE SET
+         recipe_title = EXCLUDED.recipe_title,
+         tried_on = EXCLUDED.tried_on,
+         estimated_time = EXCLUDED.estimated_time,
+         folder = EXCLUDED.folder,
+         search_filters = EXCLUDED.search_filters`,
       [userId, String(recipeId), recipeTitle, triedOn ?? new Date().toISOString().split("T")[0], estimatedTime ?? readyInMinutes ?? null, folder ?? null, searchFilters ? JSON.stringify(searchFilters) : null]
     )
     return NextResponse.json({ ok: true })

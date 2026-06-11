@@ -17,19 +17,11 @@ LIST: MUST — Before Launch
 --- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
 
 
-My Recipes — test the new flow
-  Test the full Search → My Recipes flow end to end:
-  - Search for a recipe — cards show no save buttons (clean)
-  - Open a recipe detail — "Add to Try List" and "Mark as Tried" buttons visible
-  - Add to Try List — folder picker opens (Main List, existing folder, or new folder)
-  - Fix: user must be forced to enter a folder name when "New Folder" is selected
-    (both Add to Try List and Mark as Tried — currently can confirm with empty name)
-  - Mark as Tried — same folder-picker flow
-  - My Recipes home — two buttons: To Try and Tried with counts
-  - Tap To Try — folder browser shows Main List + named folders
-  - Inside folder — recipes listed; filter chips appear for stored search filters
-  - Move recipe to different folder — ellipsis menu → Move
-  - Mark a To Try recipe as Tried via checkmark icon
+My Recipes
+  Test the full Search → My Recipes flow end to end: 
+  - test filters in my recipes (now they are not working...I think you need to save in the DB the saved recipes with the filters applied from search page...then when I use the filter ffearture will filter in the DB this time and retutn based on that filtering?)
+  - Move recipe to different folder 
+  - Mark a To Try recipe as Tried via checkmark icon from search page and my recipe page
   - Rename a folder — long-press ellipsis on folder card
   - Delete a folder — removes all recipes inside it
 
