@@ -718,7 +718,19 @@ export default function SearchScreen() {
           keyExtractor={item => String(item.id)}
           contentContainerStyle={{ padding: spacing.md, gap: 12 }}
           renderItem={({ item }) => (
-            <TouchableOpacity style={s.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.id, title: item.title, fromScan })}>
+            <TouchableOpacity style={s.card} onPress={() => {
+              const sf: Record<string, any> = {}
+              if (filters.diet !== "any") sf.diet = filters.diet
+              if (filters.cuisine !== "any") sf.cuisine = filters.cuisine
+              if (filters.prepTime !== "any") sf.prepTime = filters.prepTime
+              if (filters.budget !== "any") sf.budget = filters.budget
+              if (filters.taste !== "any") sf.taste = filters.taste
+              if (filters.healthiness !== "any") sf.healthiness = filters.healthiness
+              if (filters.ingredients.length) sf.ingredients = filters.ingredients
+              Object.entries(nutrition).forEach(([k, v]) => { if (v.trim() !== "") sf[k] = v.trim() })
+              if (sort !== "none") { sf.sort = sort; sf.sortDirection = sortDirection }
+              navigation.navigate("RecipeDetail", { id: item.id, title: item.title, fromScan, searchFilters: Object.keys(sf).length ? sf : null })
+            }}>
               <Image source={{ uri: item.image }} style={s.cardImage} resizeMode="cover" />
               <View style={s.cardBody}>
                 <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>

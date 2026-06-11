@@ -43,7 +43,7 @@ function applySubstitutions(text: string, substitutions: Substitution[]): string
 export default function RecipeDetailScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
-  const { id, fromScan, fromSession, mealIndex } = route.params ?? {}
+  const { id, fromScan, fromSession, mealIndex, searchFilters } = route.params ?? {}
   const isBreakfast = mealIndex === 0
   const { user } = useAuth()
   const { colors } = useTheme()
@@ -157,7 +157,7 @@ export default function RecipeDetailScreen() {
       if (saveListModal === "toTry") {
         await apiFetch("/api/favourites", {
           method: "POST",
-          body: JSON.stringify({ userId: user.id, recipeId: recipe.id, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, servings: recipe.servings, tags: [], folder }),
+          body: JSON.stringify({ userId: user.id, recipeId: recipe.id, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, servings: recipe.servings, tags: [], folder, searchFilters: searchFilters ?? null }),
         })
         if (isTried) {
           await apiFetch("/api/tried-recipes", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id) }) })
@@ -168,7 +168,7 @@ export default function RecipeDetailScreen() {
       } else {
         await apiFetch("/api/tried-recipes", {
           method: "POST",
-          body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, folder }),
+          body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id), recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, folder, searchFilters: searchFilters ?? null }),
         })
         if (favourited) {
           await apiFetch("/api/favourites", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: recipe.id }) })

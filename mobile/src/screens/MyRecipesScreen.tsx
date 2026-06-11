@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from "react"
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Modal, ScrollView, Alert, TextInput } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Modal, ScrollView, Alert, TextInput } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
+import DraggableList from "../components/DraggableList"
 
 type ListType = "toTry" | "tried"
 type ViewLevel = "home" | "folders" | "recipes"
@@ -34,6 +35,23 @@ const DIFFICULTIES = ["Very Easy", "Easy", "Moderate", "Difficult", "Very Diffic
 const SUGGESTED_TAGS = ["Romantic", "Weekend", "Treat", "Kids", "Quick", "Healthy", "Comfort", "Batch Cook"]
 const DIET_LABELS: Record<string, string> = { vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "GF", keto: "Keto", paleo: "Paleo" }
 const PREP_LABELS: Record<string, string> = { under15: "< 15 min", under30: "< 30 min", under60: "< 1 hr", over60: "> 1 hr" }
+const BUDGET_LABELS: Record<string, string> = { cheap: "Cheap", moderate: "Moderate", expensive: "Premium" }
+const TASTE_LABELS: Record<string, string> = { sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
+const HEALTH_LABELS: Record<string, string> = { healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
+
+const FILTER_SECTION_LABELS: Record<string, string> = {
+  diet: "Diet", cuisine: "Cuisine", prepTime: "Prep Time",
+  budget: "Budget", taste: "Taste", healthiness: "Health",
+}
+const FILTER_VALUE_LABELS: Record<string, Record<string, string>> = {
+  diet: DIET_LABELS, prepTime: PREP_LABELS, budget: BUDGET_LABELS, taste: TASTE_LABELS, healthiness: HEALTH_LABELS,
+}
+
+function labelFor(field: string, value: string): string {
+  const map = FILTER_VALUE_LABELS[field]
+  if (map?.[value]) return map[value]
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
 
 function Stars({ rating, onPress, colors }: { rating: number; onPress?: (v: number) => void; colors: any }) {
   return (
@@ -59,15 +77,17 @@ export default function MyRecipesScreen() {
   const [activeList, setActiveList] = useState<ListType>("toTry")
   const [openFolder, setOpenFolder] = useState<string | null>(null) // null = Main List
 
+  // folder order per list (drag to reorder)
+  const [toTryFolderOrder, setToTryFolderOrder] = useState<string[]>([])
+  const [triedFolderOrder, setTriedFolderOrder] = useState<string[]>([])
+
   // data
   const [toTryRecipes, setToTryRecipes] = useState<Recipe[]>([])
   const [triedRecipes, setTriedRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
 
   // filters — global per list, persist across folders
-  const [activeDietFilter, setActiveDietFilter] = useState<string | null>(null)
-  const [activePrepFilter, setActivePrepFilter] = useState<string | null>(null)
-  const [activeCuisineFilter, setActiveCuisineFilter] = useState<string | null>(null)
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
   const [filterModalOpen, setFilterModalOpen] = useState(false)
 
   // rating modal
@@ -81,15 +101,21 @@ export default function MyRecipesScreen() {
   const [editingTags, setEditingTags] = useState<string[]>([])
   const [customTag, setCustomTag] = useState("")
 
-  // move/copy modal
-  const [moveModal, setMoveModal] = useState<{ recipe: Recipe; listType: ListType; action: "move" | "copy" } | null>(null)
+  // move modal (recipe)
+  const [moveModal, setMoveModal] = useState<{ recipe: Recipe; listType: ListType } | null>(null)
   const [moveTarget, setMoveTarget] = useState("")
   const [moveCustom, setMoveCustom] = useState("")
   const [moving, setMoving] = useState(false)
 
+  // recipe action sheet
+  const [recipeActionSheet, setRecipeActionSheet] = useState<Recipe | null>(null)
+
   // folder actions (rename/delete)
   const [folderActionModal, setFolderActionModal] = useState<{ folder: string; listType: ListType; step: "menu" | "rename" } | null>(null)
   const [folderRenameValue, setFolderRenameValue] = useState("")
+
+  // recipe order per folder (drag to reorder)
+  const [recipeOrder, setRecipeOrder] = useState<Record<string, string[]>>({})  // key = `${listType}:${folder ?? "__main__"}`
 
   const fetchAll = useCallback(async () => {
     if (!user) return
@@ -134,6 +160,19 @@ export default function MyRecipesScreen() {
 
       setToTryRecipes(savedList)
       setTriedRecipes(triedList)
+
+      const toTryFolders = Array.from(new Set(savedList.map(r => r.folder).filter(Boolean))) as string[]
+      setToTryFolderOrder(prev => {
+        const existing = prev.filter(f => toTryFolders.includes(f))
+        const newFolders = toTryFolders.filter(f => !existing.includes(f))
+        return [...existing, ...newFolders]
+      })
+      const triedFolders = Array.from(new Set(triedList.map(r => r.folder).filter(Boolean))) as string[]
+      setTriedFolderOrder(prev => {
+        const existing = prev.filter(f => triedFolders.includes(f))
+        const newFolders = triedFolders.filter(f => !existing.includes(f))
+        return [...existing, ...newFolders]
+      })
     } catch (e: any) {
       showError(e?.message ?? "Failed to load recipes", "My Recipes", fetchAll)
     } finally { setLoading(false) }
@@ -158,29 +197,54 @@ export default function MyRecipesScreen() {
     return currentRecipes.filter(r => r.folder === openFolder)
   }, [currentRecipes, openFolder])
 
-  // filter options from the whole current list (not just current folder)
+  // collect all filter field→values present across the whole current list
   const listFilterOptions = useMemo(() => {
-    const diets = new Set<string>()
-    const preps = new Set<string>()
-    const cuisines = new Set<string>()
+    const fields = ["diet", "cuisine", "prepTime", "budget", "taste", "healthiness"]
+    const options: Record<string, Set<string>> = {}
     for (const r of currentRecipes) {
-      if (r.searchFilters?.diet) diets.add(r.searchFilters.diet)
-      if (r.searchFilters?.prepTime) preps.add(r.searchFilters.prepTime)
-      if (r.searchFilters?.cuisine) cuisines.add(r.searchFilters.cuisine)
+      if (!r.searchFilters) continue
+      for (const field of fields) {
+        const val = r.searchFilters[field]
+        if (val) {
+          if (!options[field]) options[field] = new Set()
+          options[field].add(val)
+        }
+      }
     }
-    return { diets: Array.from(diets), preps: Array.from(preps), cuisines: Array.from(cuisines) }
+    return Object.fromEntries(Object.entries(options).map(([k, v]) => [k, Array.from(v)]))
   }, [currentRecipes])
 
-  const applyFilters = (recipes: Recipe[]) => recipes.filter(r => {
-    if (activeDietFilter && r.searchFilters?.diet !== activeDietFilter) return false
-    if (activePrepFilter && r.searchFilters?.prepTime !== activePrepFilter) return false
-    if (activeCuisineFilter && r.searchFilters?.cuisine !== activeCuisineFilter) return false
-    return true
-  })
+  const applyFilters = (recipes: Recipe[]) => {
+    const entries = Object.entries(activeFilters)
+    if (!entries.length) return recipes
+    return recipes.filter(r => entries.every(([field, value]) => r.searchFilters?.[field] === value))
+  }
 
-  const filteredRecipes = useMemo(() => applyFilters(recipesInView), [recipesInView, activeDietFilter, activePrepFilter, activeCuisineFilter])
+  const clearFilters = () => setActiveFilters({})
 
-  const clearFilters = () => { setActiveDietFilter(null); setActivePrepFilter(null); setActiveCuisineFilter(null) }
+  const recipeOrderKey = `${activeList}:${openFolder ?? "__main__"}`
+
+  const orderedRecipesInView = useMemo(() => {
+    const order = recipeOrder[recipeOrderKey]
+    if (!order || !order.length) return recipesInView
+    const map = new Map(recipesInView.map(r => [r.recipeId, r]))
+    const sorted = order.map(id => map.get(id)).filter(Boolean) as Recipe[]
+    const unsorted = recipesInView.filter(r => !order.includes(r.recipeId))
+    return [...sorted, ...unsorted]
+  }, [recipesInView, recipeOrder, recipeOrderKey])
+
+  const filteredOrderedRecipes = useMemo(() => applyFilters(orderedRecipesInView), [orderedRecipesInView, activeFilters])
+
+  const toggleFilter = (field: string, value: string) => {
+    setActiveFilters(prev => {
+      if (prev[field] === value) {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      }
+      return { ...prev, [field]: value }
+    })
+  }
 
   const openFolderView = (folder: string | null, list: ListType) => {
     setActiveList(list)
@@ -209,26 +273,16 @@ export default function MyRecipesScreen() {
     ])
   }
 
-  // ── MOVE / COPY ──
+  // ── MOVE ──
   const confirmMoveOrCopy = async () => {
     if (!moveModal || !user) return
-    const { recipe, listType, action } = moveModal
+    const { recipe, listType } = moveModal
     const target = moveTarget === "__custom__" ? moveCustom.trim() : moveTarget || null
     setMoving(true)
     try {
       const endpoint = listType === "toTry" ? "/api/favourites" : "/api/tried-recipes"
-      if (action === "move") {
-        await apiFetch(endpoint, { method: "PATCH", body: JSON.stringify({ userId: user.id, recipeId: recipe.recipeId, targetFolder: target }) })
-        setCurrentRecipes(prev => prev.map(r => r.recipeId === recipe.recipeId ? { ...r, folder: target } : r))
-      } else {
-        // copy: insert a new record with different folder (upsert won't copy, so we duplicate via POST with different folder key — not possible with current schema since recipe_id is unique per user; instead update folder only if not already there)
-        // For copy we add to target folder by updating (move) and keep original by re-inserting original folder
-        const originalFolder = recipe.folder
-        await apiFetch(endpoint, { method: "PATCH", body: JSON.stringify({ userId: user.id, recipeId: recipe.recipeId, targetFolder: target }) })
-        setCurrentRecipes(prev => prev.map(r => r.recipeId === recipe.recipeId ? { ...r, folder: target } : r))
-        // Note: true copy isn't possible with unique constraint per user+recipe — move is applied
-        Alert.alert("Moved", `"${recipe.title}" moved to ${target ?? "Main List"}.`)
-      }
+      await apiFetch(endpoint, { method: "PATCH", body: JSON.stringify({ userId: user.id, recipeId: recipe.recipeId, targetFolder: target }) })
+      setCurrentRecipes(prev => prev.map(r => r.recipeId === recipe.recipeId ? { ...r, folder: target } : r))
       setMoveModal(null)
     } catch { Alert.alert("Error", "Failed to move recipe.") }
     finally { setMoving(false) }
@@ -303,6 +357,8 @@ export default function MyRecipesScreen() {
     await Promise.all(toRename.map(r => apiFetch(endpoint, { method: "PATCH", body: JSON.stringify({ userId: user.id, recipeId: r.recipeId, targetFolder: newName }) })))
     const setter = listType === "toTry" ? setToTryRecipes : setTriedRecipes
     setter(prev => prev.map(r => r.folder === folder ? { ...r, folder: newName } : r))
+    const orderSetter = listType === "toTry" ? setToTryFolderOrder : setTriedFolderOrder
+    orderSetter(prev => prev.map(f => f === folder ? newName : f))
     setFolderActionModal(null)
   }
 
@@ -318,6 +374,8 @@ export default function MyRecipesScreen() {
           await Promise.all(toDelete.map(r => apiFetch(endpoint, { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: r.recipeId }) })))
           const setter = listType === "toTry" ? setToTryRecipes : setTriedRecipes
           setter(prev => prev.filter(r => r.folder !== folder))
+          const orderSetter = listType === "toTry" ? setToTryFolderOrder : setTriedFolderOrder
+          orderSetter(prev => prev.filter(f => f !== folder))
           setFolderActionModal(null)
           if (viewLevel === "recipes" && openFolder === folder) setViewLevel("folders")
         }
@@ -332,10 +390,9 @@ export default function MyRecipesScreen() {
   const triedCount = triedRecipes.length
 
   // shared across folders and recipes views
-  const hasFilters = !!(activeDietFilter || activePrepFilter || activeCuisineFilter)
-  const filterCount = [activeDietFilter, activePrepFilter, activeCuisineFilter].filter(Boolean).length
-  const { diets, preps, cuisines } = listFilterOptions
-  const hasFilterOptions = diets.length > 0 || preps.length > 0 || cuisines.length > 0
+  const hasFilters = Object.keys(activeFilters).length > 0
+  const filterCount = Object.keys(activeFilters).length
+  const hasFilterOptions = Object.keys(listFilterOptions).length > 0
 
   const filterModal = (
     <Modal visible={filterModalOpen} transparent animationType="slide">
@@ -351,55 +408,27 @@ export default function MyRecipesScreen() {
             )}
           </View>
           <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }}>
-            {diets.length > 0 && (
-              <View>
-                <Text style={s.filterSectionLabel}>Diet</Text>
+            {hasFilterOptions ? Object.entries(listFilterOptions).map(([field, values]) => (
+              <View key={field}>
+                <Text style={s.filterSectionLabel}>{FILTER_SECTION_LABELS[field] ?? field}</Text>
                 <View style={s.filterChipsRow}>
-                  {diets.map(diet => (
-                    <TouchableOpacity
-                      key={diet}
-                      style={[s.filterChip, activeDietFilter === diet && s.filterChipActive]}
-                      onPress={() => setActiveDietFilter(activeDietFilter === diet ? null : diet)}
-                    >
-                      <Text style={[s.filterChipText, activeDietFilter === diet && s.filterChipTextActive]}>{DIET_LABELS[diet] ?? diet}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {values.map(value => {
+                    const active = activeFilters[field] === value
+                    return (
+                      <TouchableOpacity
+                        key={value}
+                        style={[s.filterChip, active && s.filterChipActive]}
+                        onPress={() => toggleFilter(field, value)}
+                      >
+                        <Text style={[s.filterChipText, active && s.filterChipTextActive]}>{labelFor(field, value)}</Text>
+                      </TouchableOpacity>
+                    )
+                  })}
                 </View>
               </View>
+            )) : (
+              <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>No filter options yet — save recipes from a filtered search to enable this.</Text>
             )}
-            {preps.length > 0 && (
-              <View>
-                <Text style={s.filterSectionLabel}>Prep Time</Text>
-                <View style={s.filterChipsRow}>
-                  {preps.map(prep => (
-                    <TouchableOpacity
-                      key={prep}
-                      style={[s.filterChip, activePrepFilter === prep && s.filterChipActive]}
-                      onPress={() => setActivePrepFilter(activePrepFilter === prep ? null : prep)}
-                    >
-                      <Text style={[s.filterChipText, activePrepFilter === prep && s.filterChipTextActive]}>{PREP_LABELS[prep] ?? prep}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-            {cuisines.length > 0 && (
-              <View>
-                <Text style={s.filterSectionLabel}>Cuisine</Text>
-                <View style={s.filterChipsRow}>
-                  {cuisines.map(cuisine => (
-                    <TouchableOpacity
-                      key={cuisine}
-                      style={[s.filterChip, activeCuisineFilter === cuisine && s.filterChipActive]}
-                      onPress={() => setActiveCuisineFilter(activeCuisineFilter === cuisine ? null : cuisine)}
-                    >
-                      <Text style={[s.filterChipText, activeCuisineFilter === cuisine && s.filterChipTextActive]}>{cuisine.charAt(0).toUpperCase() + cuisine.slice(1)}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-            {!hasFilterOptions && <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>No filter options available — save recipes with search filters to enable this.</Text>}
           </ScrollView>
         </View>
       </TouchableOpacity>
@@ -421,10 +450,10 @@ export default function MyRecipesScreen() {
             <Text style={s.bigBtnText}>To Try</Text>
             <Text style={s.bigBtnCount}>({toTryCount})</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.bigBtn, { backgroundColor: "#22c55e" }]} onPress={() => switchList("tried")} activeOpacity={0.85}>
-            <Ionicons name="checkmark-circle-outline" size={26} color="#fff" />
-            <Text style={s.bigBtnText}>Tried</Text>
-            <Text style={s.bigBtnCount}>({triedCount})</Text>
+          <TouchableOpacity style={[s.bigBtn, s.bigBtnOrange]} onPress={() => switchList("tried")} activeOpacity={0.85}>
+            <Ionicons name="checkmark-circle-outline" size={26} color={colors.primary} />
+            <Text style={[s.bigBtnText, { color: colors.primary }]}>Tried</Text>
+            <Text style={[s.bigBtnCount, { color: colors.primary + "99" }]}>({triedCount})</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -436,12 +465,9 @@ export default function MyRecipesScreen() {
   // ────────────────────────────────────────────
   if (viewLevel === "folders") {
     const list = activeList === "toTry" ? toTryRecipes : triedRecipes
-    const listFolders = Array.from(new Set(list.map(r => r.folder).filter(Boolean))) as string[]
     const listLabel = activeList === "toTry" ? "To Try" : "Tried"
     const accentColor = activeList === "toTry" ? colors.primary : "#22c55e"
-    const hasFilters = !!(activeDietFilter || activePrepFilter || activeCuisineFilter)
-    const filterCount = [activeDietFilter, activePrepFilter, activeCuisineFilter].filter(Boolean).length
-
+    const folderOrder = activeList === "toTry" ? toTryFolderOrder : triedFolderOrder
     const folderVisibleCount = (folder: string | null) => applyFilters(list.filter(r => r.folder === folder)).length
 
     return (
@@ -457,9 +483,9 @@ export default function MyRecipesScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 12 }}>
-          {/* Main List */}
-          <TouchableOpacity style={s.folderCard} onPress={() => openFolderView(null, activeList)} activeOpacity={0.8}>
+        <ScrollView contentContainerStyle={{ padding: spacing.md }}>
+          {/* Main List — not draggable, no 3-dots */}
+          <TouchableOpacity style={[s.folderCard, { marginBottom: 12 }]} onPress={() => openFolderView(null, activeList)} activeOpacity={0.8}>
             <View style={[s.folderIconBg, { backgroundColor: accentColor + "22" }]}>
               <Ionicons name="list" size={22} color={accentColor} />
             </View>
@@ -467,33 +493,44 @@ export default function MyRecipesScreen() {
               <Text style={s.folderName}>Main List</Text>
               <Text style={s.folderCount}>{folderVisibleCount(null)} recipe{folderVisibleCount(null) !== 1 ? "s" : ""}{hasFilters ? " (filtered)" : ""}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.muted} />
           </TouchableOpacity>
 
-          {listFolders.map(folder => {
-            const count = folderVisibleCount(folder)
-            return (
-              <View key={folder} style={s.folderRow}>
-                <TouchableOpacity style={[s.folderCard, { flex: 1 }]} onPress={() => openFolderView(folder, activeList)} activeOpacity={0.8}>
-                  <View style={[s.folderIconBg, { backgroundColor: accentColor + "22" }]}>
-                    <Ionicons name="folder" size={22} color={accentColor} />
+          {/* Named folders — draggable */}
+          {folderOrder.length > 0 && (
+            <DraggableList
+              data={folderOrder}
+              keyExtractor={f => f}
+              itemHeight={78}
+              onReorder={activeList === "toTry" ? setToTryFolderOrder : setTriedFolderOrder}
+              renderItem={(folder, _, isDragging) => {
+                const count = folderVisibleCount(folder)
+                return (
+                  <View style={{ paddingBottom: 12 }}>
+                    <TouchableOpacity
+                      style={[s.folderCard, isDragging && { elevation: 8, opacity: 0.92 }]}
+                      onPress={() => openFolderView(folder, activeList)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[s.folderIconBg, { backgroundColor: accentColor + "22" }]}>
+                        <Ionicons name="folder" size={22} color={accentColor} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.folderName}>{folder}</Text>
+                        <Text style={s.folderCount}>{count} recipe{count !== 1 ? "s" : ""}{hasFilters ? " (filtered)" : ""}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => { setFolderActionModal({ folder, listType: activeList, step: "menu" }); setFolderRenameValue(folder) }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={{ padding: 4 }}
+                      >
+                        <Ionicons name="ellipsis-vertical" size={18} color={colors.muted} />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.folderName}>{folder}</Text>
-                    <Text style={s.folderCount}>{count} recipe{count !== 1 ? "s" : ""}{hasFilters ? " (filtered)" : ""}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.folderMenuBtn}
-                  onPress={() => { setFolderActionModal({ folder, listType: activeList, step: "menu" }); setFolderRenameValue(folder) }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="ellipsis-vertical" size={18} color={colors.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            )
-          })}
+                )
+              }}
+            />
+          )}
 
           {list.length === 0 && (
             <View style={s.empty}>
@@ -515,13 +552,15 @@ export default function MyRecipesScreen() {
                 {folderActionModal.step === "menu" ? (
                   <>
                     <Text style={s.actionSheetTitle}>{folderActionModal.folder}</Text>
-                    <TouchableOpacity style={s.actionSheetItem} onPress={() => setFolderActionModal(f => f ? { ...f, step: "rename" } : null)}>
+                    <TouchableOpacity style={s.actionSheetRow} onPress={() => setFolderActionModal(f => f ? { ...f, step: "rename" } : null)}>
                       <Ionicons name="pencil-outline" size={20} color={colors.text} />
-                      <Text style={s.actionSheetText}>Rename folder</Text>
+                      <Text style={s.actionSheetRowText}>Rename</Text>
+                      <Ionicons name="chevron-forward" size={16} color={colors.muted} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={s.actionSheetItem} onPress={() => deleteFolder(folderActionModal.folder, folderActionModal.listType)}>
+                    <TouchableOpacity style={[s.actionSheetRow, s.actionSheetRowDestructive]} onPress={() => deleteFolder(folderActionModal.folder, folderActionModal.listType)}>
                       <Ionicons name="trash-outline" size={20} color={colors.destructive} />
-                      <Text style={[s.actionSheetText, { color: colors.destructive }]}>Delete folder & recipes</Text>
+                      <Text style={[s.actionSheetRowText, { color: colors.destructive }]}>Delete</Text>
+                      <Ionicons name="chevron-forward" size={16} color={colors.destructive} />
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -563,7 +602,7 @@ export default function MyRecipesScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1, marginHorizontal: 12 }}>
           <Text style={s.headerTitle}>{openFolder ?? "Main List"}</Text>
-          <Text style={[s.headerCount, { marginTop: 0 }]}>{listLabel} · {filteredRecipes.length} recipe{filteredRecipes.length !== 1 ? "s" : ""}</Text>
+          <Text style={[s.headerCount, { marginTop: 0 }]}>{listLabel} · {filteredOrderedRecipes.length} recipe{filteredOrderedRecipes.length !== 1 ? "s" : ""}</Text>
         </View>
         <TouchableOpacity style={s.filterBtn} onPress={() => setFilterModalOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="options-outline" size={22} color={hasFilters ? colors.primary : colors.text} />
@@ -571,106 +610,130 @@ export default function MyRecipesScreen() {
         </TouchableOpacity>
       </View>
 
-      {filteredRecipes.length === 0 ? (
+      {filteredOrderedRecipes.length === 0 ? (
         <View style={s.empty}>
           <Ionicons name={activeList === "toTry" ? "bookmark-outline" : "checkmark-circle-outline"} size={48} color={colors.muted} />
           <Text style={s.emptyTitle}>{hasFilters ? "No recipes match this filter" : "No recipes here"}</Text>
           {hasFilters && <TouchableOpacity onPress={clearFilters}><Text style={{ color: colors.primary, fontWeight: "600" }}>Clear filters</Text></TouchableOpacity>}
         </View>
       ) : (
-        <FlatList
-          data={filteredRecipes}
+        <ScrollView contentContainerStyle={{ paddingTop: spacing.md, paddingBottom: 24 }}>
+        <DraggableList
+          data={filteredOrderedRecipes}
           keyExtractor={r => r.recipeId}
-          contentContainerStyle={{ padding: spacing.md, gap: 12 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={s.card} onPress={() => navigation.navigate("RecipeDetail", { id: item.recipeId, title: item.title })} activeOpacity={0.8}>
-              <View style={s.cardTop}>
-                {item.image ? (
-                  <Image source={{ uri: item.image }} style={s.cardImage} resizeMode="cover" />
-                ) : (
-                  <View style={[s.cardImage, s.cardImagePlaceholder]}>
-                    <Ionicons name="restaurant-outline" size={24} color={colors.muted} />
-                  </View>
-                )}
-                <View style={s.cardBody}>
-                  <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
-                  <View style={s.metaRow}>
-                    {item.readyInMinutes > 0 && <View style={s.metaChip}><Ionicons name="time-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.readyInMinutes} min</Text></View>}
-                    {item.triedOn && <View style={s.metaChip}><Ionicons name="calendar-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.triedOn.split("T")[0]}</Text></View>}
-                  </View>
-                  {item.tags.length > 0 && (
-                    <View style={s.tagsRow}>
-                      {item.tags.map(tag => (
-                        <View key={tag} style={s.tagBadge}><Text style={s.tagBadgeText}>{tag}</Text></View>
-                      ))}
-                    </View>
-                  )}
-                  {/* stored filter badges */}
-                  {item.searchFilters && (
-                    <View style={s.tagsRow}>
-                      {item.searchFilters.diet && <View style={s.searchBadge}><Text style={s.searchBadgeText}>{DIET_LABELS[item.searchFilters.diet] ?? item.searchFilters.diet}</Text></View>}
-                      {item.searchFilters.cuisine && <View style={s.searchBadge}><Text style={s.searchBadgeText}>{item.searchFilters.cuisine}</Text></View>}
-                      {item.searchFilters.prepTime && <View style={s.searchBadge}><Text style={s.searchBadgeText}>{PREP_LABELS[item.searchFilters.prepTime] ?? item.searchFilters.prepTime}</Text></View>}
-                    </View>
-                  )}
-                </View>
-
-                {/* Actions column */}
-                <View style={s.cardActions}>
-                  {activeList === "toTry" && (
-                    <>
-                      <TouchableOpacity onPress={() => openTagEdit(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Ionicons name="pricetag-outline" size={18} color={colors.mutedForeground} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => markAsTried(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Ionicons name="checkmark-circle-outline" size={20} color="#16a34a" />
-                      </TouchableOpacity>
-                    </>
-                  )}
-                  {activeList === "tried" && item.satisfaction !== undefined && (
-                    <TouchableOpacity onPress={() => openRating(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="star-outline" size={20} color="#f59e0b" />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    onPress={() => { setMoveModal({ recipe: item, listType: activeList, action: "move" }); setMoveTarget(""); setMoveCustom("") }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="ellipsis-vertical" size={18} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Rating row (tried) */}
-              {activeList === "tried" && (
-                <View style={s.ratingRow}>
-                  {item.satisfaction ? (
-                    <>
-                      <Stars rating={item.satisfaction} colors={colors} />
-                      {item.difficulty ? <Text style={s.difficultyText}>{item.difficulty}</Text> : null}
-                      <TouchableOpacity onPress={() => openRating(item)}><Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>Edit</Text></TouchableOpacity>
-                    </>
+          itemHeight={110}
+          onReorder={reordered => setRecipeOrder(prev => ({ ...prev, [recipeOrderKey]: reordered.map(r => r.recipeId) }))}
+          renderItem={(item, _, isDragging) => (
+            <View style={{ paddingHorizontal: spacing.md, paddingBottom: 12, paddingTop: 0 }}>
+              <TouchableOpacity style={[s.card, isDragging && { elevation: 8, opacity: 0.94 }]} onPress={() => navigation.navigate("RecipeDetail", { id: item.recipeId, title: item.title })} activeOpacity={0.8}>
+                <View style={s.cardTop}>
+                  {item.image ? (
+                    <Image source={{ uri: item.image }} style={s.cardImage} resizeMode="cover" />
                   ) : (
-                    <TouchableOpacity onPress={() => openRating(item)}><Text style={s.noRating}>Rate this recipe →</Text></TouchableOpacity>
+                    <View style={[s.cardImage, s.cardImagePlaceholder]}>
+                      <Ionicons name="restaurant-outline" size={24} color={colors.muted} />
+                    </View>
                   )}
-                  <TouchableOpacity onPress={() => removeFromList(item)} style={{ marginLeft: "auto" }}>
-                    <Ionicons name="trash-outline" size={15} color={colors.destructive} />
-                  </TouchableOpacity>
+                  <View style={s.cardBody}>
+                    <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
+                    <View style={s.metaRow}>
+                      {item.readyInMinutes > 0 && <View style={s.metaChip}><Ionicons name="time-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.readyInMinutes} min</Text></View>}
+                      {item.triedOn && <View style={s.metaChip}><Ionicons name="calendar-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.triedOn.split("T")[0]}</Text></View>}
+                    </View>
+                    {item.tags.length > 0 && (
+                      <View style={s.tagsRow}>
+                        {item.tags.map(tag => (
+                          <View key={tag} style={s.tagBadge}><Text style={s.tagBadgeText}>{tag}</Text></View>
+                        ))}
+                      </View>
+                    )}
+                    {item.searchFilters && Object.keys(item.searchFilters).some(k => ["diet","cuisine","prepTime","budget","taste","healthiness"].includes(k)) && (
+                      <View style={s.tagsRow}>
+                        {["diet","cuisine","prepTime","budget","taste","healthiness"].map(field =>
+                          item.searchFilters?.[field]
+                            ? <View key={field} style={s.searchBadge}><Text style={s.searchBadgeText}>{labelFor(field, item.searchFilters[field])}</Text></View>
+                            : null
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Star + 3-dots */}
+                  <View style={s.cardActions}>
+                    <TouchableOpacity
+                      onPress={() => openRating(item)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name={item.satisfaction ? "star" : "star-outline"}
+                        size={20}
+                        color={item.satisfaction ? "#f59e0b" : colors.mutedForeground}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setRecipeActionSheet(item)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="ellipsis-vertical" size={18} color={colors.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              )}
-              {activeList === "toTry" && (
-                <View style={s.ratingRow}>
-                  <TouchableOpacity onPress={() => removeFromList(item)} style={{ marginLeft: "auto" }}>
-                    <Ionicons name="trash-outline" size={15} color={colors.destructive} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </TouchableOpacity>
+
+                {/* Rating row (tried) */}
+                {activeList === "tried" && item.satisfaction ? (
+                  <View style={s.ratingRow}>
+                    <Stars rating={item.satisfaction} colors={colors} />
+                    {item.difficulty ? <Text style={s.difficultyText}>{item.difficulty}</Text> : null}
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            </View>
           )}
         />
+        </ScrollView>
       )}
 
-      {/* ── Move/copy modal ── */}
+      {/* ── Recipe action sheet ── */}
+      {recipeActionSheet && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setRecipeActionSheet(null)}>
+          <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setRecipeActionSheet(null)}>
+            <View style={s.actionSheet}>
+              <Text style={s.actionSheetTitle}>{recipeActionSheet.title}</Text>
+              <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); openRating(recipeActionSheet) }}>
+                <Ionicons name="star-outline" size={20} color={colors.text} />
+                <Text style={s.actionSheetRowText}>Rate</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+              </TouchableOpacity>
+              {activeList === "toTry" && (
+                <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); openTagEdit(recipeActionSheet) }}>
+                  <Ionicons name="pricetag-outline" size={20} color={colors.text} />
+                  <Text style={s.actionSheetRowText}>Edit tags</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+                </TouchableOpacity>
+              )}
+              {activeList === "toTry" && (
+                <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); markAsTried(recipeActionSheet) }}>
+                  <Ionicons name="checkmark-circle-outline" size={20} color={colors.text} />
+                  <Text style={s.actionSheetRowText}>Mark as Tried</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); setMoveModal({ recipe: recipeActionSheet, listType: activeList }); setMoveTarget(""); setMoveCustom("") }}>
+                <Ionicons name="folder-outline" size={20} color={colors.text} />
+                <Text style={s.actionSheetRowText}>Move to folder</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.actionSheetRow, s.actionSheetRowDestructive]} onPress={() => { setRecipeActionSheet(null); removeFromList(recipeActionSheet) }}>
+                <Ionicons name="trash-outline" size={20} color={colors.destructive} />
+                <Text style={[s.actionSheetRowText, { color: colors.destructive }]}>Delete</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.destructive} />
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* ── Move modal ── */}
       {moveModal && (() => {
         const currentFolders = (moveModal.listType === "toTry" ? toTryRecipes : triedRecipes)
           .map(r => r.folder).filter(Boolean) as string[]
@@ -844,13 +907,15 @@ export default function MyRecipesScreen() {
               {folderActionModal.step === "menu" ? (
                 <>
                   <Text style={s.actionSheetTitle}>{folderActionModal.folder}</Text>
-                  <TouchableOpacity style={s.actionSheetItem} onPress={() => setFolderActionModal(f => f ? { ...f, step: "rename" } : null)}>
+                  <TouchableOpacity style={s.actionSheetRow} onPress={() => setFolderActionModal(f => f ? { ...f, step: "rename" } : null)}>
                     <Ionicons name="pencil-outline" size={20} color={colors.text} />
-                    <Text style={s.actionSheetText}>Rename folder</Text>
+                    <Text style={s.actionSheetRowText}>Rename</Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.muted} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.actionSheetItem} onPress={() => deleteFolder(folderActionModal.folder, folderActionModal.listType)}>
+                  <TouchableOpacity style={[s.actionSheetRow, s.actionSheetRowDestructive]} onPress={() => deleteFolder(folderActionModal.folder, folderActionModal.listType)}>
                     <Ionicons name="trash-outline" size={20} color={colors.destructive} />
-                    <Text style={[s.actionSheetText, { color: colors.destructive }]}>Delete folder & recipes</Text>
+                    <Text style={[s.actionSheetRowText, { color: colors.destructive }]}>Delete</Text>
+                    <Ionicons name="chevron-forward" size={16} color={colors.destructive} />
                   </TouchableOpacity>
                 </>
               ) : (
@@ -888,19 +953,17 @@ const makeStyles = (colors: any) => StyleSheet.create({
   headerCount: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
 
   // home
-  homeContent: { paddingHorizontal: spacing.md, paddingTop: spacing.xl, gap: 16 },
-  bigBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, paddingVertical: 14, borderRadius: radius.lg },
-  bigBtnSecondary: {},
-  bigBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
+  homeContent: { flex: 1, padding: spacing.md, paddingTop: 48, gap: 16 },
+  bigBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, borderRadius: radius.lg, paddingVertical: 18 },
+  bigBtnOrange: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.primary },
+  bigBtnText: { fontSize: 17, fontWeight: "800", color: "#fff" },
   bigBtnCount: { fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: "500" },
 
   // folder list
-  folderRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  folderCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: radius.md, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  folderCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border },
   folderIconBg: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  folderName: { fontSize: 16, fontWeight: "700", color: colors.text },
-  folderCount: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
-  folderMenuBtn: { padding: 8 },
+  folderName: { fontSize: 15, fontWeight: "700", color: colors.text },
+  folderCount: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
 
   // filter button in header
   filterBtn: { position: "relative", padding: 2 },
@@ -968,11 +1031,12 @@ const makeStyles = (colors: any) => StyleSheet.create({
   radioSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
   difficultyOptionText: { fontSize: 15, color: colors.text },
 
-  // action sheet (folder menu / rename)
-  actionSheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.md, gap: 4 },
-  actionSheetTitle: { fontSize: 14, fontWeight: "700", color: colors.mutedForeground, paddingVertical: 8, paddingHorizontal: 4 },
-  actionSheetItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 4, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
-  actionSheetText: { fontSize: 16, color: colors.text, fontWeight: "500" },
+  // action sheet (folder/recipe menu)
+  actionSheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.md, gap: 10, paddingBottom: 28 },
+  actionSheetTitle: { fontSize: 16, fontWeight: "700", color: colors.text, paddingVertical: 8, paddingHorizontal: 4, textAlign: "center" },
+  actionSheetRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 15, paddingHorizontal: 16, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
+  actionSheetRowText: { flex: 1, fontSize: 16, color: colors.text, fontWeight: "600" },
+  actionSheetRowDestructive: { borderColor: colors.destructive + "55" },
   actionSheetBtn: { borderRadius: radius.md, paddingVertical: 12, alignItems: "center", marginTop: 8 },
   renameInput: { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12, color: colors.text, fontSize: 15, backgroundColor: colors.background, marginTop: 8 },
 })
