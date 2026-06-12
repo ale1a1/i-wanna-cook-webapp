@@ -19,7 +19,7 @@ Update it to reflect what the app actually does now: meal planner,
 fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
 Pre-launch blocker — first impressions matter.
 
-Custom alerts & modals — replace all native system dialogs
+--- Custom alerts & modals — replace all native system dialogs ---
 All Alert.alert() calls and native modal patterns must be replaced with custom-styled components
 that match the app's design system (colours, radius, typography). Native dialogs break visual
 consistency and look out of place on both iOS and Android. This covers: confirmation dialogs,
