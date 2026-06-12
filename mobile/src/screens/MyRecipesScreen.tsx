@@ -89,6 +89,8 @@ export default function MyRecipesScreen() {
   // filters — global per list, persist across folders
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
   const [filterModalOpen, setFilterModalOpen] = useState(false)
+  const [ratingFilter, setRatingFilter] = useState<{ rated: boolean; minScore: number } | null>(null)
+  const [sortByRating, setSortByRating] = useState<"asc" | "desc" | null>(null)
 
   // rating modal
   const [ratingModal, setRatingModal] = useState(false)
@@ -223,11 +225,17 @@ export default function MyRecipesScreen() {
 
   const applyFilters = (recipes: Recipe[]) => {
     const entries = Object.entries(activeFilters)
-    if (!entries.length) return recipes
-    return recipes.filter(r => entries.every(([field, value]) => r.searchFilters?.[field] === value))
+    let result = entries.length ? recipes.filter(r => entries.every(([field, value]) => r.searchFilters?.[field] === value)) : recipes
+    if (ratingFilter) {
+      result = result.filter(r => ratingFilter.rated ? (r.satisfaction ?? 0) >= ratingFilter.minScore : !r.satisfaction)
+    }
+    if (sortByRating && ratingFilter?.rated) {
+      result = [...result].sort((a, b) => sortByRating === "asc" ? (a.satisfaction ?? 0) - (b.satisfaction ?? 0) : (b.satisfaction ?? 0) - (a.satisfaction ?? 0))
+    }
+    return result
   }
 
-  const clearFilters = () => setActiveFilters({})
+  const clearFilters = () => { setActiveFilters({}); setRatingFilter(null); setSortByRating(null) }
 
   const recipeOrderKey = `${activeList}:${openFolder ?? "__main__"}`
 
@@ -443,8 +451,8 @@ export default function MyRecipesScreen() {
   const triedCount = triedRecipes.length
 
   // shared across folders and recipes views
-  const hasFilters = Object.keys(activeFilters).length > 0
-  const filterCount = Object.keys(activeFilters).length
+  const hasFilters = Object.keys(activeFilters).length > 0 || ratingFilter !== null
+  const filterCount = Object.keys(activeFilters).length + (ratingFilter !== null ? 1 : 0)
   const hasFilterOptions = Object.keys(listFilterOptions).length > 0
 
   const filterModal = (
@@ -461,6 +469,37 @@ export default function MyRecipesScreen() {
             )}
           </View>
           <ScrollView contentContainerStyle={{ padding: spacing.md, gap: 20 }}>
+            {activeList === "tried" && (
+              <View>
+                <Text style={s.filterSectionLabel}>Rating</Text>
+                <View style={s.filterChipsRow}>
+                  <TouchableOpacity
+                    style={[s.filterChip, ratingFilter?.rated === true && s.filterChipActive]}
+                    onPress={() => setRatingFilter(prev => prev?.rated ? null : { rated: true, minScore: 1 })}
+                  >
+                    <Text style={[s.filterChipText, ratingFilter?.rated === true && s.filterChipTextActive]}>Rated</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.filterChip, ratingFilter?.rated === false && s.filterChipActive]}
+                    onPress={() => { setRatingFilter(prev => prev?.rated === false ? null : { rated: false, minScore: 0 }); setSortByRating(null) }}
+                  >
+                    <Text style={[s.filterChipText, ratingFilter?.rated === false && s.filterChipTextActive]}>Not rated</Text>
+                  </TouchableOpacity>
+                </View>
+                {ratingFilter?.rated && (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={[s.filterSectionLabel, { marginBottom: 8 }]}>Min. Overall score</Text>
+                    <View style={{ flexDirection: "row", gap: 6 }}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <TouchableOpacity key={star} onPress={() => setRatingFilter(prev => prev ? { ...prev, minScore: star } : null)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                          <Ionicons name={star <= (ratingFilter.minScore) ? "star" : "star-outline"} size={28} color="#f59e0b" />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
             {hasFilterOptions ? Object.entries(listFilterOptions).map(([field, values]) => (
               <View key={field}>
                 <Text style={s.filterSectionLabel}>{FILTER_SECTION_LABELS[field] ?? field}</Text>
@@ -479,9 +518,9 @@ export default function MyRecipesScreen() {
                   })}
                 </View>
               </View>
-            )) : (
+            )) : activeList !== "tried" ? (
               <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>No filter options yet — save recipes from a filtered search to enable this.</Text>
-            )}
+            ) : null}
           </ScrollView>
         </View>
       </TouchableOpacity>
@@ -657,6 +696,16 @@ export default function MyRecipesScreen() {
           <Text style={s.headerTitle}>{openFolder ?? "Main List"}</Text>
           <Text style={[s.headerCount, { marginTop: 0 }]}>{listLabel} · {filteredOrderedRecipes.length} recipe{filteredOrderedRecipes.length !== 1 ? "s" : ""}</Text>
         </View>
+        {activeList === "tried" && ratingFilter?.rated && (
+          <TouchableOpacity
+            style={s.sortBtn}
+            onPress={() => setSortByRating(prev => prev === "desc" ? "asc" : "desc")}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={s.sortBtnText}>Sort by rate</Text>
+            <Ionicons name={sortByRating === "asc" ? "chevron-up" : "chevron-down"} size={14} color={colors.primary} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={s.filterBtn} onPress={() => setFilterModalOpen(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="options-outline" size={22} color={hasFilters ? colors.primary : colors.text} />
           {hasFilters && <View style={s.filterBadge}><Text style={s.filterBadgeText}>{filterCount}</Text></View>}
@@ -997,6 +1046,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   folderName: { fontSize: 15, fontWeight: "700", color: colors.text },
   folderCount: { fontSize: 12, color: colors.mutedForeground, marginTop: 2 },
 
+  sortBtn: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.md, borderWidth: 1, borderColor: colors.primary },
+  sortBtnText: { fontSize: 12, fontWeight: "600", color: colors.primary },
   // filter button in header
   filterBtn: { position: "relative", padding: 2 },
   filterBadge: { position: "absolute", top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },

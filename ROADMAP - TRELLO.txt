@@ -12,26 +12,32 @@ LIST: MUST — Before Launch
 ================================================================
 
 
+--- Home screen update ---
 
-
---- ⚠️ IMMEDIATE NEXT STEPS (test before moving on) ---
-
-
-My Recipes: test and fix
-  
-
-Home screen update
 The home screen still shows original early-development features.
 Update it to reflect what the app actually does now: meal planner,
 fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
 Pre-launch blocker — first impressions matter.
 
+Custom alerts & modals — replace all native system dialogs
+All Alert.alert() calls and native modal patterns must be replaced with custom-styled components
+that match the app's design system (colours, radius, typography). Native dialogs break visual
+consistency and look out of place on both iOS and Android. This covers: confirmation dialogs,
+destructive action prompts, error messages, and any sheet-style modals currently using the OS default.
+
+
 --- Navigation & UX ---
 
-Navigation audit — back gestures and close buttons
-Some screens use X button (blocks swipe-back gesture), others rely on swipe-left. Needs a full audit
-before launch. Swipe-back should work on all stack screens; modals should have X. Recipe detail,
-cooking mode, login modal, profile modals all need checking.
+Navigation audit — back gestures, close buttons, and header breadcrumbs
+Full audit required before launch covering three areas:
+1. Back gestures: all stack screens must support swipe-back. Any screen using an X button instead
+   of a back arrow should be reviewed — X blocks the native swipe gesture. Affected screens include
+   recipe detail, cooking mode, login modal, and profile modals.
+2. Header breadcrumbs: headers should show the current path so users know where they are
+   (e.g. My Recipes > Tried > Test Folder). Decide on a consistent pattern across all screens.
+3. Footer & bottom navigation: define the final navigation structure (tab bar vs. drawer vs. hybrid)
+   before finalising header layout — the two decisions are coupled.
+
 
 --- Emails ---
 
