@@ -100,9 +100,15 @@ function HomeTabs() {
     ]
   }
 
+  const TAB_SCREENS = new Set(["Home", "Search", "Scan", "Shopping", "QuickShopping", "Cooking"])
+
   const handleNavigate = (name: string) => {
     setCurrentRoute(name)
-    navigation.navigate(name)
+    if (TAB_SCREENS.has(name)) {
+      navigation.navigate("Tabs", { screen: name })
+    } else {
+      navigation.navigate(name)
+    }
   }
 
   return (
