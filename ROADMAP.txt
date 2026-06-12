@@ -12,13 +12,6 @@ LIST: MUST — Before Launch
 ================================================================
 
 
---- Home screen update ---
-
-The home screen still shows original early-development features.
-Update it to reflect what the app actually does now: meal planner,
-fridge scan, recipe tagging, cooking mode, quick shopping list, etc.
-Pre-launch blocker — first impressions matter.
-
 --- Custom alerts & modals — replace all native system dialogs ---
 All Alert.alert() calls and native modal patterns must be replaced with custom-styled components
 that match the app's design system (colours, radius, typography). Native dialogs break visual
@@ -327,6 +320,13 @@ Once AI assistant and personalisation are live.
 ================================================================
 LIST: ALREADY BUILT ✅
 ================================================================
+
+Home screen redesign ✅
+  Hero with subtitle, feature tiles (2-column grid, orange border, centred text).
+  ReadyToCook screen (Browse Recipes / Scan Fridge choice).
+  Sliding tab bar with orange swap button replacing the + overflow menu.
+  No active session: Home pinned, Search/Scan/Shopping on page 1, My Recipes/Meal Plans/Profile on page 2.
+  Active session: full carousel — Cooking/Quick List on page 1, Shopping pushed to page 2.
 
 Recipe search with filters ✅
 Match all / Match some toggle ✅

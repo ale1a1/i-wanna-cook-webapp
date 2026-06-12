@@ -1,6 +1,6 @@
 import "react-native-gesture-handler"
 import React, { Component } from "react"
-import { View, Animated, Pressable, TouchableOpacity, Text } from "react-native"
+import { View, TouchableOpacity, Text } from "react-native"
 import { NavigationContainer, useNavigation } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
@@ -14,7 +14,7 @@ import { GlobalErrorProvider } from "./src/context/GlobalErrorContext"
 import { SubscriptionProvider } from "./src/context/SubscriptionContext"
 import { ActiveRecipeSessionProvider, useActiveRecipeSession } from "./src/context/ActiveRecipeSessionContext"
 import ErrorCard from "./src/components/ErrorCard"
-import ExpandableMenu from "./src/components/ExpandableMenu"
+import SlidingTabBar, { TabItem } from "./src/components/SlidingTabBar"
 import HomeScreen from "./src/screens/HomeScreen"
 import SearchScreen from "./src/screens/SearchScreen"
 import ScanScreen from "./src/screens/ScanScreen"
@@ -26,6 +26,7 @@ import LoginScreen from "./src/screens/LoginScreen"
 import CookingModeScreen from "./src/screens/CookingModeScreen"
 import MealPlanScreen from "./src/screens/MealPlanScreen"
 import QuickShoppingListScreen from "./src/screens/QuickShoppingListScreen"
+import ReadyToCookScreen from "./src/screens/ReadyToCookScreen"
 
 class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
   state = { error: null }
@@ -49,178 +50,88 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: st
 const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
-const OVERFLOW_ITEMS_DEFAULT = [
-  { name: "MyRecipes", icon: "bookmark-outline" as const, label: "My Recipes" },
-  { name: "MealPlan", icon: "calendar-outline" as const, label: "Meal Plans" },
-  { name: "Profile", icon: "person-outline" as const, label: "Profile" },
-]
-
-
-function TabIcon({ name, color }: { name: keyof typeof Ionicons.glyphMap, color: string, active: boolean }) {
-  return <Ionicons name={name} size={26} color={color} />
-}
-
-const OVERFLOW_ROW_HEIGHT = 72
-
 function HomeTabs() {
   const { user } = useAuth()
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const navigation = useNavigation<any>()
   const { quickListCount, session } = useActiveRecipeSession()
-  const [overflowOpen, setOverflowOpen] = React.useState(false)
-  const animHeight = React.useRef(new Animated.Value(0)).current
-  const [currentRoute, setCurrentRoute] = React.useState("")
-
-  // Build overflow: displaced tab + Shopping (if quick list active) + defaults
-  const overflowBase: typeof OVERFLOW_ITEMS_DEFAULT = []
-  if (session) {
-    if (session.source === "scan") overflowBase.push({ name: "Scan", icon: "camera-outline" as const, label: "Scan" })
-    else overflowBase.push({ name: "Search", icon: "search-outline" as const, label: "Search" })
-  }
-  if (quickListCount > 0) overflowBase.push({ name: "Shopping", icon: "cart-outline" as const, label: "Shopping" })
-  overflowBase.push(...OVERFLOW_ITEMS_DEFAULT)
-
-  const overflowItems = overflowBase.map(item =>
-    item.name === "Profile"
-      ? { ...item, icon: (user ? "person-outline" : "log-in-outline") as const, label: user ? "Profile" : "Sign in" }
-      : item
-  )
-
-  const closeOverflow = React.useCallback(() => {
-    Animated.timing(animHeight, { toValue: 0, duration: 220, useNativeDriver: false }).start(() => setOverflowOpen(false))
-  }, [animHeight])
-
-  const toggleOverflow = () => {
-    if (overflowOpen) {
-      closeOverflow()
-    } else {
-      setOverflowOpen(true)
-      Animated.timing(animHeight, { toValue: OVERFLOW_ROW_HEIGHT, duration: 220, useNativeDriver: false }).start()
-    }
-  }
-
-  React.useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      closeOverflow()
-      setCurrentRoute("")
-    })
-    return unsubscribe
-  }, [navigation, closeOverflow])
+  const [currentRoute, setCurrentRoute] = React.useState("Home")
 
   const tabBarHeight = 72 + insets.bottom
+
+  const profileTab: TabItem = {
+    name: "Profile",
+    label: user ? "Profile" : "Sign in",
+    icon: user ? "person-outline" : "log-in-outline",
+  }
+
+  // Build the two pages based on whether there is an active session
+  let page1: TabItem[]
+  let page2: TabItem[]
+
+  if (session) {
+    // Active session — full carousel, Home rotates too
+    page1 = [
+      { name: "Home", label: "Home", icon: "home-outline" },
+      { name: "Search", label: "Search", icon: "search-outline" },
+      { name: "Cooking", label: "Cooking", icon: "restaurant" },
+      { name: "QuickShopping", label: "Quick List", icon: "flash", badge: quickListCount > 0 ? quickListCount : undefined },
+    ]
+    page2 = [
+      { name: "MyRecipes", label: "My Recipes", icon: "bookmark-outline" },
+      { name: "MealPlan", label: "Meal Plans", icon: "calendar-outline" },
+      profileTab,
+      { name: "Shopping", label: "Shopping", icon: "cart-outline" },
+    ]
+  } else {
+    // No active session — Home pinned on page 1
+    page1 = [
+      { name: "Home", label: "Home", icon: "home-outline" },
+      { name: "Search", label: "Search", icon: "search-outline" },
+      { name: "Scan", label: "Scan", icon: "camera-outline" },
+      { name: "Shopping", label: "Shopping", icon: "cart-outline" },
+    ]
+    page2 = [
+      { name: "Home", label: "Home", icon: "home-outline" },
+      { name: "MyRecipes", label: "My Recipes", icon: "bookmark-outline" },
+      { name: "MealPlan", label: "Meal Plans", icon: "calendar-outline" },
+      profileTab,
+    ]
+  }
+
+  const handleNavigate = (name: string) => {
+    setCurrentRoute(name)
+    navigation.navigate(name)
+  }
 
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
-          tabBarStyle: { backgroundColor: colors.card, borderTopColor: "rgba(255,255,255,0.4)", borderTopWidth: 1.5, height: tabBarHeight, paddingBottom: insets.bottom + 10, paddingTop: 10 },
-          tabBarItemStyle: { flex: 1 },
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.muted,
-          tabBarLabelStyle: { fontSize: 10, fontWeight: "500", marginTop: -2 },
+          tabBarStyle: { display: "none" },
         }}
-        screenListeners={{ state: (e: any) => { setCurrentRoute(e.data.state.routes[e.data.state.index]?.name ?? ""); if (overflowOpen) closeOverflow() } }}
+        screenListeners={{ state: (e: any) => setCurrentRoute(e.data.state.routes[e.data.state.index]?.name ?? "") }}
       >
-        <Tab.Screen name="Home" component={HomeScreen} options={{
-          tabBarIcon: ({ color, focused }) => <TabIcon name="home-outline" color={color} active={focused} />,
-        }} />
-        {!session && (
-          <Tab.Screen name="Search" component={SearchScreen} options={{
-            tabBarIcon: ({ color, focused }) => <TabIcon name="search-outline" color={color} active={focused} />,
-          }} />
-        )}
-        {session ? (
-          <Tab.Screen
-            name="Cooking"
-            component={RecipeDetailScreen}
-            initialParams={{ id: session.recipeId, title: session.recipeTitle, fromSession: true }}
-            options={{
-              tabBarLabel: "Cooking",
-              tabBarIcon: ({ color }) => (
-                <View>
-                  <Ionicons name="restaurant" size={26} color={color} />
-                  <View style={{ position: "absolute", top: -4, right: -10, backgroundColor: colors.primary, borderRadius: 6, width: 8, height: 8 }} />
-                </View>
-              ),
-            }}
-          />
-        ) : (
-          <Tab.Screen name="Scan" component={ScanScreen} options={{
-            tabBarIcon: ({ color, focused }) => <TabIcon name="camera-outline" color={color} active={focused} />,
-          }} />
-        )}
-        {quickListCount > 0 ? (
-          <Tab.Screen name="QuickShopping" component={QuickShoppingListScreen} options={{
-            tabBarLabel: "Quick List",
-            tabBarIcon: ({ color }) => (
-              <View>
-                <Ionicons name="flash" size={26} color={color} />
-                <View style={{ position: "absolute", top: -4, right: -8, backgroundColor: colors.primary, borderRadius: 8, minWidth: 16, height: 16, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 }}>
-                  <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>{quickListCount}</Text>
-                </View>
-              </View>
-            ),
-          }} />
-        ) : (
-          <Tab.Screen name="Shopping" component={ShoppingListScreen} options={{
-            tabBarIcon: ({ color, focused }) => <TabIcon name="cart-outline" color={color} active={focused} />,
-          }} />
-        )}
+        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Search" component={SearchScreen} />
+        <Tab.Screen name="Scan" component={ScanScreen} />
+        <Tab.Screen name="Shopping" component={ShoppingListScreen} />
+        <Tab.Screen name="QuickShopping" component={QuickShoppingListScreen} />
         <Tab.Screen
-          name="More"
-          component={HomeScreen}
-          options={{
-            tabBarLabel: "",
-            tabBarButton: () => (
-              <ExpandableMenu
-                isOpen={overflowOpen}
-                onToggle={toggleOverflow}
-              />
-            ),
-          }}
+          name="Cooking"
+          component={RecipeDetailScreen}
+          initialParams={session ? { id: session.recipeId, title: session.recipeTitle, fromSession: true } : undefined}
         />
       </Tab.Navigator>
 
-      {overflowOpen && (
-        <Pressable
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: tabBarHeight }}
-          onPress={toggleOverflow}
-        />
-      )}
-
-      <Animated.View style={{
-        position: "absolute",
-        bottom: tabBarHeight,
-        left: 0,
-        right: 0,
-        height: animHeight,
-        backgroundColor: colors.card,
-        borderTopColor: "rgba(255,255,255,0.4)",
-        borderTopWidth: overflowOpen ? 1.5 : 0,
-        overflow: "hidden",
-      }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-evenly", alignItems: "center", height: OVERFLOW_ROW_HEIGHT, paddingHorizontal: 8 }}>
-          {overflowItems.map((item) => {
-            const isActive = currentRoute === item.name
-            return (
-              <TouchableOpacity
-                key={item.name}
-                style={{ alignItems: "center", flex: 1 }}
-                onPress={() => {
-                  closeOverflow()
-                  navigation.navigate(item.name)
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name={item.icon} size={26} color={isActive ? colors.primary : colors.muted} />
-                <Text style={{ fontSize: 10, fontWeight: "500", marginTop: -2, color: isActive ? colors.primary : colors.muted }}>{item.label}</Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
-      </Animated.View>
+      <SlidingTabBar
+        page1={page1}
+        page2={page2}
+        activeRoute={currentRoute}
+        onNavigate={handleNavigate}
+      />
     </View>
   )
 }
@@ -245,6 +156,7 @@ function AppNavigator() {
       <Stack.Screen name="MealPlan" component={MealPlanScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="QuickShoppingList" component={QuickShoppingListScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ReadyToCook" component={ReadyToCookScreen} options={{ headerShown: false, presentation: "modal" }} />
     </Stack.Navigator>
   )
 }
