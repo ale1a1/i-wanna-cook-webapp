@@ -121,12 +121,14 @@ export default function MyRecipesScreen() {
     if (!user) return
     setLoading(true)
     try {
-      const [favsRes, triedRes] = await Promise.all([
+      const [favsRes, triedRes, foldersRes] = await Promise.all([
         apiFetch(`/api/favourites?userId=${user.id}`, { screen: "My Recipes" }),
         apiFetch(`/api/tried-recipes?userId=${user.id}`, { screen: "My Recipes" }),
+        apiFetch(`/api/folders?userId=${user.id}`, { screen: "My Recipes" }).catch(() => null),
       ])
       const favsData = await favsRes.json()
       const triedData = await triedRes.json()
+      const foldersData = foldersRes ? await foldersRes.json().catch(() => ({ folders: [] })) : { folders: [] }
 
       const savedList: Recipe[] = (favsData.favourites ?? []).map((f: any) => ({
         recipeId: f.recipe_id,
@@ -161,17 +163,22 @@ export default function MyRecipesScreen() {
       setToTryRecipes(savedList)
       setTriedRecipes(triedList)
 
-      const toTryFolders = Array.from(new Set(savedList.map(r => r.folder).filter(Boolean))) as string[]
+      const persistedToTryFolders = (foldersData.folders ?? []).filter((f: any) => f.list_type === "toTry").map((f: any) => f.folder_name as string)
+      const persistedTriedFolders = (foldersData.folders ?? []).filter((f: any) => f.list_type === "tried").map((f: any) => f.folder_name as string)
+
+      // merge persisted folders with any recipe folders not yet registered
+      const recipesToTryFolders = Array.from(new Set(savedList.map(r => r.folder).filter(Boolean))) as string[]
+      const recipeTriedFolders = Array.from(new Set(triedList.map(r => r.folder).filter(Boolean))) as string[]
+
       setToTryFolderOrder(prev => {
-        const existing = prev.filter(f => toTryFolders.includes(f))
-        const newFolders = toTryFolders.filter(f => !existing.includes(f))
-        return [...existing, ...newFolders]
+        const all = Array.from(new Set([...persistedToTryFolders, ...recipesToTryFolders]))
+        const newFolders = all.filter(f => !prev.includes(f))
+        return [...prev, ...newFolders]
       })
-      const triedFolders = Array.from(new Set(triedList.map(r => r.folder).filter(Boolean))) as string[]
       setTriedFolderOrder(prev => {
-        const existing = prev.filter(f => triedFolders.includes(f))
-        const newFolders = triedFolders.filter(f => !existing.includes(f))
-        return [...existing, ...newFolders]
+        const all = Array.from(new Set([...persistedTriedFolders, ...recipeTriedFolders]))
+        const newFolders = all.filter(f => !prev.includes(f))
+        return [...prev, ...newFolders]
       })
     } catch (e: any) {
       showError(e?.message ?? "Failed to load recipes", "My Recipes", fetchAll)
@@ -282,6 +289,7 @@ export default function MyRecipesScreen() {
     try {
       const endpoint = listType === "toTry" ? "/api/favourites" : "/api/tried-recipes"
       await apiFetch(endpoint, { method: "PATCH", body: JSON.stringify({ userId: user.id, recipeId: recipe.recipeId, targetFolder: target }) })
+      if (target) registerFolder(listType, target)
       setCurrentRecipes(prev => prev.map(r => r.recipeId === recipe.recipeId ? { ...r, folder: target } : r))
       setMoveModal(null)
     } catch { Alert.alert("Error", "Failed to move recipe.") }
@@ -329,7 +337,7 @@ export default function MyRecipesScreen() {
             await Promise.all([
               apiFetch("/api/tried-recipes", {
                 method: "POST",
-                body: JSON.stringify({ userId: user!.id, recipeId: recipe.recipeId, recipeTitle: recipe.title, folder: recipe.folder, searchFilters: recipe.searchFilters }),
+                body: JSON.stringify({ userId: user!.id, recipeId: recipe.recipeId, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, folder: recipe.folder, searchFilters: recipe.searchFilters }),
               }),
               apiFetch("/api/favourites", {
                 method: "DELETE",
@@ -339,13 +347,52 @@ export default function MyRecipesScreen() {
             setToTryRecipes(prev => prev.filter(r => r.recipeId !== recipe.recipeId))
             const newTried: Recipe = { ...recipe, isTried: true, isSaved: false, satisfaction: undefined, timeAccuracy: undefined, difficulty: undefined }
             setTriedRecipes(prev => [newTried, ...prev.filter(r => r.recipeId !== recipe.recipeId)])
+            if (recipe.folder) {
+              setTriedFolderOrder(prev => prev.includes(recipe.folder!) ? prev : [...prev, recipe.folder!])
+              registerFolder("tried", recipe.folder)
+            }
           } catch { Alert.alert("Error", "Failed to mark as tried.") }
         }
       },
     ])
   }
 
+  // ── MOVE TRIED → TO TRY ──
+  const moveToTry = async (recipe: Recipe) => {
+    Alert.alert("Move to To Try", `Move "${recipe.title}" back to your To Try list?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Move", onPress: async () => {
+          try {
+            await Promise.all([
+              apiFetch("/api/favourites", {
+                method: "POST",
+                body: JSON.stringify({ userId: user!.id, recipeId: recipe.recipeId, recipeTitle: recipe.title, recipeImage: recipe.image, readyInMinutes: recipe.readyInMinutes, folder: recipe.folder }),
+              }),
+              apiFetch("/api/tried-recipes", {
+                method: "DELETE",
+                body: JSON.stringify({ userId: user!.id, recipeId: recipe.recipeId }),
+              }),
+            ])
+            setTriedRecipes(prev => prev.filter(r => r.recipeId !== recipe.recipeId))
+            const newToTry: Recipe = { ...recipe, isTried: false, isSaved: true, satisfaction: undefined, timeAccuracy: undefined, difficulty: undefined, triedOn: undefined }
+            setToTryRecipes(prev => [newToTry, ...prev.filter(r => r.recipeId !== recipe.recipeId)])
+            if (recipe.folder) {
+              setToTryFolderOrder(prev => prev.includes(recipe.folder!) ? prev : [...prev, recipe.folder!])
+              registerFolder("toTry", recipe.folder)
+            }
+          } catch { Alert.alert("Error", "Failed to move recipe.") }
+        }
+      },
+    ])
+  }
+
   // ── FOLDER RENAME / DELETE ──
+  const registerFolder = (listType: ListType, folderName: string) => {
+    if (!user || !folderName) return
+    apiFetch("/api/folders", { method: "POST", body: JSON.stringify({ userId: user.id, listType, folderName }) }).catch(() => {})
+  }
+
   const renameFolder = async () => {
     if (!folderActionModal || !user) return
     const { folder, listType } = folderActionModal
@@ -354,7 +401,10 @@ export default function MyRecipesScreen() {
     const endpoint = listType === "toTry" ? "/api/favourites" : "/api/tried-recipes"
     const list = listType === "toTry" ? toTryRecipes : triedRecipes
     const toRename = list.filter(r => r.folder === folder)
-    await Promise.all(toRename.map(r => apiFetch(endpoint, { method: "PATCH", body: JSON.stringify({ userId: user.id, recipeId: r.recipeId, targetFolder: newName }) })))
+    await Promise.all([
+      ...toRename.map(r => apiFetch(endpoint, { method: "PATCH", body: JSON.stringify({ userId: user.id, recipeId: r.recipeId, targetFolder: newName }) })),
+      apiFetch("/api/folders", { method: "PATCH", body: JSON.stringify({ userId: user.id, listType, oldName: folder, newName }) }),
+    ])
     const setter = listType === "toTry" ? setToTryRecipes : setTriedRecipes
     setter(prev => prev.map(r => r.folder === folder ? { ...r, folder: newName } : r))
     const orderSetter = listType === "toTry" ? setToTryFolderOrder : setTriedFolderOrder
@@ -371,7 +421,10 @@ export default function MyRecipesScreen() {
           const endpoint = listType === "toTry" ? "/api/favourites" : "/api/tried-recipes"
           const list = listType === "toTry" ? toTryRecipes : triedRecipes
           const toDelete = list.filter(r => r.folder === folder)
-          await Promise.all(toDelete.map(r => apiFetch(endpoint, { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: r.recipeId }) })))
+          await Promise.all([
+            ...toDelete.map(r => apiFetch(endpoint, { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: r.recipeId }) })),
+            apiFetch("/api/folders", { method: "DELETE", body: JSON.stringify({ userId: user.id, listType, folderName: folder }) }),
+          ])
           const setter = listType === "toTry" ? setToTryRecipes : setTriedRecipes
           setter(prev => prev.filter(r => r.folder !== folder))
           const orderSetter = listType === "toTry" ? setToTryFolderOrder : setTriedFolderOrder
@@ -450,10 +503,10 @@ export default function MyRecipesScreen() {
             <Text style={s.bigBtnText}>To Try</Text>
             <Text style={s.bigBtnCount}>({toTryCount})</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.bigBtn, s.bigBtnOrange]} onPress={() => switchList("tried")} activeOpacity={0.85}>
-            <Ionicons name="checkmark-circle-outline" size={26} color={colors.primary} />
-            <Text style={[s.bigBtnText, { color: colors.primary }]}>Tried</Text>
-            <Text style={[s.bigBtnCount, { color: colors.primary + "99" }]}>({triedCount})</Text>
+          <TouchableOpacity style={[s.bigBtn, s.bigBtnGreen]} onPress={() => switchList("tried")} activeOpacity={0.85}>
+            <Ionicons name="checkmark-circle-outline" size={26} color="#22c55e" />
+            <Text style={[s.bigBtnText, { color: "#22c55e" }]}>Tried</Text>
+            <Text style={[s.bigBtnCount, { color: "#22c55e99" }]}>({triedCount})</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -523,7 +576,7 @@ export default function MyRecipesScreen() {
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         style={{ padding: 4 }}
                       >
-                        <Ionicons name="ellipsis-vertical" size={18} color={colors.muted} />
+                        <Ionicons name="ellipsis-vertical" size={22} color={colors.muted} />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   </View>
@@ -635,57 +688,31 @@ export default function MyRecipesScreen() {
                     </View>
                   )}
                   <View style={s.cardBody}>
-                    <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
-                    <View style={s.metaRow}>
-                      {item.readyInMinutes > 0 && <View style={s.metaChip}><Ionicons name="time-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.readyInMinutes} min</Text></View>}
-                      {item.triedOn && <View style={s.metaChip}><Ionicons name="calendar-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.triedOn.split("T")[0]}</Text></View>}
-                    </View>
-                    {item.tags.length > 0 && (
-                      <View style={s.tagsRow}>
-                        {item.tags.map(tag => (
-                          <View key={tag} style={s.tagBadge}><Text style={s.tagBadgeText}>{tag}</Text></View>
-                        ))}
+                    <Text style={s.cardTitle} numberOfLines={1}>{item.title}</Text>
+                    {item.readyInMinutes > 0 && (
+                      <View style={s.metaRow}>
+                        <View style={s.metaChip}><Ionicons name="time-outline" size={12} color={colors.mutedForeground} /><Text style={s.metaText}>{item.readyInMinutes} min</Text></View>
                       </View>
                     )}
-                    {item.searchFilters && Object.keys(item.searchFilters).some(k => ["diet","cuisine","prepTime","budget","taste","healthiness"].includes(k)) && (
-                      <View style={s.tagsRow}>
-                        {["diet","cuisine","prepTime","budget","taste","healthiness"].map(field =>
-                          item.searchFilters?.[field]
-                            ? <View key={field} style={s.searchBadge}><Text style={s.searchBadgeText}>{labelFor(field, item.searchFilters[field])}</Text></View>
-                            : null
-                        )}
+                    {activeList === "tried" && item.satisfaction ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                        <Text style={{ fontSize: 10, color: colors.mutedForeground, marginRight: 2 }}>Overall</Text>
+                        <Stars rating={item.satisfaction} colors={colors} />
                       </View>
-                    )}
+                    ) : null}
                   </View>
 
-                  {/* Star + 3-dots */}
+                  {/* 3-dots */}
                   <View style={s.cardActions}>
-                    <TouchableOpacity
-                      onPress={() => openRating(item)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons
-                        name={item.satisfaction ? "star" : "star-outline"}
-                        size={20}
-                        color={item.satisfaction ? "#f59e0b" : colors.mutedForeground}
-                      />
-                    </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => setRecipeActionSheet(item)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Ionicons name="ellipsis-vertical" size={18} color={colors.mutedForeground} />
+                      <Ionicons name="ellipsis-vertical" size={22} color={colors.mutedForeground} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                {/* Rating row (tried) */}
-                {activeList === "tried" && item.satisfaction ? (
-                  <View style={s.ratingRow}>
-                    <Stars rating={item.satisfaction} colors={colors} />
-                    {item.difficulty ? <Text style={s.difficultyText}>{item.difficulty}</Text> : null}
-                  </View>
-                ) : null}
               </TouchableOpacity>
             </View>
           )}
@@ -699,15 +726,20 @@ export default function MyRecipesScreen() {
           <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setRecipeActionSheet(null)}>
             <View style={s.actionSheet}>
               <Text style={s.actionSheetTitle}>{recipeActionSheet.title}</Text>
-              <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); openRating(recipeActionSheet) }}>
-                <Ionicons name="star-outline" size={20} color={colors.text} />
-                <Text style={s.actionSheetRowText}>Rate</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-              </TouchableOpacity>
-              {activeList === "toTry" && (
-                <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); openTagEdit(recipeActionSheet) }}>
-                  <Ionicons name="pricetag-outline" size={20} color={colors.text} />
-                  <Text style={s.actionSheetRowText}>Edit tags</Text>
+              {activeList === "tried" && recipeActionSheet.triedOn && (
+                <Text style={s.actionSheetSubtitle}>Tried on {recipeActionSheet.triedOn.split("T")[0]}</Text>
+              )}
+              {activeList === "tried" && (
+                <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); openRating(recipeActionSheet) }}>
+                  <Ionicons name="star-outline" size={20} color={colors.text} />
+                  <Text style={s.actionSheetRowText}>{recipeActionSheet.satisfaction ? "Change rating" : "Rate"}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+                </TouchableOpacity>
+              )}
+              {activeList === "tried" && (
+                <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); moveToTry(recipeActionSheet) }}>
+                  <Ionicons name="bookmark-outline" size={20} color={colors.text} />
+                  <Text style={s.actionSheetRowText}>Move to "To Try" group</Text>
                   <Ionicons name="chevron-forward" size={16} color={colors.muted} />
                 </TouchableOpacity>
               )}
@@ -720,7 +752,7 @@ export default function MyRecipesScreen() {
               )}
               <TouchableOpacity style={s.actionSheetRow} onPress={() => { setRecipeActionSheet(null); setMoveModal({ recipe: recipeActionSheet, listType: activeList }); setMoveTarget(""); setMoveCustom("") }}>
                 <Ionicons name="folder-outline" size={20} color={colors.text} />
-                <Text style={s.actionSheetRowText}>Move to folder</Text>
+                <Text style={s.actionSheetRowText}>Move to another folder</Text>
                 <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </TouchableOpacity>
               <TouchableOpacity style={[s.actionSheetRow, s.actionSheetRowDestructive]} onPress={() => { setRecipeActionSheet(null); removeFromList(recipeActionSheet) }}>
@@ -955,7 +987,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   // home
   homeContent: { flex: 1, padding: spacing.md, paddingTop: 48, gap: 16 },
   bigBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, borderRadius: radius.lg, paddingVertical: 18 },
-  bigBtnOrange: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: colors.primary },
+  bigBtnGreen: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: "#22c55e" },
   bigBtnText: { fontSize: 17, fontWeight: "800", color: "#fff" },
   bigBtnCount: { fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: "500" },
 
@@ -1034,6 +1066,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   // action sheet (folder/recipe menu)
   actionSheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: spacing.md, gap: 10, paddingBottom: 28 },
   actionSheetTitle: { fontSize: 16, fontWeight: "700", color: colors.text, paddingVertical: 8, paddingHorizontal: 4, textAlign: "center" },
+  actionSheetSubtitle: { fontSize: 12, color: colors.mutedForeground, textAlign: "center", marginTop: -6, marginBottom: 2 },
   actionSheetRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 15, paddingHorizontal: 16, borderRadius: radius.lg, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
   actionSheetRowText: { flex: 1, fontSize: 16, color: colors.text, fontWeight: "600" },
   actionSheetRowDestructive: { borderColor: colors.destructive + "55" },

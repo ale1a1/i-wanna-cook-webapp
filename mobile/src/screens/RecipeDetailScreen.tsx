@@ -112,15 +112,28 @@ export default function RecipeDetailScreen() {
 
   useEffect(() => {
     if (!user || !recipe) return
-    apiFetch(`/api/favourites?userId=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        const favs = data.favourites || []
-        const ids = favs.map((f: any) => f.recipe_id)
-        setFavourited(ids.includes(String(recipe.id)))
-        const folders = Array.from(new Set(favs.map((f: any) => f.folder).filter(Boolean))) as string[]
-        setExistingToTryFolders(folders)
-      }).catch(() => {})
+    Promise.all([
+      apiFetch(`/api/favourites?userId=${user.id}`).then(r => r.json()),
+      apiFetch(`/api/tried-recipes?userId=${user.id}`).then(r => r.json()),
+      apiFetch(`/api/folders?userId=${user.id}`).then(r => r.json()).catch(() => ({ folders: [] })),
+    ]).then(([favsData, triedData, foldersData]) => {
+      const favs = favsData.favourites || []
+      setFavourited(favs.map((f: any) => f.recipe_id).includes(String(recipe.id)))
+
+      const tried = triedData.triedRecipes || []
+      setIsTried(tried.map((t: any) => t.recipe_id).includes(String(recipe.id)))
+
+      const folders = foldersData.folders || []
+      const toTryFolders = folders.filter((f: any) => f.list_type === "toTry").map((f: any) => f.folder_name as string)
+      const triedFolders = folders.filter((f: any) => f.list_type === "tried").map((f: any) => f.folder_name as string)
+
+      // merge with any recipe-level folders not yet in the folders table
+      const recipesToTryFolders = Array.from(new Set(favs.map((f: any) => f.folder).filter(Boolean))) as string[]
+      const recipesTriedFolders = Array.from(new Set(tried.map((t: any) => t.folder).filter(Boolean))) as string[]
+
+      setExistingToTryFolders(Array.from(new Set([...toTryFolders, ...recipesToTryFolders])))
+      setExistingTriedFolders(Array.from(new Set([...triedFolders, ...recipesTriedFolders])))
+    }).catch(() => {})
 
     apiFetch(`/api/shopping-list?userId=${user.id}`)
       .then(r => r.json())
@@ -129,16 +142,6 @@ export default function RecipeDetailScreen() {
           .filter((i: any) => i.recipe_id === String(recipe.id))
           .map((i: any) => i.ingredient_name)
         setAddedIngredients(new Set(existing))
-      }).catch(() => {})
-
-    apiFetch(`/api/tried-recipes?userId=${user.id}`)
-      .then(r => r.json())
-      .then(data => {
-        const tried = data.triedRecipes || []
-        const ids = tried.map((t: any) => t.recipe_id)
-        setIsTried(ids.includes(String(recipe.id)))
-        const folders = Array.from(new Set(tried.map((t: any) => t.folder).filter(Boolean))) as string[]
-        setExistingTriedFolders(folders)
       }).catch(() => {})
   }, [user, recipe?.id])
 
@@ -162,9 +165,13 @@ export default function RecipeDetailScreen() {
         if (isTried) {
           await apiFetch("/api/tried-recipes", { method: "DELETE", body: JSON.stringify({ userId: user.id, recipeId: String(recipe.id) }) })
           setIsTried(false)
+          // keep the source folder in tried folders even if now empty
         }
         setFavourited(true)
-        if (folder && !existingToTryFolders.includes(folder)) setExistingToTryFolders(prev => [...prev, folder])
+        if (folder && !existingToTryFolders.includes(folder)) {
+          setExistingToTryFolders(prev => [...prev, folder])
+          apiFetch("/api/folders", { method: "POST", body: JSON.stringify({ userId: user.id, listType: "toTry", folderName: folder }) }).catch(() => {})
+        }
       } else {
         await apiFetch("/api/tried-recipes", {
           method: "POST",
@@ -175,7 +182,10 @@ export default function RecipeDetailScreen() {
           setFavourited(false)
         }
         setIsTried(true)
-        if (folder && !existingTriedFolders.includes(folder)) setExistingTriedFolders(prev => [...prev, folder])
+        if (folder && !existingTriedFolders.includes(folder)) {
+          setExistingTriedFolders(prev => [...prev, folder])
+          apiFetch("/api/folders", { method: "POST", body: JSON.stringify({ userId: user.id, listType: "tried", folderName: folder }) }).catch(() => {})
+        }
       }
       setSaveListModal(null)
     } catch { Alert.alert("Error", "Failed to save. Please try again.") }
