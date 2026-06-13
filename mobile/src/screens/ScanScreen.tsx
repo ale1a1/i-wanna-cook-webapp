@@ -125,7 +125,7 @@ export default function ScanScreen() {
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]} edges={["top"]}>
         <View style={s.header}>
           <View style={s.headerLeft}>
-            <Ionicons name="camera-outline" size={22} color={colors.primary} />
+            <Ionicons name="camera-outline" size={26} color={colors.primary} />
             <Text style={s.headerTitle}>Scan Fridge</Text>
           </View>
         </View>

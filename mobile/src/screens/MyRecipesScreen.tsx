@@ -1030,7 +1030,7 @@ export default function MyRecipesScreen() {
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  topBar: { paddingHorizontal: spacing.md, paddingVertical: 14, alignItems: "center", borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
+  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   topBarCenter: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, justifyContent: "center" },
   title: { fontSize: 20, fontWeight: "700", color: colors.text },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },

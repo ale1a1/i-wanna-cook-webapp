@@ -144,11 +144,11 @@ export default function ShoppingListScreen() {
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.4)" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: spacing.md, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.4)" },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
   headerCount: { fontSize: 13, color: colors.mutedForeground },
-  clearBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md },
+  clearBtn: { position: "absolute", right: spacing.md, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md },
   clearBtnText: { fontSize: 13, color: colors.destructive, fontWeight: "500" },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: spacing.xl },
   emptyTitle: { fontSize: 18, fontWeight: "600", color: colors.text },
