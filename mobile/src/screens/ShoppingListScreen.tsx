@@ -79,7 +79,7 @@ export default function ShoppingListScreen() {
     <SafeAreaView style={s.container} edges={["top"]}>
       <View style={s.header}>
         <View style={s.headerLeft}>
-          <Ionicons name="cart" size={22} color={colors.primary} />
+          <Ionicons name="cart-outline" size={26} color={colors.primary} />
           <Text style={s.headerTitle}>Shopping List</Text>
           {totalItems > 0 && <Text style={s.headerCount}>{checkedItems}/{totalItems}</Text>}
         </View>
