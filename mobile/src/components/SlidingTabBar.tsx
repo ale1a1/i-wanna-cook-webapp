@@ -116,7 +116,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   },
   topBorder: {
     height: 1.5,
-    backgroundColor: "rgba(255,255,255,0.4)",
+    backgroundColor: colors.border,
   },
   overflow: {
     height: TAB_BAR_HEIGHT,

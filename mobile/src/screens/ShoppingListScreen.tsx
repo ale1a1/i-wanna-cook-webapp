@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react"
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from "react-native"
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useFocusEffect } from "@react-navigation/native"
@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { spacing, radius } from "../lib/theme"
+import { showAlert } from "../components/CustomAlert"
 
 type ShoppingItem = { id: string; recipe_id: string; recipe_title: string; ingredient_name: string; ingredient_amount: string; checked: boolean }
 type Group = { recipeId: string; title: string; items: ShoppingItem[]; collapsed: boolean }
@@ -61,10 +62,10 @@ export default function ShoppingListScreen() {
   }
 
   const clearAll = () => {
-    Alert.alert("Clear all?", "Remove everything from your shopping list?", [
+    showAlert({ title: "Clear all?", message: "Remove everything from your shopping list?", buttons: [
       { text: "Cancel", style: "cancel" },
       { text: "Clear all", style: "destructive", onPress: async () => { setGroups([]); await apiFetch("/api/shopping-list", { method: "DELETE", body: JSON.stringify({ userId: user!.id }) }) } }
-    ])
+    ]})
   }
 
   const toggleCollapse = (recipeId: string) => setGroups(prev => prev.map(g => g.recipeId === recipeId ? { ...g, collapsed: !g.collapsed } : g))
@@ -77,19 +78,15 @@ export default function ShoppingListScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
-      <View style={s.header}>
-        <View style={s.headerLeft}>
-          <Ionicons name="cart-outline" size={26} color={colors.primary} />
-          <Text style={s.headerTitle}>Shopping List</Text>
-          {totalItems > 0 && <Text style={s.headerCount}>{checkedItems}/{totalItems}</Text>}
-        </View>
-        {totalItems > 0 && (
+      {totalItems > 0 && (
+        <View style={s.header}>
+          <Text style={s.headerCount}>{checkedItems}/{totalItems}</Text>
           <TouchableOpacity style={s.clearBtn} onPress={clearAll}>
             <Ionicons name="trash-outline" size={16} color={colors.destructive} />
             <Text style={s.clearBtnText}>Clear All</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
       {groups.length === 0 ? (
         <View style={s.empty}>
           <Ionicons name="cart-outline" size={56} color={colors.muted} />

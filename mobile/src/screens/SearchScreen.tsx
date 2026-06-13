@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal, Alert } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Image, FlatList, Modal } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
@@ -12,6 +12,7 @@ import { useSubscription } from "../context/SubscriptionContext"
 import { useAuth } from "../context/AuthContext"
 import PaywallModal from "../components/PaywallModal"
 import { spacing, radius } from "../lib/theme"
+import { showAlert } from "../components/CustomAlert"
 
 let SpeechRecognitionModule: any = null
 try {
@@ -282,7 +283,7 @@ export default function SearchScreen() {
   const openCameraForScan = useCallback(async () => {
     if (capturedAssets.length >= 10) return
     const { status } = await ImagePicker.requestCameraPermissionsAsync()
-    if (status !== "granted") { Alert.alert("Permission needed", "Please allow camera access."); return }
+    if (status !== "granted") { showAlert({ title: "Permission needed", message: "Please allow camera access." }); return }
     const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 })
     if (!result.canceled && result.assets.length > 0) setCapturedAssets(prev => [...prev, ...result.assets])
   }, [capturedAssets.length])
@@ -291,7 +292,7 @@ export default function SearchScreen() {
     const remaining = 10 - capturedAssets.length
     if (remaining <= 0) return
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== "granted") { Alert.alert("Permission needed", "Please allow photo library access."); return }
+    if (status !== "granted") { showAlert({ title: "Permission needed", message: "Please allow photo library access." }); return }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsMultipleSelection: true, selectionLimit: remaining, base64: true, quality: 0.6 })
     if (!result.canceled && result.assets.length > 0) setCapturedAssets(prev => [...prev, ...result.assets])
   }, [capturedAssets.length])
@@ -484,12 +485,6 @@ export default function SearchScreen() {
   return (
     <>
     <SafeAreaView style={s.container} edges={["top"]}>
-      <View style={s.header}>
-        <View style={s.headerLeft}>
-          <Ionicons name="search-outline" size={22} color={colors.primary} />
-          <Text style={s.headerTitle}>Find Recipes</Text>
-        </View>
-      </View>
       <View style={s.topBar}>
         <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
           <Ionicons name="options-outline" size={20} color={hasActiveFilters ? colors.primary : colors.mutedForeground} />
@@ -499,7 +494,7 @@ export default function SearchScreen() {
         </TouchableOpacity>
       </View>
 
-      <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={filtersOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setFiltersOpen(false)}>
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
             <TouchableOpacity onPress={() => setFiltersOpen(false)}><Ionicons name="arrow-back" size={24} color={colors.text} /></TouchableOpacity>
@@ -701,7 +696,7 @@ export default function SearchScreen() {
 
           </ScrollView>
           <View style={s.modalFooter}>
-            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && !searched && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setNutrition(defaultNutrition); setSort("none"); setSortDirection("desc"); setSearched(false); setLastSearchKey(null); setAiApplied(""); setAiGoal("") }} disabled={!hasActiveFilters && !searched}>
+            <TouchableOpacity style={[s.resetBtn, !hasActiveFilters && s.btnDisabled]} onPress={() => { setFilters(defaultFilters); setNutrition(defaultNutrition); setSort("none"); setSortDirection("desc"); setSearched(false); setLastSearchKey(null); setAiApplied(""); setAiGoal("") }} disabled={!hasActiveFilters}>
               <Ionicons name="refresh" size={16} color={colors.text} style={{ marginRight: 6 }} />
               <Text style={s.resetBtnText}>Reset</Text>
             </TouchableOpacity>
@@ -761,7 +756,7 @@ export default function SearchScreen() {
     </SafeAreaView>
 
     {/* AI Scanner Modal */}
-    <Modal visible={scannerOpen} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={scannerOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setScannerOpen(false)}>
       <SafeAreaView style={s.scannerContainer} edges={["top"]}>
         <View style={s.scannerHeader}>
           <TouchableOpacity onPress={() => setScannerOpen(false)}>

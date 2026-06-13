@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react"
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from "react-native"
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useFocusEffect } from "@react-navigation/native"
@@ -9,6 +9,7 @@ import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { useActiveRecipeSession } from "../context/ActiveRecipeSessionContext"
 import { spacing, radius } from "../lib/theme"
+import { showAlert } from "../components/CustomAlert"
 
 type QuickItem = { id: string; recipe_id: string; recipe_title: string; ingredient_name: string; ingredient_amount: string; checked: boolean }
 
@@ -65,7 +66,7 @@ export default function QuickShoppingListScreen() {
   }
 
   const moveAllToShoppingList = () => {
-    Alert.alert("Move all to shopping list?", "All items will be moved to your main shopping list.", [
+    showAlert({ title: "Move all to shopping list?", message: "All items will be moved to your main shopping list.", buttons: [
       { text: "Cancel", style: "cancel" },
       {
         text: "Move all", onPress: async () => {
@@ -93,11 +94,11 @@ export default function QuickShoppingListScreen() {
           await refreshQuickListCount()
         }
       }
-    ])
+    ]})
   }
 
   const clearAll = () => {
-    Alert.alert("Clear quick list?", "Remove all items from your quick shopping list?", [
+    showAlert({ title: "Clear quick list?", message: "Remove all items from your quick shopping list?", buttons: [
       { text: "Cancel", style: "cancel" },
       {
         text: "Clear", style: "destructive", onPress: async () => {
@@ -106,7 +107,7 @@ export default function QuickShoppingListScreen() {
           await refreshQuickListCount()
         }
       }
-    ])
+    ]})
   }
 
   if (!user) return null
@@ -116,13 +117,9 @@ export default function QuickShoppingListScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
-      <View style={s.header}>
-        <View style={s.headerLeft}>
-          <Ionicons name="flash" size={22} color={colors.primary} />
-          <Text style={s.headerTitle}>Quick List</Text>
-          {items.length > 0 && <Text style={s.headerCount}>{checkedCount}/{items.length}</Text>}
-        </View>
-        {items.length > 0 && (
+      {items.length > 0 && (
+        <View style={s.header}>
+          <Text style={s.headerCount}>{checkedCount}/{items.length}</Text>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <TouchableOpacity style={s.moveAllBtn} onPress={moveAllToShoppingList}>
               <Ionicons name="cart-outline" size={14} color={colors.primary} />
@@ -133,8 +130,8 @@ export default function QuickShoppingListScreen() {
               <Text style={s.clearBtnText}>Clear</Text>
             </TouchableOpacity>
           </View>
-        )}
-      </View>
+        </View>
+      )}
 
       {items.length === 0 ? (
         <View style={s.empty}>

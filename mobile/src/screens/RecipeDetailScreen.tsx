@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react"
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator, Alert, Modal, Animated, TextInput
+  Image, ActivityIndicator, Modal, Animated, TextInput
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -14,6 +14,7 @@ import { useSubscription } from "../context/SubscriptionContext"
 import { useActiveRecipeSession, Substitution } from "../context/ActiveRecipeSessionContext"
 import PaywallModal from "../components/PaywallModal"
 import { spacing, radius } from "../lib/theme"
+import { showAlert } from "../components/CustomAlert"
 
 type Tab = "overview" | "ingredients" | "steps" | "wine"
 type CheckStep = "ask" | "checking" | "done"
@@ -188,7 +189,7 @@ export default function RecipeDetailScreen() {
         }
       }
       setSaveListModal(null)
-    } catch { Alert.alert("Error", "Failed to save. Please try again.") }
+    } catch { showAlert({ title: "Error", message: "Failed to save. Please try again." }) }
     finally { setSavingList(false) }
   }
 
@@ -421,9 +422,12 @@ export default function RecipeDetailScreen() {
     // Ask bottom sheet
     if (checkStep === "ask") {
       return (
-        <Modal visible animationType="slide" transparent>
+        <Modal visible animationType="slide" transparent onRequestClose={() => setCheckStep(null)}>
           <View style={s.sheetOverlay}>
             <View style={[s.sheet, { backgroundColor: colors.card }]}>
+              <TouchableOpacity onPress={() => setCheckStep(null)} style={{ position: "absolute", top: 12, right: 12, padding: 4 }}>
+                <Ionicons name="close" size={22} color={colors.mutedForeground} />
+              </TouchableOpacity>
               <Text style={[s.sheetTitle, { color: colors.text }]}>Cook it now?</Text>
               <Text style={[s.sheetSub, { color: colors.mutedForeground }]}>
                 Check if you have all the ingredients, or open the recipe directly.
@@ -445,7 +449,7 @@ export default function RecipeDetailScreen() {
     // One-by-one check
     if (checkStep === "checking" && currentIngredient) {
       return (
-        <Modal visible animationType="fade" transparent={false} statusBarTranslucent>
+        <Modal visible animationType="fade" transparent={false} statusBarTranslucent onRequestClose={() => finishCheck(pendingSubstitutions)}>
           <View style={[s.checkScreen, { backgroundColor: colors.background }]}>
             <View style={s.checkProgress}>
               <Text style={[s.checkProgressText, { color: colors.mutedForeground }]}>
@@ -543,7 +547,7 @@ export default function RecipeDetailScreen() {
     if (checkStep === "done") {
       const toBuy = quickListAdded.length
       return (
-        <Modal visible animationType="fade" transparent={false} statusBarTranslucent>
+        <Modal visible animationType="fade" transparent={false} statusBarTranslucent onRequestClose={() => setCheckStep(null)}>
           <View style={[s.checkScreen, { backgroundColor: colors.background }]}>
             <Ionicons name={toBuy === 0 ? "checkmark-circle" : "cart"} size={64} color={colors.primary} style={{ marginBottom: 16 }} />
             <Text style={[s.checkIngredient, { color: colors.text, textAlign: "center" }]}>
@@ -659,7 +663,7 @@ export default function RecipeDetailScreen() {
             </TouchableOpacity>
           ))}
           {isBreakfast ? (
-            <TouchableOpacity style={s.tab} onPress={() => Alert.alert("Seriously? 🍷", "It's breakfast… sure you want a drink?")}>
+            <TouchableOpacity style={s.tab} onPress={() => showAlert({ title: "Seriously? 🍷", message: "It's breakfast… sure you want a drink?" })}>
               <Text style={s.tabText}>🍷 Wine</Text>
             </TouchableOpacity>
           ) : (

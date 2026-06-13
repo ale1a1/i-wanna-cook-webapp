@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react"
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert, TextInput, BackHandler } from "react-native"
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, BackHandler } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
@@ -10,6 +10,7 @@ import { useGlobalError } from "../context/GlobalErrorContext"
 import PaywallModal from "../components/PaywallModal"
 import { apiFetch, API_BASE_URL } from "../lib/api"
 import { spacing, radius } from "../lib/theme"
+import { showAlert } from "../components/CustomAlert"
 import DraggableList from "../components/DraggableList"
 
 let SpeechRecognitionModule: any = null
@@ -198,15 +199,20 @@ export default function MealPlanScreen() {
     if (plan && savedPlans.length === 0 && user?.id) fetchSavedPlans()
   }, [plan])
 
-  const backStateRef = useRef({ plan: null as any, hasUnsavedChanges: false, planId: null as string | null, showPlansModal: false, showSaveModal: false, showMealsModal: false, modalOpen: false, planOpenedFromFolder: undefined as string | null | undefined, showCreateOptions: false })
-  backStateRef.current = { plan, hasUnsavedChanges, planId, showPlansModal, showSaveModal, showMealsModal, modalOpen, planOpenedFromFolder, showCreateOptions }
+  const backStateRef = useRef({ plan: null as any, hasUnsavedChanges: false, planId: null as string | null, showPlansModal: false, showSaveModal: false, showMealsModal: false, modalOpen: false, planOpenedFromFolder: undefined as string | null | undefined, showCreateOptions: false, openFolder: null as string | null })
+  backStateRef.current = { plan, hasUnsavedChanges, planId, showPlansModal, showSaveModal, showMealsModal, modalOpen, planOpenedFromFolder, showCreateOptions, openFolder }
 
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      const { plan, hasUnsavedChanges, planId, showPlansModal, showSaveModal, showMealsModal, modalOpen, planOpenedFromFolder, showCreateOptions } = backStateRef.current
+      const { plan, hasUnsavedChanges, planId, showPlansModal, showSaveModal, showMealsModal, modalOpen, planOpenedFromFolder, showCreateOptions, openFolder } = backStateRef.current
       if (showCreateOptions) { setShowCreateOptions(false); return true }
+      if (showPlansModal) {
+        if (openFolder !== null) setOpenFolder(null)
+        else setShowPlansModal(false)
+        return true
+      }
       if (!plan) return false
-      if (showPlansModal || showSaveModal || showMealsModal || modalOpen) return false
+      if (showSaveModal || showMealsModal || modalOpen) return false
       if (plan && !planId) {
         setShowNewPlanExitGuard(true)
       } else if (hasUnsavedChanges && planId) {
@@ -324,11 +330,11 @@ export default function MealPlanScreen() {
     if (!user?.id || !plan) return
     const folder = saveFolder === "Custom" ? saveFolderCustom.trim() : saveFolder
     if (!saveName.trim()) {
-      Alert.alert("Name required", "Please enter a name for this plan.")
+      showAlert({ title: "Name required", message: "Please enter a name for this plan." })
       return
     }
     if (!folder) {
-      Alert.alert("Folder required", "Please select or enter a folder.")
+      showAlert({ title: "Folder required", message: "Please select or enter a folder." })
       return
     }
     setSaving(true)
@@ -354,7 +360,7 @@ export default function MealPlanScreen() {
         setHasUnsavedChanges(false)
         setSaving(false)
         setShowSaveModal(false)
-        Alert.alert("Saved!", `"${saveName.trim()}" saved to "${folder}".`, [
+        showAlert({ title: "Saved!", message: `"${saveName.trim()}" saved to "${folder}".`, buttons: [
           {
             text: "View folder", onPress: () => {
               fetchSavedPlans()
@@ -363,14 +369,14 @@ export default function MealPlanScreen() {
             }
           },
           { text: "OK", style: "cancel" },
-        ])
+        ]})
         return
       }
       const errData = await res.json().catch(() => null)
       throw new Error(errData?.error ?? `HTTP ${res.status}`)
     } catch (e: any) {
       console.error("Save plan failed:", e?.message)
-      Alert.alert("Save failed", e?.message ?? "Could not save the plan. Please try again.")
+      showAlert({ title: "Save failed", message: e?.message ?? "Could not save the plan. Please try again." })
     } finally {
       setSaving(false)
     }
@@ -388,12 +394,12 @@ export default function MealPlanScreen() {
         setOriginalPlan(plan)
         setIsModified(false)
         setHasUnsavedChanges(false)
-        Alert.alert("Saved!", "Your changes have been saved.")
+        showAlert({ title: "Saved!", message: "Your changes have been saved." })
       } else {
-        Alert.alert("Save failed", "Could not save changes. Please try again.")
+        showAlert({ title: "Save failed", message: "Could not save changes. Please try again." })
       }
     } catch {
-      Alert.alert("Save failed", "Could not save changes. Please try again.")
+      showAlert({ title: "Save failed", message: "Could not save changes. Please try again." })
     } finally {
       setSaving(false)
     }
@@ -695,15 +701,11 @@ export default function MealPlanScreen() {
       return
     }
     if (plan) {
-      Alert.alert(
-        "Generate new plan?",
-        "Your current plan will be replaced. Save it first?",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Save first", onPress: openSaveModal },
-          { text: "Discard", style: "destructive", onPress: doOpen },
-        ]
-      )
+      showAlert({ title: "Generate new plan?", message: "Your current plan will be replaced. Save it first?", buttons: [
+        { text: "Cancel", style: "cancel" },
+        { text: "Save first", onPress: openSaveModal },
+        { text: "Discard", style: "destructive", onPress: doOpen },
+      ]})
     } else {
       doOpen()
     }
@@ -764,55 +766,58 @@ export default function MealPlanScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
-      <View style={s.topBar}>
-        {plan && !loading ? (<>
-          {/* Left: back arrow */}
-          <TouchableOpacity onPress={clearPlan} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          {/* Centre: plan name as page title */}
-          <Text style={s.topBarTitle} numberOfLines={1}>{`Plan: ${savedPlanName ?? "Unsaved"}`}</Text>
-          {/* Right: actions */}
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-            {!planId && (
-              <TouchableOpacity style={s.regenBtn} onPress={openSaveModal}>
-                <Ionicons name="bookmark-outline" size={16} color={colors.primary} />
-                <Text style={s.regenBtnText}>Save</Text>
-              </TouchableOpacity>
-            )}
-            {planId && hasUnsavedChanges && (
-              <TouchableOpacity style={[s.regenBtn, { borderColor: "#f59e0b" }]} onPress={handleSaveChanges} disabled={saving}>
-                {saving ? <ActivityIndicator size="small" color="#f59e0b" /> : <>
-                  <Ionicons name="cloud-upload-outline" size={16} color="#f59e0b" />
-                  <Text style={[s.regenBtnText, { color: "#f59e0b" }]}>Save changes</Text>
-                </>}
-              </TouchableOpacity>
-            )}
-            {planId && (
-              <TouchableOpacity
-                onPress={() => {
-                  setRenameValue(savedPlanName ?? "")
-                  setPlanActionsModal({ plan: { id: planId, name: savedPlanName, plan_data: plan, filters_json: filtersJson, is_modified: isModified }, step: "menu" })
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </>) : showCreateOptions ? (<>
-          <TouchableOpacity onPress={() => setShowCreateOptions(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={s.topBarTitle}>Create Plan</Text>
-          <View style={{ width: 24 }} />
-        </>) : (
-          <View style={s.topBarCenter}>
-            <Ionicons name="calendar-outline" size={22} color={colors.primary} />
-            <Text style={s.title}>Meal Plans</Text>
-          </View>
-        )}
-      </View>
+      {(plan && !loading) || showCreateOptions ? (
+        <View style={s.topBar}>
+          {plan && !loading ? (<>
+            {/* Left: back arrow */}
+            <TouchableOpacity onPress={clearPlan} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            {/* Centre: breadcrumb */}
+            <Text style={s.topBarTitle} numberOfLines={1}>
+              {planOpenedFromFolder
+                ? `Saved Plans · ${planOpenedFromFolder} · ${savedPlanName ?? "Unsaved"}`
+                : savedPlanName
+                  ? `Saved Plans · ${savedPlanName}`
+                  : "New Plan"}
+            </Text>
+            {/* Right: actions */}
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              {!planId && (
+                <TouchableOpacity style={s.regenBtn} onPress={openSaveModal}>
+                  <Ionicons name="bookmark-outline" size={16} color={colors.primary} />
+                  <Text style={s.regenBtnText}>Save</Text>
+                </TouchableOpacity>
+              )}
+              {planId && hasUnsavedChanges && (
+                <TouchableOpacity style={[s.regenBtn, { borderColor: "#f59e0b" }]} onPress={handleSaveChanges} disabled={saving}>
+                  {saving ? <ActivityIndicator size="small" color="#f59e0b" /> : <>
+                    <Ionicons name="cloud-upload-outline" size={16} color="#f59e0b" />
+                    <Text style={[s.regenBtnText, { color: "#f59e0b" }]}>Save changes</Text>
+                  </>}
+                </TouchableOpacity>
+              )}
+              {planId && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setRenameValue(savedPlanName ?? "")
+                    setPlanActionsModal({ plan: { id: planId, name: savedPlanName, plan_data: plan, filters_json: filtersJson, is_modified: isModified }, step: "menu" })
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="ellipsis-vertical" size={20} color={colors.text} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </>) : (<>
+            <TouchableOpacity onPress={() => setShowCreateOptions(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={s.topBarTitle}>Create Plan</Text>
+            <View style={{ width: 24 }} />
+          </>)}
+        </View>
+      ) : null}
 
       {/* Home */}
       {!plan && !loading && !showCreateOptions && (
@@ -871,7 +876,7 @@ export default function MealPlanScreen() {
           {isModified && (
             <TouchableOpacity style={[s.driftBanner, { marginBottom: 36, backgroundColor: "#f0fdf4", borderColor: "#16a34a55" }]} onPress={() => {
               const summary = filtersJson ? `${filtersJson.calories} kcal · ${filtersJson.diet !== "none" ? filtersJson.diet : "any diet"} · ${filtersJson.mealsPerDay} meals/day` : "your original filters"
-              Alert.alert("Plan modified", `Some meals have been swapped. All replacements still match ${summary}.`, [{ text: "OK" }])
+              showAlert({ title: "Plan modified", message: `Some meals have been swapped. All replacements still match ${summary}.` })
             }}>
               <Ionicons name="checkmark-circle" size={16} color="#16a34a" />
               <Text style={[s.driftText, { color: "#166534" }]}>Plan modified — all changes within original filters</Text>
@@ -920,14 +925,10 @@ export default function MealPlanScreen() {
                           <TouchableOpacity style={s.replaceMealBtn} onPress={() => {
                             setReplaceDay(key)
                             setReplaceMealIndex(i)
-                            Alert.alert(
-                              "Replace Meal",
-                              `Find an alternative for "${meal.title}" that fits your daily nutrition budget?`,
-                              [
-                                { text: "Cancel", style: "cancel" },
-                                { text: "Find alternatives", onPress: () => handleReplaceMeal(key, i) },
-                              ]
-                            )
+                            showAlert({ title: "Replace Meal", message: `Find an alternative for "${meal.title}" that fits your daily nutrition budget?`, buttons: [
+                              { text: "Cancel", style: "cancel" },
+                              { text: "Find alternatives", onPress: () => handleReplaceMeal(key, i) },
+                            ]})
                           }}>
                             {replacingMeal && replaceDay === key && replaceMealIndex === i
                               ? <ActivityIndicator size="small" color={colors.mutedForeground} />
@@ -1180,7 +1181,7 @@ export default function MealPlanScreen() {
       </Modal>
 
       {/* ── Existing folder picker (from save modal) ───────────────── */}
-      <Modal visible={showFolderPicker} transparent animationType="slide">
+      <Modal visible={showFolderPicker} transparent animationType="slide" onRequestClose={() => setShowFolderPicker(false)}>
         <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
           <View style={[s.modalContainer, { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32, maxHeight: "70%" }]}>
             <View style={[s.modalHeader, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
@@ -1247,8 +1248,8 @@ export default function MealPlanScreen() {
       </Modal>
 
       {/* ── Saved Plans browser ─────────────────────────────────── */}
-      <Modal visible={showPlansModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { if (openFolder !== null) setOpenFolder(null); else setShowPlansModal(false) }}>
-          <SafeAreaView style={s.modalContainer} edges={["top"]}>
+      {showPlansModal && (
+          <SafeAreaView style={[s.modalContainer, { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }]} edges={["top"]}>
             <View style={s.modalHeader}>
               <TouchableOpacity onPress={() => {
                 if (openFolder !== null) setOpenFolder(null)
@@ -1462,7 +1463,7 @@ export default function MealPlanScreen() {
               </View>
             </Modal>
           </SafeAreaView>
-      </Modal>
+      )}
 
       {/* ── Plan actions modal — menu / rename / move / copy ─────────── */}
       <Modal visible={!!planActionsModal} transparent animationType="slide">

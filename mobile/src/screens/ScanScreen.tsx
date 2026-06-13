@@ -123,12 +123,6 @@ export default function ScanScreen() {
   if (step === "capture") return (
     <>
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]} edges={["top"]}>
-        <View style={s.header}>
-          <View style={s.headerLeft}>
-            <Ionicons name="camera-outline" size={26} color={colors.primary} />
-            <Text style={s.headerTitle}>Scan Fridge</Text>
-          </View>
-        </View>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <View style={s.hero}>
             <Ionicons name="camera" size={56} color={colors.primary} />

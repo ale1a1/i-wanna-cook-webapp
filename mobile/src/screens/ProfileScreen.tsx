@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react"
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, TextInput, Modal
+  ActivityIndicator, TextInput, Modal,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -10,6 +10,7 @@ import { apiFetch } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { spacing, radius } from "../lib/theme"
+import { showAlert } from "../components/CustomAlert"
 
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -63,7 +64,12 @@ export default function ProfileScreen() {
       .catch(() => {})
   }, [user]))
 
-  const handleLogout = async () => { await logout(); navigation.navigate("Tabs") }
+  const handleLogout = () => {
+    showAlert({ title: "Log Out", message: "Are you sure you want to log out?", buttons: [
+      { text: "Cancel", style: "cancel" },
+      { text: "Log Out", style: "destructive", onPress: async () => { await logout(); navigation.navigate("Tabs") } },
+    ]})
+  }
 
   const handleSaveUsername = async () => {
     if (newUsername.length < 3) { setUsernameError("Min. 3 characters"); return }
@@ -108,44 +114,62 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
-      <View style={s.header}>
-        <View style={s.headerLeft}>
-          <Ionicons name="person-outline" size={22} color={colors.primary} />
-          <Text style={s.headerTitle}>Profile</Text>
-        </View>
-      </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
 
         {/* Header card */}
-        <View style={s.card}>
-          <View style={s.profileRow}>
-            <View style={s.avatar}>
-              <Ionicons name="person" size={32} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              {editingUsername ? (
-                <View style={s.editRow}>
-                  <TextInput style={s.usernameInput} value={newUsername} onChangeText={setNewUsername} autoFocus autoCapitalize="none" />
-                  <TouchableOpacity onPress={handleSaveUsername} disabled={usernameLoading}>
-                    {usernameLoading ? <ActivityIndicator color={colors.green} /> : <Ionicons name="checkmark" size={20} color={colors.green} />}
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { setEditingUsername(false); setUsernameError("") }}>
-                    <Ionicons name="close" size={20} color={colors.destructive} />
-                  </TouchableOpacity>
+        {(() => {
+          const isPremium = (user as any).isPremium ?? false
+          const trialActive = (user as any).trialActive ?? false
+          const trialExpiresAt = (user as any).trialExpiresAt ?? null
+          const daysLeft = trialExpiresAt
+            ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+            : 0
+          const showPremiumBadge = isPremium && !trialActive
+          const showTrialBadge = trialActive
+          return (
+            <View style={s.card}>
+              <View style={s.profileRow}>
+                <View style={s.avatar}>
+                  <Ionicons name="person" size={32} color={colors.primary} />
                 </View>
-              ) : (
-                <View style={s.editRow}>
-                  <Text style={s.username}>{user.username}</Text>
-                  <TouchableOpacity onPress={() => { setNewUsername(user.username); setEditingUsername(true) }}>
-                    <Ionicons name="pencil-outline" size={15} color={colors.mutedForeground} />
-                  </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  {editingUsername ? (
+                    <View style={s.editRow}>
+                      <TextInput style={s.usernameInput} value={newUsername} onChangeText={setNewUsername} autoFocus autoCapitalize="none" onBlur={() => { setEditingUsername(false); setUsernameError("") }} />
+                      <TouchableOpacity onPress={handleSaveUsername} disabled={usernameLoading}>
+                        {usernameLoading ? <ActivityIndicator color={colors.green} /> : <Ionicons name="checkmark" size={20} color={colors.green} />}
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => { setEditingUsername(false); setUsernameError("") }}>
+                        <Ionicons name="close" size={20} color={colors.destructive} />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={s.editRow}>
+                      <Text style={s.username}>{user.username}</Text>
+                      <TouchableOpacity style={s.editBtn} onPress={() => { setNewUsername(user.username); setEditingUsername(true) }}>
+                        <Ionicons name="create-outline" size={14} color={colors.primary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {usernameError ? <Text style={s.errorText}>{usernameError}</Text> : null}
+                  <Text style={s.email}>{user.email}</Text>
+                  {showPremiumBadge && (
+                    <View style={s.premiumInlineBadge}>
+                      <Ionicons name="star" size={11} color={colors.primary} />
+                      <Text style={s.premiumInlineBadgeText}>Premium · Full access to all features</Text>
+                    </View>
+                  )}
+                  {showTrialBadge && (
+                    <View style={s.premiumInlineBadge}>
+                      <Ionicons name="timer-outline" size={11} color={colors.primary} />
+                      <Text style={s.premiumInlineBadgeText}>Free Trial · {daysLeft}d left</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-              {usernameError ? <Text style={s.errorText}>{usernameError}</Text> : null}
-              <Text style={s.email}>{user.email}</Text>
+              </View>
             </View>
-          </View>
-        </View>
+          )
+        })()}
 
         {/* Trial / subscription card */}
         {(() => {
@@ -156,15 +180,7 @@ export default function ProfileScreen() {
             ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
             : 0
           if (isPremium && !trialActive) {
-            return (
-              <View style={[s.card, s.premiumCard]}>
-                <View style={s.trialRow}>
-                  <Ionicons name="star" size={20} color="#fff" />
-                  <Text style={[s.trialTitle, { color: "#fff", fontSize: 17 }]}>Premium</Text>
-                </View>
-                <Text style={[s.trialSub, { color: "rgba(255,255,255,0.85)" }]}>Full access to all features.</Text>
-              </View>
-            )
+            return null
           }
           if (trialActive) {
             return (
@@ -232,29 +248,30 @@ export default function ProfileScreen() {
         {/* Security */}
         <View style={s.card}>
           <Text style={s.sectionTitle}>Security</Text>
-          <TouchableOpacity style={s.securityRow} onPress={() => setShowPasswordModal(true)}>
-            <Text style={s.securityLabel}>Password</Text>
-            <Text style={s.securityAction}>Change Password</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Account actions */}
-        <View style={s.card}>
-          <View style={s.actionsRow}>
-            <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
-              <Text style={s.logoutBtnText}>Logout</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12, gap: 16 }}>
+            <TouchableOpacity style={[s.changePasswordBtn, { flex: 1 }]} onPress={() => setShowPasswordModal(true)}>
+              <Ionicons name="lock-closed-outline" size={14} color="#fff" />
+              <Text style={s.changePasswordBtnText}>Change Password</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.deleteBtn} onPress={() => setShowDeleteModal(true)}>
-              <Ionicons name="trash-outline" size={15} color="#fff" />
+            <TouchableOpacity style={[s.deleteBtn, { flex: 1 }]} onPress={() => setShowDeleteModal(true)}>
+              <Ionicons name="trash-outline" size={14} color="#fff" />
               <Text style={s.deleteBtnText}>Delete Account</Text>
             </TouchableOpacity>
           </View>
         </View>
 
+        {/* Log out */}
+        <View style={{ alignItems: "center", marginTop: 24, marginBottom: 8 }}>
+          <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={16} color={colors.mutedForeground} />
+            <Text style={s.logoutBtnText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
       {/* Change Password Modal */}
-      <Modal visible={showPasswordModal} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={showPasswordModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowPasswordModal(false); setPasswordError(""); setPasswordForm({ current: "", new: "", confirm: "" }) }}>
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
             <TouchableOpacity onPress={() => { setShowPasswordModal(false); setPasswordError(""); setPasswordForm({ current: "", new: "", confirm: "" }) }}>
@@ -305,7 +322,7 @@ export default function ProfileScreen() {
       </Modal>
 
       {/* Delete Account Modal */}
-      <Modal visible={showDeleteModal} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={showDeleteModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => { setShowDeleteModal(false); setDeleteConfirm(""); setDeleteError("") }}>
         <SafeAreaView style={s.modalContainer} edges={["top"]}>
           <View style={s.modalHeader}>
             <TouchableOpacity onPress={() => { setShowDeleteModal(false); setDeleteConfirm(""); setDeleteError("") }}>
@@ -336,11 +353,14 @@ const makeStyles = (colors: any) => StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
-  card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, margin: spacing.md, marginBottom: 0, padding: spacing.md },
+  card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, margin: spacing.md, marginBottom: 8, padding: spacing.md },
   profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center" },
   editRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  editBtn: { backgroundColor: colors.primary + "18", borderRadius: 6, padding: 4 },
   username: { fontSize: 20, fontWeight: "700", color: colors.text },
+  premiumInlineBadge: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, backgroundColor: colors.primary + "18", alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  premiumInlineBadgeText: { fontSize: 11, fontWeight: "600", color: colors.primary },
   usernameInput: { fontSize: 18, fontWeight: "700", color: colors.text, borderBottomWidth: 1, borderBottomColor: colors.primary, flex: 1, paddingVertical: 2 },
   email: { fontSize: 13, color: colors.mutedForeground, marginTop: 3 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 14 },
@@ -358,10 +378,12 @@ const makeStyles = (colors: any) => StyleSheet.create({
   securityLabel: { fontSize: 14, color: colors.text },
   securityAction: { fontSize: 14, color: colors.primary, fontWeight: "600" },
   actionsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  logoutBtn: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 20, paddingVertical: 10 },
-  logoutBtnText: { fontSize: 14, fontWeight: "600", color: colors.text },
-  deleteBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.destructive, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 10 },
-  deleteBtnText: { fontSize: 14, fontWeight: "600", color: "#fff" },
+  changePasswordBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 14 },
+  changePasswordBtnText: { fontSize: 13, fontWeight: "600", color: "#fff" },
+  logoutBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1.5, borderColor: colors.mutedForeground, borderRadius: radius.md, paddingHorizontal: 32, paddingVertical: 13 },
+  logoutBtnText: { fontSize: 15, fontWeight: "600", color: colors.mutedForeground },
+  deleteBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: colors.destructive, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 14 },
+  deleteBtnText: { fontSize: 13, fontWeight: "600", color: "#fff" },
   errorText: { fontSize: 13, color: colors.destructive, marginBottom: 8 },
   modalContainer: { flex: 1, backgroundColor: colors.background },
   modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },

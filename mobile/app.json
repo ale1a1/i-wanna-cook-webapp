@@ -17,6 +17,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "backgroundColor": "#0f1117",
       "edgeToEdgeEnabled": true,
       "package": "com.alwmedia.whatshouldIcook"
     },
