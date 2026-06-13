@@ -534,7 +534,10 @@ export default function MyRecipesScreen() {
     return (
       <SafeAreaView style={s.container} edges={["top"]}>
         <View style={s.topBar}>
-          <Text style={s.title}>My Recipes</Text>
+          <View style={s.topBarCenter}>
+            <Ionicons name="bookmark-outline" size={22} color={colors.primary} />
+            <Text style={s.title}>My Recipes</Text>
+          </View>
         </View>
         <View style={s.homeContent}>
           <TouchableOpacity style={[s.bigBtn, { backgroundColor: colors.primary }]} onPress={() => switchList("toTry")} activeOpacity={0.85}>
@@ -1027,8 +1030,9 @@ export default function MyRecipesScreen() {
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
-  topBar: { paddingHorizontal: spacing.md, paddingVertical: 14 },
-  title: { fontSize: 26, fontWeight: "800", color: colors.text },
+  topBar: { paddingHorizontal: spacing.md, paddingVertical: 14, alignItems: "center", borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
+  topBarCenter: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, justifyContent: "center" },
+  title: { fontSize: 20, fontWeight: "700", color: colors.text },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
   headerTitle: { fontSize: 20, fontWeight: "800", color: colors.text },
   headerCount: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },

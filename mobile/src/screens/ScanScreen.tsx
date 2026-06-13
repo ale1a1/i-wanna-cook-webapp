@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons"
 import * as ImagePicker from "expo-image-picker"
 import { useNavigation } from "@react-navigation/native"
 import { useTheme } from "../context/ThemeContext"
+import { spacing } from "../lib/theme"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { API_BASE_URL } from "../lib/api"
 import { reportError } from "../lib/reportError"
@@ -122,6 +123,12 @@ export default function ScanScreen() {
   if (step === "capture") return (
     <>
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]} edges={["top"]}>
+        <View style={s.header}>
+          <View style={s.headerLeft}>
+            <Ionicons name="camera-outline" size={22} color={colors.primary} />
+            <Text style={s.headerTitle}>Scan Fridge</Text>
+          </View>
+        </View>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <View style={s.hero}>
             <Ionicons name="camera" size={56} color={colors.primary} />
@@ -327,6 +334,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1 },
   scroll: { padding: 24, gap: 24 },
   hero: { alignItems: "center", gap: 12, paddingTop: 16 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
   heroTitle: { fontSize: 26, fontWeight: "700", textAlign: "center" },
   heroSubtitle: { fontSize: 15, textAlign: "center", lineHeight: 22 },
   btns: { flexDirection: "row", gap: 16 },

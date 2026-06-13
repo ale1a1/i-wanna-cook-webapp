@@ -100,7 +100,7 @@ function HomeTabs() {
     ]
   }
 
-  const TAB_SCREENS = new Set(["Home", "Search", "Scan", "Shopping", "QuickShopping", "Cooking"])
+  const TAB_SCREENS = new Set(["Home", "Search", "Scan", "Shopping", "QuickShopping", "Cooking", "MyRecipes", "MealPlan", "Profile"])
 
   const handleNavigate = (name: string) => {
     setCurrentRoute(name)
@@ -130,6 +130,9 @@ function HomeTabs() {
           component={RecipeDetailScreen}
           initialParams={session ? { id: session.recipeId, title: session.recipeTitle, fromSession: true } : undefined}
         />
+        <Tab.Screen name="MyRecipes" component={MyRecipesScreen} />
+        <Tab.Screen name="MealPlan" component={MealPlanScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
 
       <SlidingTabBar
@@ -158,9 +161,6 @@ function AppNavigator() {
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={({ route }: any) => ({ title: route.params?.title ?? "Recipe", headerBackTitle: "Back" })} />
       <Stack.Screen name="CookingMode" component={CookingModeScreen} options={{ headerShown: false, presentation: "fullScreenModal" }} />
       <Stack.Screen name="Login" component={LoginScreen} options={({ navigation }: any) => ({ title: "Sign in", presentation: "modal", headerLeft: () => ( <TouchableOpacity onPress={() => navigation.navigate("Tabs")} style={{ paddingHorizontal: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity> ) })} />
-      <Stack.Screen name="MyRecipes" component={MyRecipesScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="MealPlan" component={MealPlanScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
       <Stack.Screen name="QuickShoppingList" component={QuickShoppingListScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ReadyToCook" component={ReadyToCookScreen} options={{ headerShown: false, presentation: "modal" }} />
     </Stack.Navigator>

@@ -109,9 +109,12 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={s.container} edges={["top"]}>
       <View style={s.header}>
-        <Text style={s.headerTitle}>Profile</Text>
+        <View style={s.headerLeft}>
+          <Ionicons name="person-outline" size={22} color={colors.primary} />
+          <Text style={s.headerTitle}>Profile</Text>
+        </View>
       </View>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
 
         {/* Header card */}
         <View style={s.card}>
@@ -330,8 +333,9 @@ export default function ProfileScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
   card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.lg, margin: spacing.md, marginBottom: 0, padding: spacing.md },
   profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + "20", alignItems: "center", justifyContent: "center" },

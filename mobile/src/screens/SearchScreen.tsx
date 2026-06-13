@@ -484,6 +484,12 @@ export default function SearchScreen() {
   return (
     <>
     <SafeAreaView style={s.container} edges={["top"]}>
+      <View style={s.header}>
+        <View style={s.headerLeft}>
+          <Ionicons name="search-outline" size={22} color={colors.primary} />
+          <Text style={s.headerTitle}>Find Recipes</Text>
+        </View>
+      </View>
       <View style={s.topBar}>
         <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
           <Ionicons name="options-outline" size={20} color={hasActiveFilters ? colors.primary : colors.mutedForeground} />
@@ -816,6 +822,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   aiOverlay: { flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" },
   aiEmoji: { fontSize: 72 },
   aiText: { marginTop: 20, fontSize: 18, fontWeight: "700", color: "#ffffff" },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: colors.text },
   topBar: { flexDirection: "row", alignItems: "center", gap: 12, padding: spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.4)" },
   refinePill: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.card, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
   refineSummary: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "500" },

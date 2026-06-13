@@ -807,7 +807,10 @@ export default function MealPlanScreen() {
           <Text style={s.topBarTitle}>Create Plan</Text>
           <View style={{ width: 24 }} />
         </>) : (
-          <Text style={s.title}>Meal Plans</Text>
+          <View style={s.topBarCenter}>
+            <Ionicons name="calendar-outline" size={22} color={colors.primary} />
+            <Text style={s.title}>Meal Plans</Text>
+          </View>
         )}
       </View>
 
@@ -1621,7 +1624,8 @@ export default function MealPlanScreen() {
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },
-  title: { fontSize: 20, fontWeight: "800", color: colors.text },
+  topBarCenter: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, justifyContent: "center" },
+  title: { fontSize: 20, fontWeight: "700", color: colors.text },
   topBarTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: colors.text, textAlign: "center", marginHorizontal: 8 },
   regenBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 7 },
   regenBtnText: { color: colors.primary, fontWeight: "600", fontSize: 13 },
