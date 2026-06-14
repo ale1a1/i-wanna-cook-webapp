@@ -1485,6 +1485,7 @@ export default function MealPlanScreen() {
                   </View>
                 </View>
               </View>
+            </Modal>
           </SafeAreaView>
       )}
 
