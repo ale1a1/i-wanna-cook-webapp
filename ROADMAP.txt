@@ -19,15 +19,23 @@ Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or 
 
 Email marketing consent
 Users should explicitly opt in to marketing emails at registration. This is required under GDPR.
-Transactional emails (welcome, password reset, account deletion) do not require consent and are
-already sent. Re-engagement emails are marketing — consent must be captured before sending.
+Transactional emails (welcome, password reset, account deletion) do NOT require consent and are
+already sent — they are service emails, not marketing.
+Re-engagement and referral emails are marketing — consent must be captured at registration before sending.
 NOTE: Current emails sent — welcome (Cognito + Resend), password reset (Cognito), account deletion (Resend).
 TODO: Add email marketing opt-in checkbox at registration before sending any re-engagement campaigns.
 
+Referral programme
+After a user has been active for a few days, send a "Bring a Friend" email offering 1–2 months free
+premium for both the referrer and the new user who registers via their link. Requires a referral token
+system (generate unique link per user, track sign-ups against it, credit both accounts on activation).
+This is a high-leverage growth mechanic — low cost, strong word-of-mouth signal.
+
 Post-cancellation re-engagement strategy
-When a user deletes their account or downgrades, consider a single follow-up email (within 7 days)
-with a discount or reminder of what they are losing. One email only — do not pester. Requires
-marketing consent captured at registration.
+When a user deletes their account or downgrades, send a single follow-up email within 7 days offering
+a 20% discount on the premium plan. One email only — do not send further reminders. Requires marketing
+consent captured at registration, and a discount code system tied to the subscription flow.
+
 
 --- Legal & Safety ---
 
@@ -104,6 +112,84 @@ Cross-reference the full Spoonacular endpoint list against SHOULD / COULD / Phas
 Identify which planned features could be built with existing endpoints, and which unused endpoints
 unlock cheap wins. Check autocomplete, nutrition facts, food trivia, recipe card images, etc.
 Do this before starting any new feature work.
+
+
+--- Pre-Launch QA Checklist ---
+
+Complete this checklist as the final step before submitting to Google Play.
+
+REGISTRATION & AUTH
+[ ] Register a new account — verify welcome email arrives
+[ ] Verify email inline — confirm token flow works end to end
+[ ] Log out and log back in
+[ ] Forgot password flow — verify reset email arrives and new password works
+[ ] Delete account — verify deletion confirmation email arrives
+[ ] Trial period shows correctly on Profile screen (14 days remaining)
+[ ] Trial countdown banner appears on Home screen
+
+SEARCH & FILTERS
+[ ] Search with no filters — results load and paginate
+[ ] Search with each meal type filter — verify results match category
+[ ] Search with diet, cuisine, prep time, budget filters combined
+[ ] Ingredient autocomplete — type 2+ letters, select suggestion, search fires
+[ ] Camera scan from search — ingredients populate correctly
+[ ] Load more results — pagination appends correctly
+[ ] Last result card not clipped by tab bar
+
+MY RECIPES
+[ ] Save a recipe to To Try — verify it appears in correct folder
+[ ] Save a recipe to Tried — verify it appears in correct folder
+[ ] Meal type filter chip appears in My Recipes after saving with meal type
+[ ] Filter chips show human-readable labels (not raw keys)
+[ ] Rate a recipe — stars save correctly
+[ ] Add/edit tags on a saved recipe
+[ ] Move recipe between folders
+[ ] Delete a recipe — confirm modal fires, recipe removed
+[ ] Navigate To Try → folder → Main List → swipe back twice — no white flash
+
+MEAL PLANNER
+[ ] Generate plan via AI Goal path — plan loads with correct calorie targets
+[ ] Generate plan via Customise path — all 4 steps work
+[ ] Replace a meal — new recipe fits calorie budget
+[ ] Save plan to a folder — name and folder required
+[ ] Browse saved plans — nav bar stays visible (no disappearing tab bar)
+[ ] Exit guard fires on navigation away with unsaved changes
+
+COOKING MODE
+[ ] Enter cooking mode from recipe detail
+[ ] Swipe through all steps
+[ ] Voice narration reads each step
+[ ] Exit cooking mode — returns to recipe detail correctly
+
+WINE PAIRING
+[ ] Open a recipe with wine pairing data — Spoonacular results show
+[ ] Open a recipe with no Spoonacular data — AI badge and Claude suggestions appear
+[ ] Tap an AI wine suggestion — Google search opens correctly
+
+SHOPPING LIST
+[ ] Add ingredients to shopping list from recipe detail
+[ ] Check off items — state persists
+[ ] Quick Shopping List from fridge scan — items populate
+
+SUBSCRIPTION & PAYWALL
+[ ] Free user hits search limit — paywall appears
+[ ] Free user hits scan limit — paywall appears
+[ ] Trial expiry modal fires correctly when trial is 1–2 days from ending
+[ ] Upgrade flow navigates to correct screen (Google Play Billing — when wired up)
+
+EMAILS (manual verification)
+[ ] Welcome email — received on registration
+[ ] Password reset email — received and link works
+[ ] Account deletion email — received on deletion
+[ ] Trial warning email — received when trial nears expiry
+
+GENERAL
+[ ] Dark mode — all screens render correctly
+[ ] No white flash on My Recipes navigation (native APK build only)
+[ ] Nav bar persists on all screens (My Recipes folders, Meal Plans browse)
+[ ] Active tab icon updates correctly on swipe-back gesture
+[ ] App does not crash on low connectivity — error messages shown
+[ ] All owner alert emails fire correctly on API failures (test with invalid keys)
 
 
 ================================================================
