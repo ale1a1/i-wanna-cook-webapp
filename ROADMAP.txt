@@ -12,18 +12,6 @@ LIST: MUST — Before Launch
 ================================================================
 
 
---- Meal & Nutrition ---
-
-Macro and nutrition tracking
-Daily targets for calories, protein, carbs, fat. Track meals logged against targets.
-Show trends over time. Premium.
-
-Meal type filter — Breakfast / Lunch / Dinner / Brunch
-Allow users to filter recipes by meal type on the search screen. Spoonacular supports
-this via the `type` parameter. Low effort, high discoverability value.
-NOTE: This filter should also be applied when browsing saved recipes in My Recipes (To Try and Tried),
-so users can quickly find a saved breakfast or dinner without scrolling the full list.
-
 --- Emails ---
 
 Fortnightly re-engagement email
@@ -422,3 +410,6 @@ Build fix ✅ (@anthropic-ai/sdk missing from package.json)
 Recipe collections superseded by My Recipes tags ✅
 Meal Plans nav + header rename ✅ (tab, top bar, home view all say "Meal Plans"; home shows two buttons directly)
 Meal planner — QA tested ✅ (all flows verified: generate, save, browse, replace, change tracking, exit guards)
+Meal type filter ✅ (Breakfast / Lunch / Dinner / Brunch / Snack / Dessert — search panel + stored in searchFilters for My Recipes filtering)
+Ingredient autocomplete ✅ (search panel + meal planner exclude field — Spoonacular /food/ingredients/autocomplete, 8 results, selection-only)
+Wine pairing — Claude Haiku fallback ✅ (fires when Spoonacular returns empty — AI badge + Google search link per suggestion)
