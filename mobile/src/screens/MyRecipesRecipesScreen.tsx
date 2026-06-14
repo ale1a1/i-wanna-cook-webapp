@@ -21,7 +21,7 @@ const FILTER_VALUE_LABELS: Record<string, string> = {
   italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese",
   french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek",
   breakfast: "Breakfast", "main course": "Main Course",
-  "side dish": "Side Dish", soup: "Soup", salad: "Salad", appetizer: "Appetizer", dessert: "Dessert",
+  "side dish": "Side Dish", soup: "Soup", salad: "Salad", dessert: "Dessert",
   under15: "< 15 min", under30: "< 30 min", under60: "< 1 hour", over60: "> 1 hour",
   cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium",
   sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory",
