@@ -12,6 +12,22 @@ import DraggableList from "../components/DraggableList"
 const DIFFICULTIES = ["Very Easy", "Easy", "Moderate", "Difficult", "Very Difficult"]
 const SUGGESTED_TAGS = ["Romantic", "Weekend", "Treat", "Kids", "Quick", "Healthy", "Comfort", "Batch Cook"]
 
+const FILTER_FIELD_LABELS: Record<string, string> = {
+  diet: "Diet", cuisine: "Cuisine", mealType: "Meal Type",
+  prepTime: "Prep Time", budget: "Budget", taste: "Taste", healthiness: "Healthiness",
+}
+const FILTER_VALUE_LABELS: Record<string, string> = {
+  vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo",
+  italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese",
+  french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek",
+  breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", "main course": "Main Course",
+  "side dish": "Side Dish", soup: "Soup", salad: "Salad", appetizer: "Appetizer", dessert: "Dessert",
+  under15: "< 15 min", under30: "< 30 min", under60: "< 1 hour", over60: "> 1 hour",
+  cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium",
+  sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory",
+  healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent",
+}
+
 function Stars({ rating, onPress, colors }: { rating: number; onPress?: (v: number) => void; colors: any }) {
   return (
     <View style={{ flexDirection: "row", gap: 2 }}>
@@ -400,11 +416,11 @@ export default function MyRecipesRecipesScreen() {
               )}
               {Object.keys(listFilterOptions).length > 0 ? Object.entries(listFilterOptions).map(([field, values]) => (
                 <View key={field}>
-                  <Text style={s.filterSectionLabel}>{field}</Text>
+                  <Text style={s.filterSectionLabel}>{FILTER_FIELD_LABELS[field] ?? field}</Text>
                   <View style={s.filterChipsRow}>
                     {values.map(value => (
                       <TouchableOpacity key={value} style={[s.filterChip, activeFilters[field] === value && s.filterChipActive]} onPress={() => toggleFilter(field, value)}>
-                        <Text style={[s.filterChipText, activeFilters[field] === value && s.filterChipTextActive]}>{value}</Text>
+                        <Text style={[s.filterChipText, activeFilters[field] === value && s.filterChipTextActive]}>{FILTER_VALUE_LABELS[value] ?? value}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
