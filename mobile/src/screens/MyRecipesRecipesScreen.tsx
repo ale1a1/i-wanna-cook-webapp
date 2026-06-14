@@ -83,7 +83,7 @@ export default function MyRecipesRecipesScreen() {
   const filteredRecipes = useMemo(() => applyFilters(orderedRecipes), [orderedRecipes, activeFilters, ratingFilter, sortByRating])
 
   const listFilterOptions = useMemo(() => {
-    const fields = ["diet", "cuisine", "prepTime", "budget", "taste", "healthiness"]
+    const fields = ["diet", "cuisine", "mealType", "prepTime", "budget", "taste", "healthiness"]
     const options: Record<string, Set<string>> = {}
     for (const r of list) {
       if (!r.searchFilters) continue

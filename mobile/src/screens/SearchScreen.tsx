@@ -25,6 +25,7 @@ type Recipe = { id: number; title: string; image: string; readyInMinutes: number
 
 const DIETS = ["any", "vegetarian", "vegan", "glutenFree", "keto", "paleo"]
 const CUISINES = ["any", "italian", "mexican", "thai", "indian", "chinese", "french", "japanese", "mediterranean", "american", "greek"]
+const MEAL_TYPES = ["any", "breakfast", "lunch", "dinner", "brunch", "snack", "dessert"]
 const PREP_TIMES = ["any", "under15", "under30", "under60", "over60"]
 const BUDGETS = ["any", "cheap", "moderate", "expensive"]
 const HEALTHINESS = ["any", "healthy", "veryHealthy", "indulgent"]
@@ -33,6 +34,7 @@ const PREP_LABELS: Record<string, string> = { any: "Any time", under15: "< 15 mi
 const BUDGET_LABELS: Record<string, string> = { any: "Any budget", cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium" }
 const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
 const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
+const MEAL_TYPE_LABELS: Record<string, string> = { any: "Any meal", breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", brunch: "Brunch", snack: "Snack", dessert: "Dessert" }
 
 const SORT_OPTIONS = [
   { value: "popularity", label: "Popularity" },
@@ -85,7 +87,7 @@ const defaultNutrition: NutritionFilters = {
 }
 
 function buildSearchParams(
-  f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; ingredients: string[] },
+  f: { prepTime: string; budget: string; diet: string; taste: string; healthiness: string; cuisine: string; mealType: string; ingredients: string[] },
   nutrition: NutritionFilters,
   sort: string,
   sortDirection: string,
@@ -102,6 +104,7 @@ function buildSearchParams(
   const dietMap: Record<string, string> = { vegetarian: "vegetarian", vegan: "vegan", glutenFree: "gluten free", keto: "ketogenic", paleo: "paleo" }
   if (f.diet !== "any" && dietMap[f.diet]) params.set("diet", dietMap[f.diet])
   if (f.cuisine !== "any") params.set("cuisine", f.cuisine)
+  if (f.mealType !== "any") params.set("type", f.mealType)
 
   switch (f.budget) {
     case "cheap": params.set("maxPricePerServing", "150"); break
@@ -155,7 +158,7 @@ export default function SearchScreen() {
   const { user } = useAuth()
   const [showPaywall, setShowPaywall] = useState(false)
 
-  const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", ingredients: [] as string[] }
+  const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", mealType: "any", ingredients: [] as string[] }
   const [filters, setFilters] = useState(defaultFilters)
   const [nutrition, setNutrition] = useState<NutritionFilters>(defaultNutrition)
   const [sort, setSort] = useState("none")
@@ -262,7 +265,7 @@ export default function SearchScreen() {
   }, [route.params?.surprise])
 
   const hasNutritionFilters = Object.values(nutrition).some(v => v.trim() !== "")
-  const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.ingredients.length > 0 || hasNutritionFilters || sort !== "none"
+  const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.mealType !== "any" || filters.ingredients.length > 0 || hasNutritionFilters || sort !== "none"
 
   const addIngredient = (name: string) => {
     const val = name.trim()
@@ -448,7 +451,7 @@ export default function SearchScreen() {
   )
 
   const sectionCounts = {
-    recipe: [filters.prepTime, filters.budget, filters.diet, filters.cuisine, filters.healthiness, filters.taste].filter(v => v !== "any").length,
+    recipe: [filters.prepTime, filters.budget, filters.diet, filters.cuisine, filters.mealType, filters.healthiness, filters.taste].filter(v => v !== "any").length,
     ingredients: filters.ingredients.length,
     macros: (["minCalories","maxCalories","minProtein","maxProtein","minCarbs","maxCarbs","minFat","maxFat","minSaturatedFat","maxSaturatedFat","minFiber","maxFiber","minSugar","maxSugar","minCholesterol","maxCholesterol","minSodium","maxSodium","minAlcohol","maxAlcohol","minCaffeine","maxCaffeine"] as (keyof NutritionFilters)[]).filter(k => nutrition[k].trim() !== "").length,
     micros: (["minVitaminA","maxVitaminA","minVitaminC","maxVitaminC","minVitaminD","maxVitaminD","minVitaminB6","maxVitaminB6","minVitaminB12","maxVitaminB12","minCalcium","maxCalcium","minIron","maxIron","minMagnesium","maxMagnesium","minPotassium","maxPotassium","minZinc","maxZinc"] as (keyof NutritionFilters)[]).filter(k => nutrition[k].trim() !== "").length,
@@ -477,6 +480,7 @@ export default function SearchScreen() {
     if (filters.ingredients.length) parts.push(filters.ingredients.join(", "))
     if (filters.diet !== "any") parts.push({ vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }[filters.diet] ?? filters.diet)
     if (filters.cuisine !== "any") parts.push(filters.cuisine.charAt(0).toUpperCase() + filters.cuisine.slice(1))
+    if (filters.mealType !== "any") parts.push(MEAL_TYPE_LABELS[filters.mealType] ?? filters.mealType)
     if (filters.prepTime !== "any") parts.push(PREP_LABELS[filters.prepTime])
     if (hasNutritionFilters) parts.push("Nutrition filters")
     if (sort !== "none") parts.push(`Sort: ${SORT_OPTIONS.find(o => o.value === sort)?.label}`)
@@ -508,6 +512,7 @@ export default function SearchScreen() {
             <SectionHeader title="Recipe" sectionKey="recipe" />
             {openSection === "recipe" && (
               <View style={s.sectionBody}>
+                <FilterPicker label="Meal Type" values={MEAL_TYPES} labelMap={MEAL_TYPE_LABELS} field="mealType" />
                 <FilterPicker label="Prep Time" values={PREP_TIMES} labelMap={PREP_LABELS} field="prepTime" />
                 <FilterPicker label="Budget" values={BUDGETS} labelMap={BUDGET_LABELS} field="budget" />
                 <FilterPicker label="Diet" values={DIETS} labelMap={{ any: "Any diet", vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo" }} field="diet" />
@@ -723,6 +728,7 @@ export default function SearchScreen() {
               const sf: Record<string, any> = {}
               if (filters.diet !== "any") sf.diet = filters.diet
               if (filters.cuisine !== "any") sf.cuisine = filters.cuisine
+              if (filters.mealType !== "any") sf.mealType = filters.mealType
               if (filters.prepTime !== "any") sf.prepTime = filters.prepTime
               if (filters.budget !== "any") sf.budget = filters.budget
               if (filters.taste !== "any") sf.taste = filters.taste
