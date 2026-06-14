@@ -25,7 +25,7 @@ type Recipe = { id: number; title: string; image: string; readyInMinutes: number
 
 const DIETS = ["any", "vegetarian", "vegan", "glutenFree", "keto", "paleo"]
 const CUISINES = ["any", "italian", "mexican", "thai", "indian", "chinese", "french", "japanese", "mediterranean", "american", "greek"]
-const MEAL_TYPES = ["any", "breakfast", "main course", "side dish", "soup", "salad", "dessert"]
+const MEAL_TYPES = ["any", "breakfast", "main course", "soup", "side dish", "salad", "dessert"]
 const PREP_TIMES = ["any", "under15", "under30", "under60", "over60"]
 const BUDGETS = ["any", "cheap", "moderate", "expensive"]
 const HEALTHINESS = ["any", "healthy", "veryHealthy", "indulgent"]
