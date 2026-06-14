@@ -11,21 +11,6 @@ not considered "web app features" and changes to them apply to both platforms.
 LIST: MUST — Before Launch
 ================================================================
 
---- Search ---
-
-Ingredient autocomplete — search & meal planner
-When typing in the Ingredients field (search) or the Exclude Ingredients field (meal planner), query
-Spoonacular's autocomplete ingredient endpoint in real time and show suggestions below the input.
-Reduces typos and ensures ingredient names match Spoonacular's DB exactly. Shared reusable component.
-Spoonacular endpoint: GET /food/ingredients/autocomplete?query=&number=5.
-
-Wine search — empty state + Claude fallback
-When Spoonacular returns no wine pairing results, currently the screen is blank. Two fixes needed:
-1. MUST — show a clear empty state message ("No wine pairings found for this recipe") instead of blank.
-2. SHOULD — when Spoonacular returns empty, fall back to Claude (Haiku) to suggest 2–3 wines.
-   Response: wine name + one-line reason + Google search link so user can find it.
-   Reuse existing wine card layout where possible; otherwise plain labelled list with "AI suggested" tag.
-   Only fires when Spoonacular returns empty — no double-calling.
 
 --- Meal & Nutrition ---
 
@@ -37,6 +22,26 @@ Show trends over time. Premium.
 
 Fortnightly re-engagement email
 Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
+Also who is currently sendind the welcom email? the reset password email, and the goodby email when user deleted? 
+Also how is professionally handled when user leave? can we keep pestering them suggesting to come back?
+Also, should be ask user to sign a disclaimer to authorise us to email them?and should be done when registering?
+
+--- Legal & Safety ---
+
+Professional disclaimer including allergy warning
+A proper legal disclaimer must be shown during registration AND accessible from the app at all times.
+Must cover: nutritional information is approximate and not a substitute for professional dietary advice,
+allergy information may not be complete or accurate — always check product labels, not suitable for
+medical dietary management. Requires a lawyer to draft or review.
+NOTE: A user can currently register without seeing any allergy disclaimer — this is a legal risk before launch.
+BY WHY THE FUCK I NEED A DISCLAIMER? WHEN PEOPLE SEARCH ON GOOGLE THEY CAN KILL THEMSELFES WITH PEANUTS RECIPES TOO! SO??
+
+Privacy policy page
+Required by both App Store and Google Play.
+
+Terms of service page
+Required by both App Store and Google Play.
+
 
 --- Subscription & Payments ---
 
@@ -54,21 +59,6 @@ to reflect it gracefully after expiry without requiring a re-login.
 Trial expiry modal — 1-2 days warning
 When trial is 1-2 days from expiring, show a one-time modal on app open prompting user to upgrade.
 Fire once per account, not every session.
-
---- Legal & Safety ---
-
-Professional disclaimer including allergy warning
-A proper legal disclaimer must be shown during registration AND accessible from the app at all times.
-Must cover: nutritional information is approximate and not a substitute for professional dietary advice,
-allergy information may not be complete or accurate — always check product labels, not suitable for
-medical dietary management. Requires a lawyer to draft or review.
-NOTE: A user can currently register without seeing any allergy disclaimer — this is a legal risk before launch.
-
-Privacy policy page
-Required by both App Store and Google Play.
-
-Terms of service page
-Required by both App Store and Google Play.
 
 --- App Store Submission ---
 
@@ -211,9 +201,25 @@ SERVICE FAILURE & BILLING ALERTS — MANUAL CHECKLIST
 
 1. ANTHROPIC (Claude API)
 Cost: pay-per-token. Runs out → 401 or 429.
-Used for: scanner, substitutes, AI filters, meal replacement validation.
+Model: claude-haiku-4-5-20251001 (all features)
 Alert: ✅ Owner email on 401/429/529 (lib/alertOwner.ts)
 Action: console.anthropic.com → top up credits
+
+CLAUDE USAGE — EVERY CALL SITE:
+  a) AI ingredient scanner     → /api/recipes/analyze-image       — 1 call per scan (free: 3/week cap)
+  b) Ingredient substitute     → /api/recipes/suggest-substitute  — 1 call per user request
+  c) AI meal plan filters      → /api/recipes/suggest-filters     — 1 call per AI Goal generation
+  d) Wine pairing fallback     → /api/recipes/wine-pairing        — 1 call only when Spoonacular returns empty
+  e) AI recipe enrichment      → NOT YET BUILT (SHOULD list)
+  f) AI chat assistant         → NOT YET BUILT (SHOULD list)
+  g) AI recipe modification    → NOT YET BUILT (COULD list)
+
+COST RISK RANKING:
+  🔴 Scanner (HIGH) — highest volume. Every scan = 1 call. Premium: unlimited scans.
+  🟡 Wine fallback (LOW) — fires only on Spoonacular miss. Most recipes have Spoonacular data.
+  🟡 Substitute (LOW) — user-triggered, low frequency.
+  🟢 AI filters (VERY LOW) — 1 call per meal plan generation, rare.
+TODO: Add per-feature Claude call counter to DB or CloudWatch for cost attribution.
 
 2. SPOONACULAR
 Cost: points-based daily quota. Free = 150pts/day. Paid from $29/mo.

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react"
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ActivityIndicator, Modal, Animated, TextInput
+  Image, ActivityIndicator, Modal, Animated, TextInput, Linking
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -854,7 +854,7 @@ export default function RecipeDetailScreen() {
           {tab === "wine" && (
             <View style={{ gap: 16 }}>
               {wineLoading && <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 32 }} />}
-              {!wineLoading && winePairing && (
+              {!wineLoading && winePairing && !winePairing.aiSuggestions && (
                 <>
                   <Text style={s.wineIntro}>{winePairing.pairingText}</Text>
                   {winePairing.productMatches?.slice(0, 4).map((wine: any) => (
@@ -884,6 +884,29 @@ export default function RecipeDetailScreen() {
                       </View>
                     </View>
                   )}
+                </>
+              )}
+              {!wineLoading && winePairing?.aiSuggestions && (
+                <>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Ionicons name="sparkles" size={14} color={colors.primary} />
+                    <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 }}>AI suggested</Text>
+                  </View>
+                  <Text style={s.wineIntro}>No Spoonacular pairing found — here are sommelier suggestions from Claude.</Text>
+                  {winePairing.aiSuggestions.map((suggestion: any) => (
+                    <TouchableOpacity
+                      key={suggestion.name}
+                      style={[s.wineCard, { flexDirection: "column", gap: 6 }]}
+                      onPress={() => Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(suggestion.name + " wine")}`)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <Text style={s.wineName}>{suggestion.name}</Text>
+                        <Ionicons name="open-outline" size={14} color={colors.muted} />
+                      </View>
+                      <Text style={s.wineDesc}>{suggestion.reason}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </>
               )}
               {!wineLoading && !winePairing && (
