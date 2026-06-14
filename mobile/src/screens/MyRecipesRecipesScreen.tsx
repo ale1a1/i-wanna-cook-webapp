@@ -20,7 +20,7 @@ const FILTER_VALUE_LABELS: Record<string, string> = {
   vegetarian: "Vegetarian", vegan: "Vegan", glutenFree: "Gluten-free", keto: "Keto", paleo: "Paleo",
   italian: "Italian", mexican: "Mexican", thai: "Thai", indian: "Indian", chinese: "Chinese",
   french: "French", japanese: "Japanese", mediterranean: "Mediterranean", american: "American", greek: "Greek",
-  breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", "main course": "Main Course",
+  breakfast: "Breakfast", "main course": "Main Course",
   "side dish": "Side Dish", soup: "Soup", salad: "Salad", appetizer: "Appetizer", dessert: "Dessert",
   under15: "< 15 min", under30: "< 30 min", under60: "< 1 hour", over60: "> 1 hour",
   cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium",
