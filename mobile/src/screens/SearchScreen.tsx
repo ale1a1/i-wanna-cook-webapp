@@ -11,6 +11,7 @@ import { useGlobalError } from "../context/GlobalErrorContext"
 import { useSubscription } from "../context/SubscriptionContext"
 import { useAuth } from "../context/AuthContext"
 import PaywallModal from "../components/PaywallModal"
+import IngredientAutocomplete from "../components/IngredientAutocomplete"
 import { spacing, radius } from "../lib/theme"
 import { showAlert } from "../components/CustomAlert"
 
@@ -150,7 +151,6 @@ export default function SearchScreen() {
   const [nextOffset, setNextOffset] = useState<number | null>(null)
   const [totalResults, setTotalResults] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [ingredientInput, setIngredientInput] = useState("")
   const { isPremium } = useSubscription()
   const { user } = useAuth()
   const [showPaywall, setShowPaywall] = useState(false)
@@ -264,8 +264,9 @@ export default function SearchScreen() {
   const hasNutritionFilters = Object.values(nutrition).some(v => v.trim() !== "")
   const hasActiveFilters = filters.prepTime !== "any" || filters.budget !== "any" || filters.diet !== "any" || filters.taste !== "any" || filters.healthiness !== "any" || filters.cuisine !== "any" || filters.ingredients.length > 0 || hasNutritionFilters || sort !== "none"
 
-  const addIngredient = () => {
-    if (ingredientInput.trim()) { setFilters(f => ({ ...f, ingredients: [...f.ingredients, ingredientInput.trim()] })); setIngredientInput("") }
+  const addIngredient = (name: string) => {
+    const val = name.trim()
+    if (val) setFilters(f => ({ ...f, ingredients: [...f.ingredients, val] }))
   }
 
   const startSearch = (f = filters) => {
@@ -522,10 +523,9 @@ export default function SearchScreen() {
               <View style={s.sectionBody}>
                 <View style={[s.filterRow, { marginTop: 8 }]}>
                   <View style={s.ingredientRow}>
-                    <TextInput style={s.ingredientInput} value={ingredientInput} onChangeText={setIngredientInput} placeholder="e.g. chicken, garlic..." placeholderTextColor={colors.muted} onSubmitEditing={addIngredient} returnKeyType="done" />
-                    <TouchableOpacity style={[s.addBtn, !ingredientInput.trim() && s.btnDisabled]} onPress={addIngredient} disabled={!ingredientInput.trim()}>
-                      <Text style={s.addBtnText}>Add</Text>
-                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <IngredientAutocomplete onSelect={addIngredient} />
+                    </View>
                     <TouchableOpacity style={s.cameraBtn} onPress={pickAndAnalyzeImages} disabled={analyzingImages}>
                       {analyzingImages ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="camera" size={20} color="#fff" />}
                     </TouchableOpacity>

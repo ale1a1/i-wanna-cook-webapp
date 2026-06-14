@@ -12,6 +12,7 @@ import { apiFetch, API_BASE_URL } from "../lib/api"
 import { spacing, radius } from "../lib/theme"
 import { showAlert } from "../components/CustomAlert"
 import DraggableList from "../components/DraggableList"
+import IngredientAutocomplete from "../components/IngredientAutocomplete"
 
 let SpeechRecognitionModule: any = null
 try {
@@ -1037,9 +1038,32 @@ export default function MealPlanScreen() {
             {customStep === "nutrition" && (
               <>
                 <DropdownRow label="Daily Calories" pickerId="calories" value={calories} displayValue={`${calories} kcal`} options={CALORIES.map(c => ({ value: c, label: `${c} kcal` }))} onSelect={setCalories} />
-                <View style={s.dropdownRow}>
-                  <Text style={s.dropdownLabel}>Exclude Ingredients</Text>
-                  <TextInput style={s.excludeInput} value={exclude} onChangeText={setExclude} placeholder="e.g. pork, nuts..." placeholderTextColor={colors.muted} />
+                <View style={{ paddingHorizontal: spacing.md, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
+                  <Text style={[s.dropdownLabel, { marginBottom: 8 }]}>Exclude Ingredients</Text>
+                  <IngredientAutocomplete
+                    onSelect={(name) => {
+                      const parts = exclude.split(",").map(p => p.trim()).filter(Boolean)
+                      if (!parts.includes(name)) setExclude([...parts, name].join(", "))
+                    }}
+                    placeholder="Search ingredient to exclude..."
+                  />
+                  {exclude.trim() ? (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+                      {exclude.split(",").map(p => p.trim()).filter(Boolean).map(ing => (
+                        <TouchableOpacity
+                          key={ing}
+                          style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5 }}
+                          onPress={() => {
+                            const parts = exclude.split(",").map(p => p.trim()).filter(p => p !== ing)
+                            setExclude(parts.join(", "))
+                          }}
+                        >
+                          <Text style={{ fontSize: 13, color: colors.text }}>{ing}</Text>
+                          <Ionicons name="close" size={12} color={colors.muted} style={{ marginLeft: 4 }} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
                 </View>
               </>
             )}
@@ -1461,7 +1485,6 @@ export default function MealPlanScreen() {
                   </View>
                 </View>
               </View>
-            </Modal>
           </SafeAreaView>
       )}
 
