@@ -25,7 +25,7 @@ type Recipe = { id: number; title: string; image: string; readyInMinutes: number
 
 const DIETS = ["any", "vegetarian", "vegan", "glutenFree", "keto", "paleo"]
 const CUISINES = ["any", "italian", "mexican", "thai", "indian", "chinese", "french", "japanese", "mediterranean", "american", "greek"]
-const MEAL_TYPES = ["any", "breakfast", "lunch", "dinner", "brunch", "snack", "dessert"]
+const MEAL_TYPES = ["any", "breakfast", "lunch", "dinner", "main course", "side dish", "soup", "salad", "appetizer", "dessert"]
 const PREP_TIMES = ["any", "under15", "under30", "under60", "over60"]
 const BUDGETS = ["any", "cheap", "moderate", "expensive"]
 const HEALTHINESS = ["any", "healthy", "veryHealthy", "indulgent"]
@@ -34,7 +34,7 @@ const PREP_LABELS: Record<string, string> = { any: "Any time", under15: "< 15 mi
 const BUDGET_LABELS: Record<string, string> = { any: "Any budget", cheap: "Budget-friendly", moderate: "Moderate", expensive: "Premium" }
 const HEALTH_LABELS: Record<string, string> = { any: "Any", healthy: "Healthy", veryHealthy: "Very Healthy", indulgent: "Indulgent" }
 const TASTE_LABELS: Record<string, string> = { any: "Any taste", sweet: "Sweet", salty: "Salty", spicy: "Spicy", savory: "Savory" }
-const MEAL_TYPE_LABELS: Record<string, string> = { any: "Any meal", breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", brunch: "Brunch", snack: "Snack", dessert: "Dessert" }
+const MEAL_TYPE_LABELS: Record<string, string> = { any: "Any meal", breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", "main course": "Main Course", "side dish": "Side Dish", soup: "Soup", salad: "Salad", appetizer: "Appetizer", dessert: "Dessert" }
 
 const SORT_OPTIONS = [
   { value: "popularity", label: "Popularity" },
@@ -722,7 +722,7 @@ export default function SearchScreen() {
         <FlatList
           data={recipes}
           keyExtractor={item => String(item.id)}
-          contentContainerStyle={{ padding: spacing.md, gap: 12 }}
+          contentContainerStyle={{ padding: spacing.md, gap: 12, paddingBottom: 100 }}
           renderItem={({ item }) => (
             <TouchableOpacity style={s.card} onPress={() => {
               const sf: Record<string, any> = {}
