@@ -18,13 +18,28 @@ Macro and nutrition tracking
 Daily targets for calories, protein, carbs, fat. Track meals logged against targets.
 Show trends over time. Premium.
 
+Meal type filter — Breakfast / Lunch / Dinner / Brunch
+Allow users to filter recipes by meal type on the search screen. Spoonacular supports
+this via the `type` parameter. Low effort, high discoverability value.
+NOTE: This filter should also be applied when browsing saved recipes in My Recipes (To Try and Tried),
+so users can quickly find a saved breakfast or dinner without scrolling the full list.
+
 --- Emails ---
 
 Fortnightly re-engagement email
 Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
-Also who is currently sendind the welcom email? the reset password email, and the goodby email when user deleted? 
-Also how is professionally handled when user leave? can we keep pestering them suggesting to come back?
-Also, should be ask user to sign a disclaimer to authorise us to email them?and should be done when registering?
+
+Email marketing consent
+Users should explicitly opt in to marketing emails at registration. This is required under GDPR.
+Transactional emails (welcome, password reset, account deletion) do not require consent and are
+already sent. Re-engagement emails are marketing — consent must be captured before sending.
+NOTE: Current emails sent — welcome (Cognito + Resend), password reset (Cognito), account deletion (Resend).
+TODO: Add email marketing opt-in checkbox at registration before sending any re-engagement campaigns.
+
+Post-cancellation re-engagement strategy
+When a user deletes their account or downgrades, consider a single follow-up email (within 7 days)
+with a discount or reminder of what they are losing. One email only — do not pester. Requires
+marketing consent captured at registration.
 
 --- Legal & Safety ---
 
@@ -34,7 +49,11 @@ Must cover: nutritional information is approximate and not a substitute for prof
 allergy information may not be complete or accurate — always check product labels, not suitable for
 medical dietary management. Requires a lawyer to draft or review.
 NOTE: A user can currently register without seeing any allergy disclaimer — this is a legal risk before launch.
-BY WHY THE FUCK I NEED A DISCLAIMER? WHEN PEOPLE SEARCH ON GOOGLE THEY CAN KILL THEMSELFES WITH PEANUTS RECIPES TOO! SO??
+NOTE ON WHY: Google is not a regulated product. A published app on the App Store / Play Store is — both
+platforms require health-adjacent apps to carry disclaimers as a condition of listing. Beyond store compliance,
+a disclaimer limits liability if a user suffers an allergic reaction and claims the app failed to warn them.
+The bar is low: a single checkbox at registration and a persistent link in-app is sufficient. Legal review
+of the wording is strongly recommended before launch.
 
 Privacy policy page
 Required by both App Store and Google Play.
@@ -80,6 +99,9 @@ Minimum 5 to 8 screenshots showing key features.
 
 App store description and keyword optimisation
 Written description with keywords for discoverability.
+NOTE: The wine pairing feature involves alcohol content. Review the age rating questionnaire carefully —
+both Google Play and the App Store may apply content restrictions or require an age gate if alcohol
+suggestions are prominently featured. The app store description should not lead with the wine feature.
 
 Age rating questionnaire
 Complete for both Google Play and App Store submission.
