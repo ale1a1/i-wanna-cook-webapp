@@ -12,7 +12,7 @@ LIST: MUST — Before Launch
 ================================================================
 
 
---- App Store Submission ---
+--- Google Play (Android) Submission ---
 
 Build native APK before upload to Play Store
 Do NOT use npx expo start (Expo Go) for the final build. The white flash fix during
@@ -30,14 +30,14 @@ Branded splash screen for app launch.
 App store screenshots
 Minimum 5 to 8 screenshots showing key features.
 
-App store description and keyword optimisation
+Google Play store description and keyword optimisation
 Written description with keywords for discoverability.
 NOTE: The wine pairing feature involves alcohol content. Review the age rating questionnaire carefully —
-both Google Play and the App Store may apply content restrictions or require an age gate if alcohol
-suggestions are prominently featured. The app store description should not lead with the wine feature.
+Google Play may apply content restrictions or require an age gate if alcohol suggestions are prominently
+featured. The store description should not lead with the wine feature.
 
 Age rating questionnaire
-Complete for both Google Play and App Store submission.
+Complete for Google Play submission.
 
 Google Play developer account
 One-time $25 fee.
@@ -50,14 +50,36 @@ LIST: MUST — After Launch (Alpha Test)
 Wire up Google Play Billing
 Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
 
-Apple IAP (if doing iOS)
-Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
-
 Endpoint enhancement audit
 Cross-reference the full Spoonacular endpoint list against SHOULD / COULD / Phase 3 features.
 Identify which planned features could be built with existing endpoints, and which unused endpoints
 unlock cheap wins. Check autocomplete, nutrition facts, food trivia, recipe card images, etc.
 Do this before starting any new feature work.
+
+
+================================================================
+LIST: MUST — iOS Launch (After Android Stable)
+================================================================
+
+--- App Store (iOS) Submission ---
+
+Apple IAP
+Apple In-App Purchase integration to replace Google Play Billing for iOS.
+Requires Apple Developer account ($99/year).
+
+App Store screenshots
+iOS-specific screenshots (different screen sizes to Android).
+
+App Store description and keyword optimisation
+Same core description as Google Play but reviewed for App Store guidelines.
+NOTE: Same alcohol content warning applies — do not lead with wine pairing feature.
+Review age rating questionnaire for App Store carefully.
+
+Age rating questionnaire
+Complete for App Store submission.
+
+Apple Developer account
+$99/year fee.
 
 
 ================================================================
