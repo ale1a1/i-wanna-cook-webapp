@@ -8,7 +8,8 @@ const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, username, password, disclaimerAcceptedAt } = await request.json()
+    const { email, username, password, marketingConsent } = await request.json()
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null
 
     if (!email || !username || !password) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
@@ -20,7 +21,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Password does not meet requirements" }, { status: 400 })
     }
 
-    // Check if username is already taken in RDS
+    // Fetch current v1 document IDs — all three must exist or registration is blocked
+    const docsResult = await pool.query(
+      `SELECT id, document_type FROM legal_documents WHERE version = 'v1' AND document_type IN ('disclaimer', 'privacy_policy', 'terms_of_service')`
+    )
+    const docs: Record<string, string> = {}
+    for (const row of docsResult.rows) docs[row.document_type] = row.id
+    if (!docs.disclaimer || !docs.privacy_policy || !docs.terms_of_service) {
+      console.error("Legal documents not seeded — cannot register user")
+      return NextResponse.json({ error: "Service configuration error" }, { status: 500 })
+    }
+
+    // Check if email is already taken in RDS
     const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email.toLowerCase()])
     if (existing.rows.length > 0) {
       return NextResponse.json({ error: "Email already registered" }, { status: 409 })
@@ -38,14 +50,29 @@ export async function POST(request: NextRequest) {
     }))
 
     const cognitoSub = signUpResult.UserSub!
+    const now = new Date()
 
-    // Store profile in RDS immediately with the real Cognito sub
-    await pool.query(
-      `INSERT INTO users (cognito_sub, email, username, disclaimer_accepted_at, subscription_tier, trial_started_at)
-       VALUES ($1, $2, $3, $4, 'free', NOW())
-       ON CONFLICT (email) DO UPDATE SET cognito_sub = EXCLUDED.cognito_sub, username = EXCLUDED.username, disclaimer_accepted_at = EXCLUDED.disclaimer_accepted_at`,
-      [cognitoSub, email.toLowerCase(), username, disclaimerAcceptedAt ?? null]
+    // Store profile in RDS
+    const userResult = await pool.query(
+      `INSERT INTO users (cognito_sub, email, username, disclaimer_accepted_at, marketing_consent_at, subscription_tier, trial_started_at)
+       VALUES ($1, $2, $3, $4, $5, 'free', NOW())
+       ON CONFLICT (email) DO UPDATE SET cognito_sub = EXCLUDED.cognito_sub, username = EXCLUDED.username,
+         disclaimer_accepted_at = EXCLUDED.disclaimer_accepted_at, marketing_consent_at = EXCLUDED.marketing_consent_at
+       RETURNING id`,
+      [cognitoSub, email.toLowerCase(), username, now, marketingConsent ? now : null]
     )
+    const userId = userResult.rows[0].id
+
+    // Record acceptance of disclaimer and terms — required documents
+    // Privacy policy is shown as a link; acceptance is implied by registration (common practice)
+    const requiredDocs = [docs.disclaimer, docs.terms_of_service, docs.privacy_policy]
+    for (const docId of requiredDocs) {
+      await pool.query(
+        `INSERT INTO user_legal_acceptances (user_id, legal_document_id, accepted_at, ip_address)
+         VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, legal_document_id) DO NOTHING`,
+        [userId, docId, now, ip]
+      )
+    }
 
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY)
