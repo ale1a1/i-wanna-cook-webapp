@@ -51,11 +51,7 @@ export default function HomeScreen() {
   const s = makeStyles(colors)
   const scrollRef = useRef<ScrollView>(null)
 
-  const trialActive = (user as any)?.trialActive ?? false
-  const trialExpiresAt = (user as any)?.trialExpiresAt ?? null
-  const daysLeft = trialExpiresAt
-    ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-    : 0
+  const { trialActive, daysLeftInTrial: daysLeft } = useAuth()
 
   useFocusEffect(useCallback(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: false })

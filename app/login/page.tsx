@@ -81,6 +81,7 @@ export default function LoginPage() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [registerForm, setRegisterForm] = useState({ email: "", username: "", password: "", confirmPassword: "" })
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
+  const [marketingConsent, setMarketingConsent] = useState(false)
   const [activeTab, setActiveTab] = useState("login")
   const [touched, setTouched] = useState({ email: false, username: false, password: false, confirmPassword: false })
   const [loginTouched, setLoginTouched] = useState({ email: false })
@@ -155,7 +156,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: registerForm.email, username: registerForm.username, password: registerForm.password, disclaimerAcceptedAt: new Date().toISOString() }),
+        body: JSON.stringify({ email: registerForm.email, username: registerForm.username, password: registerForm.password, marketingConsent }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error); return }
@@ -329,7 +330,20 @@ export default function LoginPage() {
                     className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
                   />
                   <label htmlFor="disclaimer" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
-                    I understand that nutrition information is approximate and for informational purposes only. It is not a substitute for professional dietary or medical advice. I will always verify ingredients independently if I have allergies or intolerances.
+                    I agree to the <a href="/terms" target="_blank" className="underline hover:text-foreground">Terms of Service</a> and <a href="/privacy" target="_blank" className="underline hover:text-foreground">Privacy Policy</a>, and I understand that nutrition and allergen information is approximate and not a substitute for professional dietary or medical advice. I will always verify ingredients independently if I have allergies or intolerances.
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-md border bg-muted/40">
+                  <input
+                    id="marketing-consent"
+                    type="checkbox"
+                    checked={marketingConsent}
+                    onChange={(e) => setMarketingConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary cursor-pointer"
+                  />
+                  <label htmlFor="marketing-consent" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
+                    I agree to receive occasional emails about new features, tips, and promotions. You can unsubscribe at any time. (Optional)
                   </label>
                 </div>
 

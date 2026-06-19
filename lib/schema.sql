@@ -81,8 +81,33 @@ CREATE TABLE IF NOT EXISTS active_recipe_session (
 -- Migration: add source column if not exists
 ALTER TABLE active_recipe_session ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'scan';
 
--- Migration: disclaimer acceptance
+-- Migration: disclaimer acceptance (superseded by user_legal_acceptances — kept for backwards compat)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS disclaimer_accepted_at TIMESTAMP;
+
+-- Migration: marketing email consent (GDPR — required before sending re-engagement/referral emails)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_consent_at TIMESTAMP;
+
+-- Legal document version control
+-- Stores every version of every legal document. Never update a row — insert a new version.
+CREATE TABLE IF NOT EXISTS legal_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_type TEXT NOT NULL CHECK (document_type IN ('disclaimer', 'privacy_policy', 'terms_of_service')),
+  version TEXT NOT NULL,                -- e.g. 'v1', 'v2'
+  effective_date DATE NOT NULL,
+  content TEXT NOT NULL,               -- full document text at time of this version
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE (document_type, version)
+);
+
+-- Records every legal document a user has accepted, with full audit trail
+CREATE TABLE IF NOT EXISTS user_legal_acceptances (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  legal_document_id UUID NOT NULL REFERENCES legal_documents(id),
+  accepted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  ip_address TEXT,                     -- captured at registration for audit purposes
+  UNIQUE (user_id, legal_document_id)
+);
 
 -- Migration: trial warning email tracking
 ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_warning_sent_at TIMESTAMP;

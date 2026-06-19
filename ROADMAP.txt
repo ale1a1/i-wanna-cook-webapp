@@ -12,69 +12,6 @@ LIST: MUST — Before Launch
 ================================================================
 
 
---- Emails ---
-
-Fortnightly re-engagement email
-Sent every 2 weeks to inactive users to bring them back. Requires SQS/Lambda or a cron job — not yet built.
-
-Email marketing consent
-Users should explicitly opt in to marketing emails at registration. This is required under GDPR.
-Transactional emails (welcome, password reset, account deletion) do NOT require consent and are
-already sent — they are service emails, not marketing.
-Re-engagement and referral emails are marketing — consent must be captured at registration before sending.
-NOTE: Current emails sent — welcome (Cognito + Resend), password reset (Cognito), account deletion (Resend).
-TODO: Add email marketing opt-in checkbox at registration before sending any re-engagement campaigns.
-
-Referral programme
-After a user has been active for a few days, send a "Bring a Friend" email offering 1–2 months free
-premium for both the referrer and the new user who registers via their link. Requires a referral token
-system (generate unique link per user, track sign-ups against it, credit both accounts on activation).
-This is a high-leverage growth mechanic — low cost, strong word-of-mouth signal.
-
-Post-cancellation re-engagement strategy
-When a user deletes their account or downgrades, send a single follow-up email within 7 days offering
-a 20% discount on the premium plan. One email only — do not send further reminders. Requires marketing
-consent captured at registration, and a discount code system tied to the subscription flow.
-
-
---- Legal & Safety ---
-
-Professional disclaimer including allergy warning
-A proper legal disclaimer must be shown during registration AND accessible from the app at all times.
-Must cover: nutritional information is approximate and not a substitute for professional dietary advice,
-allergy information may not be complete or accurate — always check product labels, not suitable for
-medical dietary management. Requires a lawyer to draft or review.
-NOTE: A user can currently register without seeing any allergy disclaimer — this is a legal risk before launch.
-NOTE ON WHY: Google is not a regulated product. A published app on the App Store / Play Store is — both
-platforms require health-adjacent apps to carry disclaimers as a condition of listing. Beyond store compliance,
-a disclaimer limits liability if a user suffers an allergic reaction and claims the app failed to warn them.
-The bar is low: a single checkbox at registration and a persistent link in-app is sufficient. Legal review
-of the wording is strongly recommended before launch.
-
-Privacy policy page
-Required by both App Store and Google Play.
-
-Terms of service page
-Required by both App Store and Google Play.
-
-
---- Subscription & Payments ---
-
-Wire up Google Play Billing
-Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
-
-Apple IAP (if doing iOS)
-Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
-
-Auto-downgrade to free tier when trial expires
-When trial ends, account drops to free tier automatically. No features deleted — locked behind upgrade prompt.
-trial_active is computed at login time from trial_started_at — enforcement is already there, but the UI needs
-to reflect it gracefully after expiry without requiring a re-login.
-
-Trial expiry modal — 1-2 days warning
-When trial is 1-2 days from expiring, show a one-time modal on app open prompting user to upgrade.
-Fire once per account, not every session.
-
 --- App Store Submission ---
 
 Build native APK before upload to Play Store
@@ -105,7 +42,16 @@ Complete for both Google Play and App Store submission.
 Google Play developer account
 One-time $25 fee.
 
---- Review & Enhance ---
+
+================================================================
+LIST: MUST — After Launch (Alpha Test)
+================================================================
+
+Wire up Google Play Billing
+Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
+
+Apple IAP (if doing iOS)
+Apple In-App Purchase integration. Requires Apple Developer account ($99/year).
 
 Endpoint enhancement audit
 Cross-reference the full Spoonacular endpoint list against SHOULD / COULD / Phase 3 features.
@@ -114,87 +60,26 @@ unlock cheap wins. Check autocomplete, nutrition facts, food trivia, recipe card
 Do this before starting any new feature work.
 
 
---- Pre-Launch QA Checklist ---
-
-Complete this checklist as the final step before submitting to Google Play.
-
-REGISTRATION & AUTH
-[ ] Register a new account — verify welcome email arrives
-[ ] Verify email inline — confirm token flow works end to end
-[ ] Log out and log back in
-[ ] Forgot password flow — verify reset email arrives and new password works
-[ ] Delete account — verify deletion confirmation email arrives
-[ ] Trial period shows correctly on Profile screen (14 days remaining)
-[ ] Trial countdown banner appears on Home screen
-
-SEARCH & FILTERS
-[ ] Search with no filters — results load and paginate
-[ ] Search with each meal type filter — verify results match category
-[ ] Search with diet, cuisine, prep time, budget filters combined
-[ ] Ingredient autocomplete — type 2+ letters, select suggestion, search fires
-[ ] Camera scan from search — ingredients populate correctly
-[ ] Load more results — pagination appends correctly
-[ ] Last result card not clipped by tab bar
-
-MY RECIPES
-[ ] Save a recipe to To Try — verify it appears in correct folder
-[ ] Save a recipe to Tried — verify it appears in correct folder
-[ ] Meal type filter chip appears in My Recipes after saving with meal type
-[ ] Filter chips show human-readable labels (not raw keys)
-[ ] Rate a recipe — stars save correctly
-[ ] Add/edit tags on a saved recipe
-[ ] Move recipe between folders
-[ ] Delete a recipe — confirm modal fires, recipe removed
-[ ] Navigate To Try → folder → Main List → swipe back twice — no white flash
-
-MEAL PLANNER
-[ ] Generate plan via AI Goal path — plan loads with correct calorie targets
-[ ] Generate plan via Customise path — all 4 steps work
-[ ] Replace a meal — new recipe fits calorie budget
-[ ] Save plan to a folder — name and folder required
-[ ] Browse saved plans — nav bar stays visible (no disappearing tab bar)
-[ ] Exit guard fires on navigation away with unsaved changes
-
-COOKING MODE
-[ ] Enter cooking mode from recipe detail
-[ ] Swipe through all steps
-[ ] Voice narration reads each step
-[ ] Exit cooking mode — returns to recipe detail correctly
-
-WINE PAIRING
-[ ] Open a recipe with wine pairing data — Spoonacular results show
-[ ] Open a recipe with no Spoonacular data — AI badge and Claude suggestions appear
-[ ] Tap an AI wine suggestion — Google search opens correctly
-
-SHOPPING LIST
-[ ] Add ingredients to shopping list from recipe detail
-[ ] Check off items — state persists
-[ ] Quick Shopping List from fridge scan — items populate
-
-SUBSCRIPTION & PAYWALL
-[ ] Free user hits search limit — paywall appears
-[ ] Free user hits scan limit — paywall appears
-[ ] Trial expiry modal fires correctly when trial is 1–2 days from ending
-[ ] Upgrade flow navigates to correct screen (Google Play Billing — when wired up)
-
-EMAILS (manual verification)
-[ ] Welcome email — received on registration
-[ ] Password reset email — received and link works
-[ ] Account deletion email — received on deletion
-[ ] Trial warning email — received when trial nears expiry
-
-GENERAL
-[ ] Dark mode — all screens render correctly
-[ ] No white flash on My Recipes navigation (native APK build only)
-[ ] Nav bar persists on all screens (My Recipes folders, Meal Plans browse)
-[ ] Active tab icon updates correctly on swipe-back gesture
-[ ] App does not crash on low connectivity — error messages shown
-[ ] All owner alert emails fire correctly on API failures (test with invalid keys)
-
-
 ================================================================
 LIST: SHOULD — High Priority After Launch
 ================================================================
+
+--- Emails & Growth ---
+
+Fortnightly re-engagement email
+Sent every 2 weeks to inactive users who gave marketing consent at registration. Requires SQS + Lambda
+scheduled job. Content: remind user what they're missing, link back into the app.
+
+Referral programme
+After a user has been active for a few days, send a "Bring a Friend" email (requires marketing consent)
+offering 1–2 months free premium for both the referrer and the new user. Requires: referral token per
+user, sign-up tracking against token, credit both accounts on activation.
+High-leverage growth mechanic — low cost, strong word-of-mouth.
+
+Post-cancellation re-engagement
+When a user deletes their account or downgrades, send one follow-up email within 7 days offering a 20%
+discount on premium. One email only — no further reminders. Requires marketing consent + a discount
+code system tied to the subscription flow.
 
 Guided Navigation (contextual help system)
 For non-obvious actions, show a one-time confirmation prompt with a "Don't ask again" option.
@@ -243,6 +128,17 @@ Faster image delivery globally.
 LIST: COULD — Later
 ================================================================
 
+Legal & compliance reminders
+- Review Privacy Policy and Terms of Service annually (or whenever a new third-party service is added).
+  Current third parties: Spoonacular, Anthropic, Resend, AWS. If any change their data practices, update
+  the policy and bump the version number.
+- If disclaimer wording is ever updated, bump disclaimer_version in the codebase and re-prompt any user
+  whose stored version is older than the current one on next login.
+- Data retention: user data must be deleted within 30 days of account deletion (per Privacy Policy v1.0).
+  Currently deletion is manual — consider an automated cleanup job as user numbers grow.
+- GDPR right of access/portability: if a user emails requesting their data, you must respond within 30 days.
+  No tooling built for this yet — handle manually until user base warrants automation.
+
 AI recipe modification
 Make it healthier, increase protein, make it vegetarian, reduce calories. One tap. Premium only.
 
@@ -263,6 +159,10 @@ Multi-factor authentication via AWS Cognito.
 
 Barcode scanner
 Scan groceries to add to pantry instantly.
+
+Solicitor review of legal documents
+Have a UK solicitor review the disclaimer, Privacy Policy, and Terms of Service (all drafted by AI, v1.0).
+If wording changes after review, insert new rows in legal_documents with bumped version — never edit existing rows.
 
 
 ================================================================
@@ -409,93 +309,81 @@ Once AI assistant and personalisation are live.
 LIST: ALREADY BUILT ✅
 ================================================================
 
-Home screen redesign ✅
-  Hero with subtitle, feature tiles (2-column grid, orange border, centred text).
-  ReadyToCook screen (Browse Recipes / Scan Fridge choice).
-  Sliding tab bar with orange swap button replacing the + overflow menu.
-  No active session: Home pinned, Search/Scan/Shopping on page 1, My Recipes/Meal Plans/Profile on page 2.
-  Active session: full carousel — Cooking/Quick List on page 1, Shopping pushed to page 2.
+--- Core App & Navigation ---
+✅ Home screen — hero, feature tiles (2-col grid), ReadyToCook screen
+✅ Sliding tab bar — orange swap button, page 1/2 layout, active session carousel
+✅ Light / dark theme
+✅ Recipe search with filters — match all / match some toggle
+✅ Recipe detail pages
+✅ Recipe search quality filter
+✅ Ingredient autocomplete (Spoonacular, 8 results, selection-only)
 
-Recipe search with filters ✅
-Match all / Match some toggle ✅
-Recipe detail pages ✅
-My Recipes — To Try / Tried folder system ✅
-  Home screen: two large buttons (To Try, Tried) with counts.
-  Each list: folder browser (Main List + named folders with counts).
-  Save from RecipeDetail: "Add to Try List" / "Mark as Tried" — folder-picker modal on both.
-  Active search filters stored per recipe; shown as filter chips inside folder view.
-  Move/rename/delete folders. Mark-as-tried from To Try view. Rating and tag editing preserved.
-  DB: folder + search_filters on favourites and tried_recipes tables.
-Shopping list ✅
-User accounts — register, login, verify, forgot password, change password, delete ✅
-Light / dark theme ✅
-Cooking mode — fullscreen step-by-step, swipe navigation ✅
-Voice cooking — expo-speech ✅
-AI ingredient photo scanner ✅
-Premium tier infrastructure ✅
-AI Fridge Scan → Ingredient Check → Recipe Flow ✅
-Quick Shopping List ✅
-Active Recipe Session ✅
-AI ingredient substitute suggestion ✅
-Recipe search quality filter ✅
-Wine pairing breakfast guard ✅
-Auto logout when JWT expires ✅
-Registration disclaimer checkbox ✅
-14-day free trial on registration ✅
-Enforce 10 searches/week for free users ✅
-Rate-limit AI scanner to 3 scans/week for free users ✅
-Lock meal plan history to premium ✅
-Intolerances filter ✅
-Meal type filter ✅
-Exclude ingredients ✅
-Welcome email on registration ✅
-Trial ending warning email ✅
-Account deletion confirmation email ✅
-Registration UX — inline email verification ✅
-Cognito verification email branding ✅
-Trial days remaining on profile screen ✅
-Trial countdown banner on Home screen ✅
-Forgot password flow on mobile ✅
-Advanced search filter panel ✅ (5 sections, macros/micros premium-gated)
-AI Suggestions in search filter panel ✅ (preset chips + free text + voice)
+--- My Recipes ---
+✅ To Try / Tried folder system — folder browser, Main List + named folders with counts
+✅ Save from RecipeDetail — folder-picker modal, move/rename/delete folders
+✅ Active search filters stored per recipe, shown as filter chips in folder view
+✅ Mark-as-tried from To Try view, rating and tag editing preserved
+✅ Tags — tag picker on save, suggested + custom tags, chip display, tag filter dropdown
 
-Weekly AI Meal Planner — full v2 ✅
-  Two-path generation: AI Goal and Customise (4-step wizard).
-  Meals per day picker: 3/4/5/6. Calorie options up to 5000 kcal.
-  AI path auto-suggests meals/day based on goal.
-  Calories always at exact user target. Extra meals carved from daily budget.
+--- Meal Planner ---
+✅ Weekly AI Meal Planner v2 — AI Goal path + Customise wizard (4 steps)
+     Meals per day: 3/4/5/6. Calories up to 5000 kcal. Exact calorie targeting.
+✅ Meal plan save & folder system — name + folder required, drag reorder, Move/Copy/Delete
+✅ Meal plan change tracking — diff vs original, green checkmarks, exit guard on unsaved changes
+✅ Meal plan replace meal — original filters + per-meal calorie budget, instant selection
+✅ Meal planner — fully QA tested
 
-Meal plan save & folder system ✅
-  Name + folder required. Save button hidden after saving.
-  Folder picker in save modal (existing + new). Drag reorder folders and plans.
-  Plan card ... menu: Move to folder, Copy to folder, Delete.
-  Delete folder/plan with confirmation. Plan name shown at top of plan view.
-  Timestamps formatted dd-mm-yy HH:MM.
+--- AI Features ---
+✅ AI ingredient photo scanner (3/week free, unlimited premium)
+✅ AI Fridge Scan → Ingredient Check → Recipe Flow
+✅ AI ingredient substitute suggestion
+✅ AI Suggestions in search filter panel — preset chips + free text + voice
+✅ Wine pairing — Spoonacular data + Claude Haiku fallback (AI badge + Google search link)
+✅ Wine pairing breakfast guard
 
-Meal plan change tracking & save changes ✅
-  original_plan_data frozen in DB. Diff drives green checkmark icons on changed days/meals.
-  Green "Plan modified" banner. Amber "Save changes" button when unsaved.
-  Exit guard modal on navigation away with unsaved changes.
-  Exit guard also fires for brand-new unsaved plans — "Save plan" or "Discard & leave".
-  Both guard modals: dark backdrop, dismiss by tapping outside or swipe-back, no Cancel button.
+--- Shopping & Cooking ---
+✅ Shopping list
+✅ Quick Shopping List
+✅ Active Recipe Session
+✅ Scan the fridge — done screen (buy N ingredients / you have everything)
+✅ Cooking mode — fullscreen step-by-step, swipe navigation
+✅ Voice cooking — expo-speech
 
-Meal plan replace meal ✅
-  Uses original filters + per-meal calorie budget. All candidates green (within original criteria).
-  Claude validation removed (was unreliable). Instant selection, no warning modal.
+--- Search Filters ---
+✅ Meal type filter — Breakfast / Lunch / Dinner / Brunch / Snack / Dessert
+✅ Intolerances filter
+✅ Exclude ingredients
+✅ Advanced search filter panel — 5 sections, macros/micros premium-gated
 
-Scan the fridge — done screen ✅
-  Shows "You need to buy N ingredients" with Quick Shopping List link, or "You have everything!"
+--- Accounts & Auth ---
+✅ Register, login, verify email, forgot password, change password, delete account
+✅ Inline email verification at registration
+✅ Cognito verification email branding
+✅ Forgot password flow on mobile
+✅ Auto logout when JWT expires
 
-My Recipes — tags ✅
-  Tag picker on save (pageSheet). Suggested + custom tags. Grey chip display on cards.
-  Tag filter dropdown. Edit tags via pricetag icon.
+--- Subscription & Trial ---
+✅ Premium tier infrastructure
+✅ 14-day free trial on registration
+✅ 10 searches/week cap for free users
+✅ 3 AI scans/week cap for free users
+✅ Meal plan history locked to premium
+✅ Trial days remaining on Profile screen
+✅ Trial countdown banner on Home screen
+✅ Auto-downgrade — trialActive recomputed live from trialExpiresAt, updates on foreground
+✅ Trial expiry modal — one-time popup when ≤2 days left, stored in AsyncStorage per user
 
-My Recipes card image layout fix ✅
-Claude failure owner alerts ✅ (email on 401/429/529 — lib/alertOwner.ts)
-Build fix ✅ (@anthropic-ai/sdk missing from package.json)
-Recipe collections superseded by My Recipes tags ✅
-Meal Plans nav + header rename ✅ (tab, top bar, home view all say "Meal Plans"; home shows two buttons directly)
-Meal planner — QA tested ✅ (all flows verified: generate, save, browse, replace, change tracking, exit guards)
-Meal type filter ✅ (Breakfast / Lunch / Dinner / Brunch / Snack / Dessert — search panel + stored in searchFilters for My Recipes filtering)
-Ingredient autocomplete ✅ (search panel + meal planner exclude field — Spoonacular /food/ingredients/autocomplete, 8 results, selection-only)
-Wine pairing — Claude Haiku fallback ✅ (fires when Spoonacular returns empty — AI badge + Google search link per suggestion)
+--- Emails ---
+✅ Welcome email on registration
+✅ Trial ending warning email
+✅ Account deletion confirmation email
+✅ Claude failure owner alerts (email on 401/429/529)
+
+--- Legal & Compliance ---
+✅ Disclaimer, Privacy Policy, Terms of Service — v1.0 (19 June 2025)
+     Stored in legal_documents table, seeded in production DB.
+     Exact version accepted by each user recorded in user_legal_acceptances with timestamp + IP.
+     /terms and /privacy pages live on web app. Links in mobile Profile screen footer.
+✅ Marketing email consent — opt-in checkbox at registration, stored in DB
+
+

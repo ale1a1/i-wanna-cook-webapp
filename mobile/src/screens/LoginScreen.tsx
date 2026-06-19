@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react"
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native"
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Linking } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
@@ -26,6 +26,8 @@ export default function LoginScreen() {
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [regForm, setRegForm] = useState({ email: "", username: "", password: "", confirm: "" })
   const [showPass, setShowPass] = useState({ login: false, reg: false, confirm: false, reset: false })
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
+  const [marketingConsent, setMarketingConsent] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -48,7 +50,8 @@ export default function LoginScreen() {
   const passwordPassed = PASSWORD_RULES.filter(r => r.test(regForm.password)).length
   const resetPasswordPassed = PASSWORD_RULES.filter(r => r.test(resetPassword)).length
   const regValid = regForm.email && regForm.username.length >= 3 &&
-    PASSWORD_RULES.every(r => r.test(regForm.password)) && regForm.password === regForm.confirm
+    PASSWORD_RULES.every(r => r.test(regForm.password)) && regForm.password === regForm.confirm &&
+    disclaimerAccepted
 
   const handleLogin = async () => {
     setError(""); setLoading(true)
@@ -67,7 +70,7 @@ export default function LoginScreen() {
     if (!regValid) return
     setLoading(true)
     try {
-      const res = await apiFetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: regForm.email, username: regForm.username, password: regForm.password }) })
+      const res = await apiFetch("/api/auth/register", { method: "POST", body: JSON.stringify({ email: regForm.email, username: regForm.username, password: regForm.password, marketingConsent }) })
       const data = await res.json()
       if (!res.ok) { setError(data.error || "Registration failed"); return }
       setVerifyEmail(regForm.email)
@@ -351,6 +354,26 @@ export default function LoginScreen() {
                   ))}
                 </View>
               )}
+              <TouchableOpacity style={s.consentRow} onPress={() => setDisclaimerAccepted(v => !v)} activeOpacity={0.7}>
+                <View style={[s.checkbox, disclaimerAccepted && s.checkboxChecked]}>
+                  {disclaimerAccepted && <Ionicons name="checkmark" size={12} color="#fff" />}
+                </View>
+                <Text style={s.consentText}>
+                  I agree to the{" "}
+                  <Text style={s.consentLink} onPress={() => Linking.openURL("https://whatshouldIcook.app/terms")}>Terms of Service</Text>
+                  {" "}and{" "}
+                  <Text style={s.consentLink} onPress={() => Linking.openURL("https://whatshouldIcook.app/privacy")}>Privacy Policy</Text>
+                  , and I understand that nutrition and allergen information is approximate and not a substitute for professional dietary or medical advice. I will always verify ingredients independently if I have allergies or intolerances.
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.consentRow} onPress={() => setMarketingConsent(v => !v)} activeOpacity={0.7}>
+                <View style={[s.checkbox, marketingConsent && s.checkboxChecked]}>
+                  {marketingConsent && <Ionicons name="checkmark" size={12} color="#fff" />}
+                </View>
+                <Text style={s.consentText}>
+                  I agree to receive occasional emails about new features, tips, and promotions. You can unsubscribe at any time. (Optional)
+                </Text>
+              </TouchableOpacity>
               {error ? <Text style={s.error}>{error}</Text> : null}
               <TouchableOpacity style={[s.submitBtn, !regValid && s.submitBtnDisabled]} onPress={handleRegister} disabled={loading || !regValid}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.submitBtnText}>Create Account</Text>}
@@ -394,4 +417,9 @@ const makeStyles = (colors: any) => StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
   linkBtn: { alignItems: "center", paddingVertical: 4 },
   linkBtnText: { fontSize: 13, color: colors.primary },
+  consentRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.muted + "22" },
+  checkbox: { width: 18, height: 18, borderRadius: 3, borderWidth: 1.5, borderColor: colors.border, alignItems: "center", justifyContent: "center", marginTop: 1, flexShrink: 0 },
+  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  consentText: { flex: 1, fontSize: 12, color: colors.mutedForeground, lineHeight: 18 },
+  consentLink: { color: colors.primary, textDecorationLine: "underline" },
 })

@@ -1,6 +1,7 @@
 import "react-native-gesture-handler"
-import React, { Component } from "react"
-import { View, TouchableOpacity } from "react-native"
+import React, { Component, useEffect, useState } from "react"
+import { View, TouchableOpacity, Modal, Text, StyleSheet } from "react-native"
+import AsyncStorage from "@react-native-async-storage/async-storage"
 import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
@@ -195,6 +196,52 @@ function AppNavigator() {
   )
 }
 
+function TrialExpiryModal() {
+  const { user, trialActive, daysLeftInTrial } = useAuth()
+  const { colors } = useTheme()
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (!user || !trialActive || daysLeftInTrial > 2) return
+    const key = `trial_modal_shown_${user.id}`
+    AsyncStorage.getItem(key).then((shown) => {
+      if (!shown) {
+        setVisible(true)
+        AsyncStorage.setItem(key, "1")
+      }
+    })
+  }, [user, trialActive, daysLeftInTrial])
+
+  if (!visible) return null
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
+      <TouchableOpacity style={tm.backdrop} activeOpacity={1} onPress={() => setVisible(false)}>
+        <View style={[tm.card, { backgroundColor: colors.card, borderColor: colors.primary }]}>
+          <Text style={[tm.title, { color: colors.primary }]}>⏳ Trial ending soon</Text>
+          <Text style={[tm.body, { color: colors.text }]}>
+            Your free trial {daysLeftInTrial === 0 ? "expires today" : `expires in ${daysLeftInTrial} day${daysLeftInTrial === 1 ? "" : "s"}`}. Upgrade to keep unlimited searches, scans, and all premium features.
+          </Text>
+          <Text style={[tm.price, { color: colors.mutedForeground }]}>$2.49/month or $19.99/year</Text>
+          <TouchableOpacity style={[tm.btn, { backgroundColor: colors.primary }]} onPress={() => setVisible(false)}>
+            <Text style={tm.btnText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  )
+}
+
+const tm = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
+  card: { width: "100%", borderRadius: 16, borderWidth: 1.5, padding: 24, gap: 12 },
+  title: { fontSize: 18, fontWeight: "800" },
+  body: { fontSize: 14, lineHeight: 22 },
+  price: { fontSize: 13 },
+  btn: { paddingVertical: 13, borderRadius: 10, alignItems: "center", marginTop: 4 },
+  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+})
+
 function AppContent() {
   const { theme, colors } = useTheme()
   const navTheme = React.useMemo(() => ({
@@ -220,6 +267,7 @@ function AppContent() {
         <StatusBar style={theme === "light" ? "dark" : "light"} translucent={false} backgroundColor={colors.background} />
         <AppNavigator />
       </NavigationContainer>
+      <TrialExpiryModal />
     </View>
   )
 }

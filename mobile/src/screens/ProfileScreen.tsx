@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react"
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, TextInput, Modal,
+  ActivityIndicator, TextInput, Modal, Linking,
 } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
@@ -21,7 +21,7 @@ const PASSWORD_RULES = [
 ]
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth()
+  const { user, logout, trialActive, isPremium, daysLeftInTrial: daysLeft } = useAuth()
   const navigation = useNavigation<any>()
   const { colors, theme, setTheme } = useTheme()
   const s = makeStyles(colors)
@@ -117,84 +117,60 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
 
         {/* Header card */}
-        {(() => {
-          const isPremium = (user as any).isPremium ?? false
-          const trialActive = (user as any).trialActive ?? false
-          const trialExpiresAt = (user as any).trialExpiresAt ?? null
-          const daysLeft = trialExpiresAt
-            ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-            : 0
-          const showPremiumBadge = isPremium && !trialActive
-          const showTrialBadge = trialActive
-          return (
-            <View style={s.card}>
-              <View style={s.profileRow}>
-                <View style={s.avatar}>
-                  <Ionicons name="person" size={32} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  {editingUsername ? (
-                    <View style={s.editRow}>
-                      <TextInput style={s.usernameInput} value={newUsername} onChangeText={setNewUsername} autoFocus autoCapitalize="none" onBlur={() => { setEditingUsername(false); setUsernameError("") }} />
-                      <TouchableOpacity onPress={handleSaveUsername} disabled={usernameLoading}>
-                        {usernameLoading ? <ActivityIndicator color={colors.green} /> : <Ionicons name="checkmark" size={20} color={colors.green} />}
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => { setEditingUsername(false); setUsernameError("") }}>
-                        <Ionicons name="close" size={20} color={colors.destructive} />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <View style={s.editRow}>
-                      <Text style={s.username}>{user.username}</Text>
-                      <TouchableOpacity style={s.editBtn} onPress={() => { setNewUsername(user.username); setEditingUsername(true) }}>
-                        <Ionicons name="create-outline" size={14} color={colors.primary} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {usernameError ? <Text style={s.errorText}>{usernameError}</Text> : null}
-                  <Text style={s.email}>{user.email}</Text>
-                  {showPremiumBadge && (
-                    <View style={s.premiumInlineBadge}>
-                      <Ionicons name="star" size={11} color={colors.primary} />
-                      <Text style={s.premiumInlineBadgeText}>Premium · Full access to all features</Text>
-                    </View>
-                  )}
-                  {showTrialBadge && (
-                    <View style={s.premiumInlineBadge}>
-                      <Ionicons name="timer-outline" size={11} color={colors.primary} />
-                      <Text style={s.premiumInlineBadgeText}>Free Trial · {daysLeft}d left</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
+        <View style={s.card}>
+          <View style={s.profileRow}>
+            <View style={s.avatar}>
+              <Ionicons name="person" size={32} color={colors.primary} />
             </View>
-          )
-        })()}
+            <View style={{ flex: 1 }}>
+              {editingUsername ? (
+                <View style={s.editRow}>
+                  <TextInput style={s.usernameInput} value={newUsername} onChangeText={setNewUsername} autoFocus autoCapitalize="none" onBlur={() => { setEditingUsername(false); setUsernameError("") }} />
+                  <TouchableOpacity onPress={handleSaveUsername} disabled={usernameLoading}>
+                    {usernameLoading ? <ActivityIndicator color={colors.green} /> : <Ionicons name="checkmark" size={20} color={colors.green} />}
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setEditingUsername(false); setUsernameError("") }}>
+                    <Ionicons name="close" size={20} color={colors.destructive} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={s.editRow}>
+                  <Text style={s.username}>{user.username}</Text>
+                  <TouchableOpacity style={s.editBtn} onPress={() => { setNewUsername(user.username); setEditingUsername(true) }}>
+                    <Ionicons name="create-outline" size={14} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              {usernameError ? <Text style={s.errorText}>{usernameError}</Text> : null}
+              <Text style={s.email}>{user.email}</Text>
+              {isPremium && !trialActive && (
+                <View style={s.premiumInlineBadge}>
+                  <Ionicons name="star" size={11} color={colors.primary} />
+                  <Text style={s.premiumInlineBadgeText}>Premium · Full access to all features</Text>
+                </View>
+              )}
+              {trialActive && (
+                <View style={s.premiumInlineBadge}>
+                  <Ionicons name="timer-outline" size={11} color={colors.primary} />
+                  <Text style={s.premiumInlineBadgeText}>Free Trial · {daysLeft}d left</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
 
         {/* Trial / subscription card */}
-        {(() => {
-          const isPremium = (user as any).isPremium ?? false
-          const trialActive = (user as any).trialActive ?? false
-          const trialExpiresAt = (user as any).trialExpiresAt ?? null
-          const daysLeft = trialExpiresAt
-            ? Math.max(0, Math.ceil((new Date(trialExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-            : 0
-          if (isPremium && !trialActive) {
-            return null
-          }
-          if (trialActive) {
-            return (
-              <View style={[s.card, { borderColor: colors.primary, backgroundColor: colors.primary + "22" }]}>
-                <View style={s.trialRow}>
-                  <Ionicons name="timer-outline" size={20} color={colors.primary} />
-                  <Text style={[s.trialTitle, { color: colors.primary, fontSize: 17 }]}>Free Trial</Text>
-                  <View style={s.trialBadge}><Text style={s.trialBadgeText}>{daysLeft}d left</Text></View>
-                </View>
-                <Text style={s.trialSub}>Full premium access until your trial ends.</Text>
+        {!(isPremium && !trialActive) && (
+          trialActive ? (
+            <View style={[s.card, { borderColor: colors.primary, backgroundColor: colors.primary + "22" }]}>
+              <View style={s.trialRow}>
+                <Ionicons name="timer-outline" size={20} color={colors.primary} />
+                <Text style={[s.trialTitle, { color: colors.primary, fontSize: 17 }]}>Free Trial</Text>
+                <View style={s.trialBadge}><Text style={s.trialBadgeText}>{daysLeft}d left</Text></View>
               </View>
-            )
-          }
-          return (
+              <Text style={s.trialSub}>Full premium access until your trial ends.</Text>
+            </View>
+          ) : (
             <View style={[s.card, { borderColor: colors.border }]}>
               <View style={s.trialRow}>
                 <Ionicons name="lock-closed-outline" size={20} color={colors.mutedForeground} />
@@ -206,7 +182,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           )
-        })()}
+        )}
 
         {/* Stats */}
         <View style={s.card}>
@@ -265,6 +241,17 @@ export default function ProfileScreen() {
           <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={16} color={colors.mutedForeground} />
             <Text style={s.logoutBtnText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Legal footer */}
+        <View style={s.legalFooter}>
+          <TouchableOpacity onPress={() => Linking.openURL("https://whatshouldIcook.app/terms")}>
+            <Text style={s.legalLink}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={s.legalSep}>&middot;</Text>
+          <TouchableOpacity onPress={() => Linking.openURL("https://whatshouldIcook.app/privacy")}>
+            <Text style={s.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>
 
@@ -405,4 +392,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   upgradeBtn: { marginTop: 12, backgroundColor: colors.primary, paddingVertical: 11, borderRadius: radius.md, alignItems: "center" },
   upgradeBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   premiumCard: { borderColor: colors.primary, backgroundColor: colors.primary },
+  legalFooter: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, paddingBottom: 32, paddingTop: 4 },
+  legalLink: { fontSize: 12, color: colors.mutedForeground, textDecorationLine: "underline" },
+  legalSep: { fontSize: 12, color: colors.mutedForeground },
 })
