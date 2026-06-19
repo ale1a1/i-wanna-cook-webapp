@@ -21,8 +21,6 @@ in a real native build. Use the C:\p\ short path workaround to build the release
 After building, verify: tap My Recipes → To Try → Main List → swipe back twice.
 There must be no white flash at any level.
 
-Custom app icon
-Replace Expo default icon with branded app icon.
 
 Custom splash screen
 Branded splash screen for app launch.
