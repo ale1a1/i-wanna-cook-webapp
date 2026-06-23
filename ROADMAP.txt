@@ -12,12 +12,40 @@ LIST: MUST — Before Launch
 ================================================================
 
 
+--- Guest & Legal Compliance ---
+
+Age gate on first launch
+Show a modal on first app launch asking "Are you 18 or over?". Require explicit tap to proceed.
+If user taps No, block access with a message. Store acceptance in AsyncStorage (no account needed).
+Required because the app surfaces wine pairing content. Apply 17+ rating on both stores.
+This covers both guests and users before they register.
+
+Guest disclaimer modal
+Show allergy/medical disclaimer on first app launch before any search or scan is available.
+Require explicit "I understand and agree" tap — not just a dismiss. Store in AsyncStorage with timestamp.
+Registered users already have disclaimer stored in DB with timestamp + IP.
+Guests: AsyncStorage is legally sufficient standard practice (user was shown it and had to actively accept).
+
+Guest rate limiting
+Guests currently bypass all rate limiting — they can hammer search and scan indefinitely at your cost.
+Fix: enforce same limits as free tier (10 searches / 3 scans per week) via AsyncStorage counter + timestamp.
+Reset weekly. Apply before any API call in search and scan screens.
+
+Guest limit hit → sign up CTA
+When a guest hits their search or scan limit, show a message:
+"You've used your X free [searches/scans] this week. Sign up for a free 14-day trial to get unlimited access."
+Drive conversion directly from the limit wall.
+
+Trial expired → upgrade CTA (inline)
+When a free user's trial has expired, show inline messages on search and scan screens nudging upgrade.
+Complements the existing one-time modal — this covers every subsequent attempt after the modal is dismissed.
+
+
 --- Google Play (Android) Submission ---
 
-Google Play store description, keyword optimisation, and age rating
+Google Play store description and keyword optimisation
 Written description with keywords for discoverability. Complete the age rating questionnaire during submission.
-NOTE: The wine pairing feature involves alcohol content — Google Play may apply content restrictions.
-Do not lead the description with the wine feature.
+Do not lead the description with the wine pairing feature.
 
 Custom splash screen
 Branded splash screen for app launch.
@@ -47,11 +75,18 @@ Do this before starting any new feature work.
 LIST: MUST — iOS Launch (After Android is Stable)
 ================================================================
 
+--- Guest & Legal Compliance ---
+
+All items from the Android "Guest & Legal Compliance" section above apply to iOS too.
+Age gate, guest disclaimer, guest rate limiting, and CTA messages are shared app logic —
+they will already be in place before iOS launch if completed for Android.
+
+
 --- App Store (iOS) Submission ---
 
-App Store description, keyword optimisation, and age rating
+App Store description and keyword optimisation
 Same core description as Google Play but reviewed for App Store guidelines. Complete the age rating questionnaire during submission.
-NOTE: Same alcohol content warning applies — do not lead with wine pairing feature.
+Do not lead the description with the wine pairing feature.
 
 App Store screenshots
 iOS-specific screenshots (different screen sizes to Android).
