@@ -12,46 +12,18 @@ LIST: MUST — Before Launch
 ================================================================
 
 
---- Guest & Legal Compliance ---
-
-Age gate on first launch
-Show a modal on first app launch asking "Are you 18 or over?". Require explicit tap to proceed.
-If user taps No, block access with a message. Store acceptance in AsyncStorage (no account needed).
-Required because the app surfaces wine pairing content. Apply 17+ rating on both stores.
-This covers both guests and users before they register.
-
-Guest disclaimer modal
-Show allergy/medical disclaimer on first app launch before any search or scan is available.
-Require explicit "I understand and agree" tap — not just a dismiss. Store in AsyncStorage with timestamp.
-Registered users already have disclaimer stored in DB with timestamp + IP.
-Guests: AsyncStorage is legally sufficient standard practice (user was shown it and had to actively accept).
-
-Guest rate limiting
-Guests currently bypass all rate limiting — they can hammer search and scan indefinitely at your cost.
-Fix: enforce same limits as free tier (10 searches / 3 scans per week) via AsyncStorage counter + timestamp.
-Reset weekly. Apply before any API call in search and scan screens.
-
-Guest limit hit → sign up CTA
-When a guest hits their search or scan limit, show a message:
-"You've used your X free [searches/scans] this week. Sign up for a free 14-day trial to get unlimited access."
-Drive conversion directly from the limit wall.
-
-Trial expired → upgrade CTA (inline)
-When a free user's trial has expired, show inline messages on search and scan screens nudging upgrade.
-Complements the existing one-time modal — this covers every subsequent attempt after the modal is dismissed.
-
-
 --- Google Play (Android) Submission ---
 
-Google Play store description and keyword optimisation
-Written description with keywords for discoverability. Complete the age rating questionnaire during submission.
-Do not lead the description with the wine pairing feature.
 
 Custom splash screen
 Branded splash screen for app launch.
 
 App store screenshots
 Minimum 5 to 8 screenshots showing key features.
+
+Google Play store description and keyword optimisation
+Written description with keywords for discoverability. Complete the age rating questionnaire during submission.
+Do not lead the description with the wine pairing feature.
 
 Google Play developer account
 One-time $25 fee.
@@ -418,6 +390,10 @@ LIST: ALREADY BUILT ✅
 ✅ Claude failure owner alerts (email on 401/429/529)
 
 --- Legal & Compliance ---
+✅ Age gate on first launch — AgeGateModal blocks access until user confirms 18+. AsyncStorage for guests; age_verified_at persisted to DB for registered users.
+✅ Guest disclaimer modal — DisclaimerModal shown to guests on first launch, requires explicit "I understand and agree" tap, stored in AsyncStorage with timestamp. Registered users covered at registration via user_legal_acceptances.
+✅ Guest rate limiting + sign up CTA — 10 searches / 3 scans per week enforced client-side via AsyncStorage counter + weekly reset (guestRateLimit.ts). On limit hit, shows "Sign up for a free 14-day trial to get unlimited access." CTA. Applied in SearchScreen and ScanScreen before any API call.
+✅ Trial expired → upgrade CTA (inline) — amber banner shown on Search and Scan screens when user is logged in but trial has ended and not premium. Taps through to Login/upgrade screen.
 ✅ Disclaimer, Privacy Policy, Terms of Service — v1.0 (19 June 2025)
      Stored in legal_documents table, seeded in production DB.
      Exact version accepted by each user recorded in user_legal_acceptances with timestamp + IP.
