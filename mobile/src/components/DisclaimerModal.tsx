@@ -7,7 +7,7 @@ import { useTheme } from "../context/ThemeContext"
 
 const GUEST_KEY = "disclaimer_accepted_guest"
 
-export default function DisclaimerModal() {
+export default function DisclaimerModal({ ageAccepted }: { ageAccepted: boolean }) {
   const { user } = useAuth()
   const { colors } = useTheme()
   const navigation = useNavigation<any>()
@@ -17,8 +17,8 @@ export default function DisclaimerModal() {
   const visible = needsDisclaimer && !onLegal
 
   useEffect(() => {
-    checkDisclaimer()
-  }, [user])
+    if (ageAccepted) checkDisclaimer()
+  }, [user, ageAccepted])
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("state", () => {

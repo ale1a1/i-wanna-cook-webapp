@@ -1,40 +1,53 @@
 import React, { useEffect, useState } from "react"
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useNavigation } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 import { apiFetch } from "../lib/api"
 
 const GUEST_KEY = "age_gate_accepted_guest"
 
-export default function AgeGateModal() {
+export default function AgeGateModal({ onAccepted }: { onAccepted?: () => void }) {
   const { user, setAgeVerified } = useAuth()
   const { colors } = useTheme()
-  const [visible, setVisible] = useState(false)
+  const navigation = useNavigation<any>()
+  const [needsAgeGate, setNeedsAgeGate] = useState(false)
+  const [onLegal, setOnLegal] = useState(false)
   const [blocked, setBlocked] = useState(false)
+
+  const visible = needsAgeGate && !onLegal
 
   useEffect(() => {
     checkAgeGate()
   }, [user])
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("state", () => {
+      const state = navigation.getState()
+      const topRoute = state?.routes?.[state.index]?.name
+      setOnLegal(topRoute === "Legal")
+    })
+    return unsubscribe
+  }, [navigation])
+
   async function checkAgeGate() {
     // Logged-in user: already verified in DB
     if (user) {
-      if (!user.ageVerifiedAt) setVisible(true)
+      if (!user.ageVerifiedAt) setNeedsAgeGate(true)
       return
     }
     // Guest: check AsyncStorage
     // TODO: TESTING ONLY — remove next line and uncomment the two below before launch
-    setVisible(true)
+    setNeedsAgeGate(true)
     // const accepted = await AsyncStorage.getItem(GUEST_KEY)
-    // if (!accepted) setVisible(true)
+    // if (!accepted) setNeedsAgeGate(true)
   }
 
   async function handleYes() {
     const now = new Date().toISOString()
 
     if (user) {
-      // Persist to DB for logged-in users
       try {
         const res = await apiFetch("/api/age-verify", {
           method: "POST",
@@ -48,13 +61,13 @@ export default function AgeGateModal() {
       } catch {}
     }
 
-    // Always store locally too (covers guests and acts as fast-path cache for users)
     await AsyncStorage.setItem(GUEST_KEY, now)
-    setVisible(false)
+    setNeedsAgeGate(false)
+    onAccepted?.()
   }
 
   function handleNo() {
-    setVisible(false)
+    setNeedsAgeGate(false)
     setBlocked(true)
   }
 

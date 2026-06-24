@@ -248,6 +248,7 @@ const tm = StyleSheet.create({
 
 function AppContent() {
   const { theme, colors } = useTheme()
+  const [ageAccepted, setAgeAccepted] = React.useState(false)
   const navTheme = React.useMemo(() => ({
     dark: theme === "dark",
     colors: {
@@ -270,8 +271,8 @@ function AppContent() {
       <NavigationContainer ref={navigationRef} theme={navTheme}>
         <StatusBar style={theme === "light" ? "dark" : "light"} translucent={false} backgroundColor={colors.background} />
         <AppNavigator />
-        <AgeGateModal />
-        <DisclaimerModal />
+        <AgeGateModal onAccepted={() => setAgeAccepted(true)} />
+        <DisclaimerModal ageAccepted={ageAccepted} />
         <TrialExpiryModal />
       </NavigationContainer>
     </View>
