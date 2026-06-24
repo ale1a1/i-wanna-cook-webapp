@@ -1,4 +1,4 @@
-# What Should I Cook?
+# I Wanna Cook
 
 A full-stack recipe discovery app that helps you find meals based on what's in your fridge, dietary preferences, and cooking time. Built with Next.js 15, AWS Cognito, and PostgreSQL on AWS RDS.
 
@@ -40,8 +40,8 @@ A full-stack recipe discovery app that helps you find meals based on what's in y
 1. **Clone the repo**
 
 ```bash
-git clone https://github.com/ale1a/what-should-I-cook-app.git
-cd what-should-I-cook-app
+git clone https://github.com/ale1a1/i-wanna-cook-app.git
+cd i-wanna-cook-app
 ```
 
 2. **Install dependencies**
