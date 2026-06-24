@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 
@@ -12,6 +12,7 @@ export default function DisclaimerModal() {
   const { colors } = useTheme()
   const navigation = useNavigation<any>()
   const [visible, setVisible] = useState(false)
+  const [needsDisclaimer, setNeedsDisclaimer] = useState(false)
 
   useEffect(() => {
     checkDisclaimer()
@@ -23,14 +24,25 @@ export default function DisclaimerModal() {
 
     // Guests: check AsyncStorage
     // TODO: TESTING ONLY — remove next line and uncomment the two below before launch
-    setVisible(true)
+    setNeedsDisclaimer(true)
     // const accepted = await AsyncStorage.getItem(GUEST_KEY)
-    // if (!accepted) setVisible(true)
+    // if (!accepted) setNeedsDisclaimer(true)
   }
+
+  // Reopen modal whenever the screen comes back into focus (e.g. returning from Legal)
+  useFocusEffect(useCallback(() => {
+    if (needsDisclaimer) setVisible(true)
+  }, [needsDisclaimer]))
 
   async function handleAccept() {
     await AsyncStorage.setItem(GUEST_KEY, new Date().toISOString())
+    setNeedsDisclaimer(false)
     setVisible(false)
+  }
+
+  function openLegal(type: "terms" | "privacy") {
+    setVisible(false)
+    setTimeout(() => navigation.navigate("Legal", { type }), 300)
   }
 
   if (!visible) return null
@@ -47,9 +59,9 @@ export default function DisclaimerModal() {
               {"\n\n"}
               If you have allergies, intolerances, or any medical condition affected by diet, always verify ingredients independently before cooking or eating.{"\n\n"}
               By continuing you agree to our{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => { setVisible(false); setTimeout(() => navigation.navigate("Legal", { type: "terms" }), 300) }}>Terms of Service</Text>
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => openLegal("terms")}>Terms of Service</Text>
               {" "}and{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => { setVisible(false); setTimeout(() => navigation.navigate("Legal", { type: "privacy" }), 300) }}>Privacy Policy</Text>.
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => openLegal("privacy")}>Privacy Policy</Text>.
             </Text>
           </ScrollView>
           <TouchableOpacity
