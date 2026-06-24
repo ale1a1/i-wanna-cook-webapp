@@ -246,11 +246,11 @@ export default function ProfileScreen() {
 
         {/* Legal footer */}
         <View style={s.legalFooter}>
-          <TouchableOpacity onPress={() => Linking.openURL("https://whatshouldIcook.app/terms")}>
+          <TouchableOpacity onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/terms")}>
             <Text style={s.legalLink}>Terms of Service</Text>
           </TouchableOpacity>
           <Text style={s.legalSep}>&middot;</Text>
-          <TouchableOpacity onPress={() => Linking.openURL("https://whatshouldIcook.app/privacy")}>
+          <TouchableOpacity onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/privacy")}>
             <Text style={s.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>
