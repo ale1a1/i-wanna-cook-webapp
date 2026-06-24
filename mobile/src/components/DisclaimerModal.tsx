@@ -45,9 +45,9 @@ export default function DisclaimerModal() {
               {"\n\n"}
               If you have allergies, intolerances, or any medical condition affected by diet, always verify ingredients independently before cooking or eating.{"\n\n"}
               By continuing you agree to our{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => navigation.navigate("Legal", { type: "terms" })}>Terms of Service</Text>
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => { setVisible(false); setTimeout(() => navigation.navigate("Legal", { type: "terms" }), 300) }}>Terms of Service</Text>
               {" "}and{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => navigation.navigate("Legal", { type: "privacy" })}>Privacy Policy</Text>.
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => { setVisible(false); setTimeout(() => navigation.navigate("Legal", { type: "privacy" }), 300) }}>Privacy Policy</Text>.
             </Text>
           </ScrollView>
           <TouchableOpacity
