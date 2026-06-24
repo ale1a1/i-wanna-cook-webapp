@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
       resend.emails.send({
-        from: "What Should I Cook App <onboarding@resend.dev>",
+        from: "I Wanna Cook App <onboarding@resend.dev>",
         to: email.toLowerCase(),
-        subject: "Welcome to What Should I Cook! 🍳",
+        subject: "Welcome to I Wanna Cook! 🍳",
         html: `
           <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px">
             <h1 style="font-size:24px;margin-bottom:8px">Welcome, ${username}! 👋</h1>

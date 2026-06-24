@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "What Should I Cook",
+    "name": "I Wanna Cook",
     "slug": "what-should-i-cook",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -31,8 +31,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow What Should I Cook to access your photos to identify ingredients.",
-          "cameraPermission": "Allow What Should I Cook to use your camera to photograph ingredients."
+          "photosPermission": "Allow I Wanna Cook to access your photos to identify ingredients.",
+          "cameraPermission": "Allow I Wanna Cook to use your camera to photograph ingredients."
         }
       ]
     ]

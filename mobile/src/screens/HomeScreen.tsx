@@ -76,7 +76,7 @@ export default function HomeScreen() {
           <View style={s.iconCircle}>
             <Ionicons name="restaurant" size={48} color={colors.primary} />
           </View>
-          <Text style={s.heroTitle}>What Should I Cook?</Text>
+          <Text style={s.heroTitle}>I Wanna Cook</Text>
           <Text style={s.heroSub}>From fridge scan to meal plan{"\n"}— everything in one place.</Text>
         </View>
 

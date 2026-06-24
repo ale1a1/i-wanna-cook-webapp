@@ -139,7 +139,7 @@ export default function LoginScreen() {
         <ScrollView ref={scrollRef} style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={s.logoRow}>
             <Ionicons name="restaurant" size={48} color={colors.primary} />
-            <Text style={s.logoText}>What Should I Cook?</Text>
+            <Text style={s.logoText}>I Wanna Cook</Text>
           </View>
           <View style={s.card}>
             <View style={[s.banner, { backgroundColor: colors.primary + "22" }]}>
@@ -178,7 +178,7 @@ export default function LoginScreen() {
         <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={s.logoRow}>
             <Ionicons name="restaurant" size={48} color={colors.primary} />
-            <Text style={s.logoText}>What Should I Cook?</Text>
+            <Text style={s.logoText}>I Wanna Cook</Text>
           </View>
           <View style={s.card}>
             <View style={s.form}>
@@ -209,7 +209,7 @@ export default function LoginScreen() {
         <ScrollView style={s.container} contentContainerStyle={[s.content, { paddingBottom: 200 }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={s.logoRow}>
             <Ionicons name="restaurant" size={48} color={colors.primary} />
-            <Text style={s.logoText}>What Should I Cook?</Text>
+            <Text style={s.logoText}>I Wanna Cook</Text>
           </View>
           <View style={s.card}>
             <View style={[s.banner, { backgroundColor: colors.primary + "22" }]}>
@@ -267,7 +267,7 @@ export default function LoginScreen() {
       <ScrollView ref={scrollRef} style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <View style={s.logoRow}>
           <Ionicons name="restaurant" size={48} color={colors.primary} />
-          <Text style={s.logoText}>What Should I Cook?</Text>
+          <Text style={s.logoText}>I Wanna Cook</Text>
         </View>
         <View style={s.card}>
           <View style={s.tabs}>

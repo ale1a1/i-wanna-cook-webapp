@@ -5,14 +5,14 @@ import { Ionicons } from "@expo/vector-icons"
 import { useNavigation, useRoute } from "@react-navigation/native"
 import { useTheme } from "../context/ThemeContext"
 
-const TERMS = `What Should I Cook — Terms of Service
+const TERMS = `I Wanna Cook — Terms of Service
 Last updated: 19 June 2025 · Version 1.0
 
 1. Who we are
-What Should I Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: alessandro.dev.ladu@gmail.com
+I Wanna Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: alessandro.dev.ladu@gmail.com
 
 2. What the app does
-What Should I Cook helps users discover recipes, plan meals, scan fridge ingredients, and build shopping lists. Recipe and nutritional data is sourced from Spoonacular. AI features are powered by Anthropic Claude.
+I Wanna Cook helps users discover recipes, plan meals, scan fridge ingredients, and build shopping lists. Recipe and nutritional data is sourced from Spoonacular. AI features are powered by Anthropic Claude.
 
 3. Accounts
 You must provide a valid email address and create a username to use the app. You are responsible for keeping your account credentials secure. You must be at least 13 years old to create an account.
@@ -51,11 +51,11 @@ These terms are governed by the laws of England and Wales. Any disputes shall be
 10. Contact
 Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: alessandro.dev.ladu@gmail.com`
 
-const PRIVACY = `What Should I Cook — Privacy Policy
+const PRIVACY = `I Wanna Cook — Privacy Policy
 Last updated: 19 June 2025 · Version 1.0
 
 Who we are
-What Should I Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Contact: alessandro.dev.ladu@gmail.com
+I Wanna Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Contact: alessandro.dev.ladu@gmail.com
 
 What data we collect and why
 - Email address: Account creation, transactional emails (welcome, password reset, account deletion)
