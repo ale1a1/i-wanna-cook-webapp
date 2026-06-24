@@ -12,6 +12,14 @@ LIST: MUST — Before Launch
 ================================================================
 
 
+--- Pre-submission code fix ---
+
+Revert DisclaimerModal testing override
+In mobile/src/components/DisclaimerModal.tsx, remove the `setVisible(true)` line
+and uncomment the two lines below it so the modal only shows to guests who
+haven't accepted yet.
+
+
 --- Google Play (Android) Submission ---
 
 
