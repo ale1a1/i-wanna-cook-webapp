@@ -96,7 +96,7 @@ export async function DELETE(request: NextRequest) {
     if (deletedUser && process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       resend.emails.send({
-        from: "What Should I Cook App <onboarding@resend.dev>",
+        from: "I Wanna Cook App <onboarding@resend.dev>",
         to: deletedUser.email,
         subject: "Your account has been deleted",
         html: `

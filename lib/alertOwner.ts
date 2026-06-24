@@ -15,7 +15,7 @@ export async function alertOwner(subject: string, body: string, dedupeKey: strin
 
   const resend = new Resend(apiKey)
   await resend.emails.send({
-    from: "What Should I Cook App <onboarding@resend.dev>",
+    from: "I Wanna Cook App <onboarding@resend.dev>",
     to: "alessandro.dev.ladu@gmail.com",
     subject: `🚨 ${subject}`,
     html: `

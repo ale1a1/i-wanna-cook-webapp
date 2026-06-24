@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await resend.emails.send({
-      from: "What Should I Cook App <onboarding@resend.dev>",
+      from: "I Wanna Cook App <onboarding@resend.dev>",
       to: "alessandro.dev.ladu@gmail.com",
       subject: `App Error Report — ${screen ?? "unknown screen"}`,
       html: `

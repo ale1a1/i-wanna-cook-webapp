@@ -19,12 +19,12 @@ ON CONFLICT (document_type, version) DO NOTHING;
 INSERT INTO legal_documents (document_type, version, effective_date, content) VALUES
 
 ('privacy_policy', 'v1', '2025-06-19',
-'What Should I Cook — Privacy Policy
+'I Wanna Cook — Privacy Policy
 Last updated: 19 June 2025
 Version: 1.0
 
 Who we are
-What Should I Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Contact: alessandro.dev.ladu@gmail.com
+I Wanna Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Contact: alessandro.dev.ladu@gmail.com
 
 What data we collect and why
 - Email address: Account creation, transactional emails (welcome, password reset, account deletion)
@@ -83,15 +83,15 @@ ON CONFLICT (document_type, version) DO NOTHING;
 INSERT INTO legal_documents (document_type, version, effective_date, content) VALUES
 
 ('terms_of_service', 'v1', '2025-06-19',
-'What Should I Cook — Terms of Service
+'I Wanna Cook — Terms of Service
 Last updated: 19 June 2025
 Version: 1.0
 
 1. Who we are
-What Should I Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: alessandro.dev.ladu@gmail.com
+I Wanna Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: alessandro.dev.ladu@gmail.com
 
 2. What the app does
-What Should I Cook helps users discover recipes, plan meals, scan fridge ingredients, and build shopping lists. Recipe and nutritional data is sourced from Spoonacular. AI features are powered by Anthropic Claude.
+I Wanna Cook helps users discover recipes, plan meals, scan fridge ingredients, and build shopping lists. Recipe and nutritional data is sourced from Spoonacular. AI features are powered by Anthropic Claude.
 
 3. Accounts
 You must provide a valid email address and create a username to use the app. You are responsible for keeping your account credentials secure. You must be at least 13 years old to create an account.

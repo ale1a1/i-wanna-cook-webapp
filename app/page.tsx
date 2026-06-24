@@ -58,7 +58,7 @@ export default function LandingPage() {
         </div>
 
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">
-          What Should I Cook?
+          I Wanna Cook
         </h1>
 
         <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-10">

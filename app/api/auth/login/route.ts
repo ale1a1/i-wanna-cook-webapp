@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         const ip = request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "unknown"
         const ua = request.headers.get("user-agent") ?? "unknown"
         const emailResult = await resend.emails.send({
-          from: "What Should I Cook App <onboarding@resend.dev>",
+          from: "I Wanna Cook App <onboarding@resend.dev>",
           to: NOTIFY_EMAIL,
           subject: "Portfolio login — someone just signed in as you",
           html: `
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       if (daysLeft <= 2) {
         const resend = new Resend(process.env.RESEND_API_KEY)
         resend.emails.send({
-          from: "What Should I Cook App <onboarding@resend.dev>",
+          from: "I Wanna Cook App <onboarding@resend.dev>",
           to: user.email,
           subject: "Your free trial ends in 2 days",
           html: `

@@ -8,7 +8,7 @@ export default function PrivacyPolicyPage() {
 
         <div>
           <h2 className="font-semibold text-base mb-2">Who we are</h2>
-          <p>What Should I Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Contact: <a href="mailto:alessandro.dev.ladu@gmail.com" className="underline">alessandro.dev.ladu@gmail.com</a></p>
+          <p>I Wanna Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Contact: <a href="mailto:alessandro.dev.ladu@gmail.com" className="underline">alessandro.dev.ladu@gmail.com</a></p>
         </div>
 
         <div>

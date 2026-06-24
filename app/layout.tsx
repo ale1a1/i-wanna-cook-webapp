@@ -11,7 +11,7 @@ import { Toaster } from "@/components/ui/sonner"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "What Should I Cook?",
+  title: "I Wanna Cook",
   description: "Discover recipes based on your preferences and ingredients",
   icons: {
     icon: "/favicon.svg",

@@ -8,12 +8,12 @@ export default function TermsOfServicePage() {
 
         <div>
           <h2 className="font-semibold text-base mb-2">1. Who we are</h2>
-          <p>What Should I Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: <a href="mailto:alessandro.dev.ladu@gmail.com" className="underline">alessandro.dev.ladu@gmail.com</a></p>
+          <p>I Wanna Cook is operated by Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: <a href="mailto:alessandro.dev.ladu@gmail.com" className="underline">alessandro.dev.ladu@gmail.com</a></p>
         </div>
 
         <div>
           <h2 className="font-semibold text-base mb-2">2. What the app does</h2>
-          <p>What Should I Cook helps users discover recipes, plan meals, scan fridge ingredients, and build shopping lists. Recipe and nutritional data is sourced from Spoonacular. AI features are powered by Anthropic Claude.</p>
+          <p>I Wanna Cook helps users discover recipes, plan meals, scan fridge ingredients, and build shopping lists. Recipe and nutritional data is sourced from Spoonacular. AI features are powered by Anthropic Claude.</p>
         </div>
 
         <div>
