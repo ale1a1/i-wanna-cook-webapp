@@ -43,9 +43,9 @@ export default function DisclaimerModal() {
               {"\n\n"}
               If you have allergies, intolerances, or any medical condition affected by diet, always verify ingredients independently before cooking or eating.{"\n\n"}
               By continuing you agree to our{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => Linking.openURL("https://whatshouldIcook.app/terms")}>Terms of Service</Text>
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/terms")}>Terms of Service</Text>
               {" "}and{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => Linking.openURL("https://whatshouldIcook.app/privacy")}>Privacy Policy</Text>.
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/privacy")}>Privacy Policy</Text>.
             </Text>
           </ScrollView>
           <TouchableOpacity
