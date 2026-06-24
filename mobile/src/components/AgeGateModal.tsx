@@ -24,8 +24,10 @@ export default function AgeGateModal() {
       return
     }
     // Guest: check AsyncStorage
-    const accepted = await AsyncStorage.getItem(GUEST_KEY)
-    if (!accepted) setVisible(true)
+    // TODO: TESTING ONLY — remove next line and uncomment the two below before launch
+    setVisible(true)
+    // const accepted = await AsyncStorage.getItem(GUEST_KEY)
+    // if (!accepted) setVisible(true)
   }
 
   async function handleYes() {

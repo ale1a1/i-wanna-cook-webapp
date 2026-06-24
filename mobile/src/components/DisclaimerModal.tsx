@@ -11,27 +11,38 @@ export default function DisclaimerModal() {
   const { user } = useAuth()
   const { colors } = useTheme()
   const navigation = useNavigation<any>()
-  const [visible, setVisible] = useState(false)
+  const [needsDisclaimer, setNeedsDisclaimer] = useState(false)
+  const [onLegal, setOnLegal] = useState(false)
+
+  const visible = needsDisclaimer && !onLegal
 
   useEffect(() => {
     checkDisclaimer()
   }, [user])
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("state", () => {
+      const state = navigation.getState()
+      const topRoute = state?.routes?.[state.index]?.name
+      setOnLegal(topRoute === "Legal")
+    })
+    return unsubscribe
+  }, [navigation])
+
   async function checkDisclaimer() {
     if (user) return
     // TODO: TESTING ONLY — remove next line and uncomment the two below before launch
-    setVisible(true)
+    setNeedsDisclaimer(true)
     // const accepted = await AsyncStorage.getItem(GUEST_KEY)
-    // if (!accepted) setVisible(true)
+    // if (!accepted) setNeedsDisclaimer(true)
   }
 
   async function handleAccept() {
     await AsyncStorage.setItem(GUEST_KEY, new Date().toISOString())
-    setVisible(false)
+    setNeedsDisclaimer(false)
   }
 
   function openLegal(type: "terms" | "privacy") {
-    // Keep modal visible — navigate on top of it, modal reopens when they return
     navigation.navigate("Legal", { type })
   }
 
