@@ -270,10 +270,10 @@ function AppContent() {
       <NavigationContainer ref={navigationRef} theme={navTheme}>
         <StatusBar style={theme === "light" ? "dark" : "light"} translucent={false} backgroundColor={colors.background} />
         <AppNavigator />
+        <AgeGateModal />
+        <DisclaimerModal />
+        <TrialExpiryModal />
       </NavigationContainer>
-      <AgeGateModal />
-      <DisclaimerModal />
-      <TrialExpiryModal />
     </View>
   )
 }
