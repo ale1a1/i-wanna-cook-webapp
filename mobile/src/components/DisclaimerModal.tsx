@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from "react"
+import React, { useEffect, useState } from "react"
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
-import { useNavigation, useFocusEffect } from "@react-navigation/native"
+import { useNavigation } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 
@@ -12,37 +12,27 @@ export default function DisclaimerModal() {
   const { colors } = useTheme()
   const navigation = useNavigation<any>()
   const [visible, setVisible] = useState(false)
-  const [needsDisclaimer, setNeedsDisclaimer] = useState(false)
 
   useEffect(() => {
     checkDisclaimer()
   }, [user])
 
   async function checkDisclaimer() {
-    // Registered users have disclaimer stored in DB at registration — no modal needed
     if (user) return
-
-    // Guests: check AsyncStorage
     // TODO: TESTING ONLY — remove next line and uncomment the two below before launch
-    setNeedsDisclaimer(true)
+    setVisible(true)
     // const accepted = await AsyncStorage.getItem(GUEST_KEY)
-    // if (!accepted) setNeedsDisclaimer(true)
+    // if (!accepted) setVisible(true)
   }
-
-  // Reopen modal whenever the screen comes back into focus (e.g. returning from Legal)
-  useFocusEffect(useCallback(() => {
-    if (needsDisclaimer) setVisible(true)
-  }, [needsDisclaimer]))
 
   async function handleAccept() {
     await AsyncStorage.setItem(GUEST_KEY, new Date().toISOString())
-    setNeedsDisclaimer(false)
     setVisible(false)
   }
 
   function openLegal(type: "terms" | "privacy") {
-    setVisible(false)
-    setTimeout(() => navigation.navigate("Legal", { type }), 300)
+    // Keep modal visible — navigate on top of it, modal reopens when they return
+    navigation.navigate("Legal", { type })
   }
 
   if (!visible) return null
