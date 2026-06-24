@@ -10,6 +10,7 @@ type User = {
   trialExpiresAt?: string | null
   trialActive?: boolean
   isPremium?: boolean
+  ageVerifiedAt?: string | null
 }
 
 type AuthContextType = {
@@ -17,6 +18,7 @@ type AuthContextType = {
   loading: boolean
   login: (user: User) => Promise<void>
   logout: () => Promise<void>
+  setAgeVerified: (timestamp: string) => Promise<void>
   trialActive: boolean
   isPremium: boolean
   daysLeftInTrial: number
@@ -37,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => {},
   logout: async () => {},
+  setAgeVerified: async () => {},
   trialActive: false,
   isPremium: false,
   daysLeftInTrial: 0,
@@ -72,6 +75,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem("user")
   }
 
+  const setAgeVerified = async (timestamp: string) => {
+    const updated = user ? { ...user, ageVerifiedAt: timestamp } : null
+    setUser(updated)
+    if (updated) await AsyncStorage.setItem("user", JSON.stringify(updated))
+  }
+
   // Recompute trialActive from the expiry timestamp so it goes false the moment trial ends,
   // even if the user hasn't logged out and back in.
   const trialActive = computeTrialActive(user?.trialExpiresAt)
@@ -80,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const daysLeftInTrial = computeDaysLeft(user?.trialExpiresAt)
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, trialActive, isPremium, daysLeftInTrial }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, setAgeVerified, trialActive, isPremium, daysLeftInTrial }}>
       {children}
     </AuthContext.Provider>
   )

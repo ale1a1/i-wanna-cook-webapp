@@ -31,6 +31,8 @@ import CookingModeScreen from "./src/screens/CookingModeScreen"
 import MealPlanScreen from "./src/screens/MealPlanScreen"
 import QuickShoppingListScreen from "./src/screens/QuickShoppingListScreen"
 import ReadyToCookScreen from "./src/screens/ReadyToCookScreen"
+import AgeGateModal from "./src/components/AgeGateModal"
+import DisclaimerModal from "./src/components/DisclaimerModal"
 
 const navigationRef = createNavigationContainerRef<any>()
 
@@ -267,6 +269,8 @@ function AppContent() {
         <StatusBar style={theme === "light" ? "dark" : "light"} translucent={false} backgroundColor={colors.background} />
         <AppNavigator />
       </NavigationContainer>
+      <AgeGateModal />
+      <DisclaimerModal />
       <TrialExpiryModal />
     </View>
   )

@@ -109,6 +109,9 @@ CREATE TABLE IF NOT EXISTS user_legal_acceptances (
   UNIQUE (user_id, legal_document_id)
 );
 
+-- Migration: age verification (required for wine pairing content — 17+ stores)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS age_verified_at TIMESTAMP;
+
 -- Migration: trial warning email tracking
 ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_warning_sent_at TIMESTAMP;
 

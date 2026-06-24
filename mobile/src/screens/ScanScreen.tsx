@@ -20,6 +20,7 @@ import { API_BASE_URL } from "../lib/api"
 import { reportError } from "../lib/reportError"
 import { useAuth } from "../context/AuthContext"
 import { useSubscription } from "../context/SubscriptionContext"
+import { checkGuestScan } from "../lib/guestRateLimit"
 
 type Step = "capture" | "review" | "mode" | "filters"
 
@@ -28,8 +29,9 @@ export default function ScanScreen() {
   const { showError } = useGlobalError()
   const navigation = useNavigation<any>()
   const s = makeStyles(colors)
-  const { user } = useAuth()
+  const { user, trialActive } = useAuth()
   const { isPremium } = useSubscription()
+  const showUpgradeBanner = !!user && !isPremium && !trialActive
 
   const [step, setStep] = useState<Step>("capture")
   const [capturedAssets, setCapturedAssets] = useState<ImagePicker.ImagePickerAsset[]>([])
@@ -62,6 +64,21 @@ export default function ScanScreen() {
 
   const analyze = useCallback(async () => {
     if (capturedAssets.length === 0) return
+
+    // Guest rate limiting — checked client-side before hitting the server
+    let guestCommit: (() => Promise<void>) | null = null
+    if (!user) {
+      const limit = await checkGuestScan()
+      if (!limit.allowed) {
+        showError(
+          `You've used your ${limit.limit} free scans this week. Sign up for a free 14-day trial to get unlimited access.`,
+          "Scan Ingredients"
+        )
+        return
+      }
+      guestCommit = limit.commit
+    }
+
     setAnalyzing(true)
     const detected: string[] = []
 
@@ -83,6 +100,8 @@ export default function ScanScreen() {
           else if (data.ingredient) detected.push(data.ingredient)
         })
       )
+      // Only count against the limit once all images were scanned successfully
+      await guestCommit?.()
     } catch (e: any) {
       setAnalyzing(false)
       const msg = e?.message ?? "Network error — couldn't reach the server."
@@ -123,6 +142,12 @@ export default function ScanScreen() {
   if (step === "capture") return (
     <>
       <SafeAreaView style={[s.container, { backgroundColor: colors.background }]} edges={["top"]}>
+        {showUpgradeBanner && (
+          <TouchableOpacity style={s.upgradeBanner} onPress={() => navigation.navigate("Login")} activeOpacity={0.85}>
+            <Ionicons name="star" size={14} color="#f59e0b" />
+            <Text style={s.upgradeBannerText}>Your trial has ended — 3 scans/week on free. <Text style={s.upgradeBannerLink}>Upgrade for unlimited</Text></Text>
+          </TouchableOpacity>
+        )}
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <View style={s.hero}>
             <Ionicons name="camera" size={56} color={colors.primary} />
@@ -326,6 +351,9 @@ export default function ScanScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1 },
+  upgradeBanner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "#f59e0b22", borderBottomWidth: 1, borderBottomColor: "#f59e0b44" },
+  upgradeBannerText: { flex: 1, fontSize: 13, color: colors.text },
+  upgradeBannerLink: { color: "#f59e0b", fontWeight: "700" },
   scroll: { padding: 24, gap: 24 },
   hero: { alignItems: "center", gap: 12, paddingTop: 16 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: spacing.md, borderBottomWidth: 1.5, borderBottomColor: "rgba(255,255,255,0.4)" },

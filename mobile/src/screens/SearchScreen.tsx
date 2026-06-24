@@ -10,6 +10,7 @@ import { useTheme } from "../context/ThemeContext"
 import { useGlobalError } from "../context/GlobalErrorContext"
 import { useSubscription } from "../context/SubscriptionContext"
 import { useAuth } from "../context/AuthContext"
+import { checkGuestSearch } from "../lib/guestRateLimit"
 import PaywallModal from "../components/PaywallModal"
 import IngredientAutocomplete from "../components/IngredientAutocomplete"
 import { spacing, radius } from "../lib/theme"
@@ -155,7 +156,8 @@ export default function SearchScreen() {
   const [totalResults, setTotalResults] = useState(0)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const { isPremium } = useSubscription()
-  const { user } = useAuth()
+  const { user, trialActive } = useAuth()
+  const showUpgradeBanner = !!user && !isPremium && !trialActive
   const [showPaywall, setShowPaywall] = useState(false)
 
   const defaultFilters = { prepTime: "any", budget: "any", diet: "any", taste: "any", healthiness: "any", cuisine: "any", mealType: "any", ingredients: [] as string[] }
@@ -194,17 +196,32 @@ export default function SearchScreen() {
   }, [route.params?.scannedIngredients])
 
   const fetchRecipesWithMode = useCallback(async (f: typeof filters, mode: "all" | "some") => {
+    // Guest rate limiting — checked client-side before hitting the server
+    let guestCommit: (() => Promise<void>) | null = null
+    if (!user) {
+      const limit = await checkGuestSearch()
+      if (!limit.allowed) {
+        showError(
+          `You've used your ${limit.limit} free searches this week. Sign up for a free 14-day trial to get unlimited access.`,
+          "Search"
+        )
+        return
+      }
+      guestCommit = limit.commit
+    }
     setLoading(true); setSearched(true); setNextOffset(null)
     try {
       const { results, nextOffset: next, totalResults: total } = await searchWithFallback(f, mode, 0)
       setRecipes(results)
       setNextOffset(next)
       setTotalResults(total)
+      // Only count against the limit once we have a successful response
+      await guestCommit?.()
     } catch (e: any) {
       showError(e?.message || "Network error — check your connection", "Search", () => fetchRecipesWithMode(f, mode))
       setRecipes([])
     } finally { setLoading(false) }
-  }, [])
+  }, [user])
 
   const loadMore = useCallback(async () => {
     if (!nextOffset || loadingMore) return
@@ -490,6 +507,12 @@ export default function SearchScreen() {
   return (
     <>
     <SafeAreaView style={s.container} edges={["top"]}>
+      {showUpgradeBanner && (
+        <TouchableOpacity style={s.upgradeBanner} onPress={() => navigation.navigate("Login")} activeOpacity={0.85}>
+          <Ionicons name="star" size={14} color="#f59e0b" />
+          <Text style={s.upgradeBannerText}>Your trial has ended — 10 searches/week on free. <Text style={s.upgradeBannerLink}>Upgrade for unlimited</Text></Text>
+        </TouchableOpacity>
+      )}
       <View style={s.topBar}>
         <TouchableOpacity style={s.filterToggle} onPress={() => setFiltersOpen(true)}>
           <Ionicons name="options-outline" size={20} color={hasActiveFilters ? colors.primary : colors.mutedForeground} />
@@ -820,6 +843,9 @@ export default function SearchScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  upgradeBanner: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "#f59e0b22", borderBottomWidth: 1, borderBottomColor: "#f59e0b44" },
+  upgradeBannerText: { flex: 1, fontSize: 13, color: colors.text },
+  upgradeBannerLink: { color: "#f59e0b", fontWeight: "700" },
   aiOverlay: { flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center" },
   aiEmoji: { fontSize: 72 },
   aiText: { marginTop: 20, fontSize: 18, fontWeight: "700", color: "#ffffff" },
