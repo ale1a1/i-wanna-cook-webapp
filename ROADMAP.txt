@@ -15,9 +15,6 @@ LIST: MUST — Before Launch
 --- Google Play (Android) Submission ---
 
 
-Custom splash screen
-Branded splash screen for app launch.
-
 App store screenshots
 Minimum 5 to 8 screenshots showing key features.
 
@@ -394,6 +391,7 @@ LIST: ALREADY BUILT ✅
 ✅ Guest disclaimer modal — DisclaimerModal shown to guests on first launch, requires explicit "I understand and agree" tap, stored in AsyncStorage with timestamp. Registered users covered at registration via user_legal_acceptances.
 ✅ Guest rate limiting + sign up CTA — 10 searches / 3 scans per week enforced client-side via AsyncStorage counter + weekly reset (guestRateLimit.ts). On limit hit, shows "Sign up for a free 14-day trial to get unlimited access." CTA. Applied in SearchScreen and ScanScreen before any API call.
 ✅ Trial expired → upgrade CTA (inline) — amber banner shown on Search and Scan screens when user is logged in but trial has ended and not premium. Taps through to Login/upgrade screen.
+✅ Custom splash screen — app icon (adaptive-icon.png) on dark background (#0f1117), configured in app.json.
 ✅ Disclaimer, Privacy Policy, Terms of Service — v1.0 (19 June 2025)
      Stored in legal_documents table, seeded in production DB.
      Exact version accepted by each user recorded in user_legal_acceptances with timestamp + IP.
