@@ -31,6 +31,7 @@ import CookingModeScreen from "./src/screens/CookingModeScreen"
 import MealPlanScreen from "./src/screens/MealPlanScreen"
 import QuickShoppingListScreen from "./src/screens/QuickShoppingListScreen"
 import ReadyToCookScreen from "./src/screens/ReadyToCookScreen"
+import LegalScreen from "./src/screens/LegalScreen"
 import AgeGateModal from "./src/components/AgeGateModal"
 import DisclaimerModal from "./src/components/DisclaimerModal"
 
@@ -59,7 +60,7 @@ const Stack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 
 const TAB_SCREENS = new Set(["Home", "Search", "Scan", "Shopping", "QuickShopping", "Cooking", "MyRecipes", "MealPlan", "Profile"])
-const HIDE_TABBAR_SCREENS = new Set(["RecipeDetail", "CookingMode", "Login", "QuickShoppingList", "ReadyToCook"])
+const HIDE_TABBAR_SCREENS = new Set(["RecipeDetail", "CookingMode", "Login", "QuickShoppingList", "ReadyToCook", "Legal"])
 
 function HomeTabs() {
   const { session } = useActiveRecipeSession()
@@ -191,6 +192,7 @@ function AppNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} options={({ navigation }: any) => ({ title: "Sign in", presentation: "modal", headerLeft: () => ( <TouchableOpacity onPress={() => navigation.navigate("Tabs")} style={{ paddingHorizontal: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity> ) })} />
         <Stack.Screen name="QuickShoppingList" component={QuickShoppingListScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ReadyToCook" component={ReadyToCookScreen} options={{ headerShown: false, presentation: "modal" }} />
+        <Stack.Screen name="Legal" component={LegalScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
 
       <TabBarOverlay stackRoute={stackRoute} currentRoute={currentRoute} onNavigate={handleNavigate} />

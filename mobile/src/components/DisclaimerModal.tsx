@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
-import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking } from "react-native"
+import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { useNavigation } from "@react-navigation/native"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 
@@ -9,6 +10,7 @@ const GUEST_KEY = "disclaimer_accepted_guest"
 export default function DisclaimerModal() {
   const { user } = useAuth()
   const { colors } = useTheme()
+  const navigation = useNavigation<any>()
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
@@ -43,9 +45,9 @@ export default function DisclaimerModal() {
               {"\n\n"}
               If you have allergies, intolerances, or any medical condition affected by diet, always verify ingredients independently before cooking or eating.{"\n\n"}
               By continuing you agree to our{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/terms")}>Terms of Service</Text>
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => navigation.navigate("Legal", { type: "terms" })}>Terms of Service</Text>
               {" "}and{" "}
-              <Text style={[dm.link, { color: colors.primary }]} onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/privacy")}>Privacy Policy</Text>.
+              <Text style={[dm.link, { color: colors.primary }]} onPress={() => navigation.navigate("Legal", { type: "privacy" })}>Privacy Policy</Text>.
             </Text>
           </ScrollView>
           <TouchableOpacity

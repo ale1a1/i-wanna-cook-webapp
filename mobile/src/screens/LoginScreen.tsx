@@ -360,9 +360,9 @@ export default function LoginScreen() {
                 </View>
                 <Text style={s.consentText}>
                   I agree to the{" "}
-                  <Text style={s.consentLink} onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/terms")}>Terms of Service</Text>
+                  <Text style={s.consentLink} onPress={() => navigation.navigate("Legal", { type: "terms" })}>Terms of Service</Text>
                   {" "}and{" "}
-                  <Text style={s.consentLink} onPress={() => Linking.openURL("https://main.d1fv3pyedpdjxn.amplifyapp.com/privacy")}>Privacy Policy</Text>
+                  <Text style={s.consentLink} onPress={() => navigation.navigate("Legal", { type: "privacy" })}>Privacy Policy</Text>
                   , and I understand that nutrition and allergen information is approximate and not a substitute for professional dietary or medical advice. I will always verify ingredients independently if I have allergies or intolerances.
                 </Text>
               </TouchableOpacity>
