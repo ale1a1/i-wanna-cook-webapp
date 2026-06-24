@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "I Wanna Cook",
-    "slug": "what-should-i-cook",
+    "slug": "i-wanna-cook",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
       },
       "backgroundColor": "#0f1117",
       "edgeToEdgeEnabled": true,
-      "package": "com.alwmedia.whatshouldIcook"
+      "package": "com.alwmedia.iwannacook"
     },
     "extra": {
       "apiBaseUrl": "https://main.d1fv3pyedpdjxn.amplifyapp.com"
