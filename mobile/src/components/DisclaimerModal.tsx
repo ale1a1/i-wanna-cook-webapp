@@ -64,9 +64,9 @@ export default function DisclaimerModal() {
 
 const dm = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 },
-  card: { width: "100%", borderRadius: 16, borderWidth: 1.5, padding: 24, gap: 16, maxHeight: "75%" as any },
+  card: { width: "100%", borderRadius: 16, borderWidth: 1.5, padding: 24, gap: 16, maxHeight: "75%" as any, flexShrink: 1 },
   title: { fontSize: 20, fontWeight: "800" },
-  scroll: { flexShrink: 1 },
+  scroll: { flex: 1 },
   body: { fontSize: 14, lineHeight: 22 },
   link: { textDecorationLine: "underline" },
   btn: { paddingVertical: 13, borderRadius: 10, alignItems: "center", marginTop: 4 },
