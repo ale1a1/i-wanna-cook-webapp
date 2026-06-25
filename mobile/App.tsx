@@ -288,23 +288,24 @@ const tm = StyleSheet.create({
   btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 })
 
-function GuestThemeToggle() {
+function GuestThemeToggle({ hidden }: { hidden: boolean }) {
   const { user } = useAuth()
   const { theme, colors, setTheme } = useTheme()
-  if (user) return null
+  if (user || hidden) return null
   const isDark = theme === "dark" || (theme === "system" && true)
   return (
     <TouchableOpacity
       onPress={() => setTheme(isDark ? "light" : "dark")}
       style={{
         position: "absolute", top: Platform.OS === "android" ? 12 : 20, right: 16,
-        zIndex: 999, width: 36, height: 36, borderRadius: 18,
+        zIndex: 999, width: 44, height: 44, borderRadius: 22,
         backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
         alignItems: "center", justifyContent: "center",
       }}
       activeOpacity={0.8}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
     >
-      <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={18} color={colors.text} />
+      <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={20} color={colors.text} />
     </TouchableOpacity>
   )
 }
@@ -312,6 +313,7 @@ function GuestThemeToggle() {
 function AppContent() {
   const { theme, colors } = useTheme()
   const [ageAccepted, setAgeAccepted] = React.useState(false)
+  const [modalsVisible, setModalsVisible] = React.useState(true)
   const navTheme = React.useMemo(() => ({
     dark: theme === "dark",
     colors: {
@@ -334,9 +336,9 @@ function AppContent() {
       <NavigationContainer ref={navigationRef} theme={navTheme}>
         <StatusBar style={theme === "light" ? "dark" : "light"} translucent={false} backgroundColor={colors.background} />
         <AppNavigator />
-        <GuestThemeToggle />
+        <GuestThemeToggle hidden={modalsVisible} />
         <AgeGateModal onAccepted={() => setAgeAccepted(true)} />
-        <DisclaimerModal ageAccepted={ageAccepted} />
+        <DisclaimerModal ageAccepted={ageAccepted} onDone={() => setModalsVisible(false)} />
         <TrialExpiryModal />
         <TrialExpiredModal />
       </NavigationContainer>

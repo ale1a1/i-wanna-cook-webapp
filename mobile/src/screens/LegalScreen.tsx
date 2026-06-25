@@ -109,7 +109,8 @@ Alessandro Ladu, Flat 4, 2A Eversley Street, Liverpool, L8 2TG. Email: alessandr
 export default function LegalScreen() {
   const navigation = useNavigation<any>()
   const route = useRoute<any>()
-  const { colors } = useTheme()
+  const { colors, theme, setTheme } = useTheme()
+  const isDark = theme === "dark" || theme === "system"
   const type: "terms" | "privacy" = route.params?.type ?? "terms"
   const title = type === "terms" ? "Terms of Service" : "Privacy Policy"
   const content = type === "terms" ? TERMS : PRIVACY
@@ -121,7 +122,9 @@ export default function LegalScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[s.title, { color: colors.text }]}>{title}</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={() => setTheme(isDark ? "light" : "dark")} style={s.themeBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={22} color={colors.text} />
+        </TouchableOpacity>
       </View>
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         <Text style={[s.body, { color: colors.mutedForeground }]}>{content}</Text>
@@ -134,6 +137,7 @@ const s = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
   backBtn: { width: 40 },
+  themeBtn: { width: 40, alignItems: "flex-end" },
   title: { fontSize: 17, fontWeight: "700" },
   scroll: { padding: 20, paddingBottom: 60 },
   body: { fontSize: 14, lineHeight: 22 },

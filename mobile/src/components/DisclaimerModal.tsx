@@ -2,14 +2,16 @@ import React, { useEffect, useState } from "react"
 import { Modal, View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useNavigation } from "@react-navigation/native"
+import { Ionicons } from "@expo/vector-icons"
 import { useAuth } from "../context/AuthContext"
 import { useTheme } from "../context/ThemeContext"
 
 const GUEST_KEY = "disclaimer_accepted_guest"
 
-export default function DisclaimerModal({ ageAccepted }: { ageAccepted: boolean }) {
+export default function DisclaimerModal({ ageAccepted, onDone }: { ageAccepted: boolean; onDone?: () => void }) {
   const { user } = useAuth()
-  const { colors } = useTheme()
+  const { colors, theme, setTheme } = useTheme()
+  const isDark = theme === "dark" || theme === "system"
   const navigation = useNavigation<any>()
   const [needsDisclaimer, setNeedsDisclaimer] = useState(false)
   const [onLegal, setOnLegal] = useState(false)
@@ -40,6 +42,7 @@ export default function DisclaimerModal({ ageAccepted }: { ageAccepted: boolean 
   async function handleAccept() {
     await AsyncStorage.setItem(GUEST_KEY, new Date().toISOString())
     setNeedsDisclaimer(false)
+    onDone?.()
   }
 
   function openLegal(type: "terms" | "privacy") {
@@ -52,7 +55,12 @@ export default function DisclaimerModal({ ageAccepted }: { ageAccepted: boolean 
     <Modal visible transparent animationType="fade">
       <View style={dm.backdrop}>
         <View style={[dm.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[dm.title, { color: colors.text }]}>Before you continue</Text>
+          <View style={dm.titleRow}>
+            <Text style={[dm.title, { color: colors.text }]}>Before you continue</Text>
+            <TouchableOpacity onPress={() => setTheme(isDark ? "light" : "dark")} hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }} style={dm.themeBtn}>
+              <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={22} color={colors.muted} />
+            </TouchableOpacity>
+          </View>
           <ScrollView style={dm.scroll} showsVerticalScrollIndicator={false}>
             <Text style={[dm.body, { color: colors.mutedForeground }]}>
               Nutrition and allergen information shown in this app is approximate and sourced from third-party databases. It is{" "}
@@ -80,7 +88,9 @@ export default function DisclaimerModal({ ageAccepted }: { ageAccepted: boolean 
 const dm = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 24 },
   card: { width: "100%", borderRadius: 16, borderWidth: 1.5, padding: 24, gap: 16, maxHeight: "80%" as any },
-  title: { fontSize: 20, fontWeight: "800" },
+  titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  themeBtn: { padding: 12 },
+  title: { fontSize: 20, fontWeight: "800", flex: 1 },
   scroll: { flexGrow: 0, flexShrink: 1 },
   body: { fontSize: 14, lineHeight: 22 },
   link: { textDecorationLine: "underline" },
