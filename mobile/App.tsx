@@ -189,7 +189,7 @@ function AppNavigator() {
         <Stack.Screen name="MyRecipesRecipes" component={MyRecipesRecipesScreen} options={{ headerShown: false }} />
         <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={({ route }: any) => ({ title: route.params?.title ?? "Recipe", headerBackTitle: "Back" })} />
         <Stack.Screen name="CookingMode" component={CookingModeScreen} options={{ headerShown: false, presentation: "fullScreenModal" }} />
-        <Stack.Screen name="Login" component={LoginScreen} options={({ navigation }: any) => ({ title: "Sign in", presentation: "modal", headerLeft: () => ( <TouchableOpacity onPress={() => navigation.navigate("Tabs")} style={{ paddingHorizontal: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity> ) })} />
+        <Stack.Screen name="Login" component={LoginScreen} options={({ navigation }: any) => ({ title: "Sign in", gestureEnabled: true, headerTitleAlign: "center", headerTitleStyle: { fontWeight: "700", fontSize: 20 }, headerLeft: () => ( <TouchableOpacity onPress={() => navigation.navigate("Tabs", { screen: "Home" })} style={{ paddingHorizontal: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></TouchableOpacity> ) })} />
         <Stack.Screen name="QuickShoppingList" component={QuickShoppingListScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ReadyToCook" component={ReadyToCookScreen} options={{ headerShown: false, presentation: "modal" }} />
         <Stack.Screen name="Legal" component={LegalScreen} options={{ headerShown: false }} />

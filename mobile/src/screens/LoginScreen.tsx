@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react"
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Linking } from "react-native"
+import React, { useState, useRef, useEffect } from "react"
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Linking, BackHandler } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import { apiFetch } from "../lib/api"
@@ -46,6 +46,14 @@ export default function LoginScreen() {
   const [resetPassword, setResetPassword] = useState("")
   const [forgotError, setForgotError] = useState("")
   const [forgotLoading, setForgotLoading] = useState(false)
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      navigation.navigate("Tabs", { screen: "Home" })
+      return true
+    })
+    return () => sub.remove()
+  }, [])
 
   const passwordPassed = PASSWORD_RULES.filter(r => r.test(regForm.password)).length
   const resetPasswordPassed = PASSWORD_RULES.filter(r => r.test(resetPassword)).length
@@ -138,7 +146,9 @@ export default function LoginScreen() {
       <View style={{ flex: 1 }}>
         <ScrollView ref={scrollRef} style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={s.logoRow}>
-            <Ionicons name="restaurant" size={48} color={colors.primary} />
+            <View style={s.logoCircle}>
+              <Ionicons name="restaurant" size={32} color={colors.primary} />
+            </View>
             <Text style={s.logoText}>I Wanna Cook</Text>
           </View>
           <View style={s.card}>
@@ -177,7 +187,9 @@ export default function LoginScreen() {
       <View style={{ flex: 1 }}>
         <ScrollView style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={s.logoRow}>
-            <Ionicons name="restaurant" size={48} color={colors.primary} />
+            <View style={s.logoCircle}>
+              <Ionicons name="restaurant" size={32} color={colors.primary} />
+            </View>
             <Text style={s.logoText}>I Wanna Cook</Text>
           </View>
           <View style={s.card}>
@@ -208,7 +220,9 @@ export default function LoginScreen() {
       <View style={{ flex: 1 }}>
         <ScrollView style={s.container} contentContainerStyle={[s.content, { paddingBottom: 200 }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={s.logoRow}>
-            <Ionicons name="restaurant" size={48} color={colors.primary} />
+            <View style={s.logoCircle}>
+              <Ionicons name="restaurant" size={32} color={colors.primary} />
+            </View>
             <Text style={s.logoText}>I Wanna Cook</Text>
           </View>
           <View style={s.card}>
@@ -266,7 +280,9 @@ export default function LoginScreen() {
     <View style={{ flex: 1 }}>
       <ScrollView ref={scrollRef} style={s.container} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <View style={s.logoRow}>
-          <Ionicons name="restaurant" size={48} color={colors.primary} />
+          <View style={s.logoCircle}>
+            <Ionicons name="restaurant" size={32} color={colors.primary} />
+          </View>
           <Text style={s.logoText}>I Wanna Cook</Text>
         </View>
         <View style={s.card}>
@@ -388,10 +404,11 @@ export default function LoginScreen() {
 
 const makeStyles = (colors: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md, paddingTop: 40, paddingBottom: 120 },
-  logoRow: { alignItems: "center", gap: 12, marginBottom: 28 },
+  content: { padding: spacing.md, paddingTop: "15%", paddingBottom: 120 },
+  logoRow: { alignItems: "center", gap: 0, marginBottom: 28 },
+  logoCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + "22", alignItems: "center", justifyContent: "center", marginBottom: 8 },
   logoText: { fontSize: 22, fontWeight: "800", color: colors.text, textAlign: "center" },
-  card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
+  card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: "hidden", marginTop: "2%" },
   tabs: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: colors.border },
   tab: { flex: 1, paddingVertical: 14, alignItems: "center", borderBottomWidth: 2, borderBottomColor: "transparent" },
   tabActive: { borderBottomColor: colors.primary },
