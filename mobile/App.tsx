@@ -1,6 +1,6 @@
 import "react-native-gesture-handler"
 import React, { Component, useEffect, useState } from "react"
-import { View, TouchableOpacity, Modal, Text, StyleSheet } from "react-native"
+import { View, TouchableOpacity, Modal, Text, StyleSheet, Platform } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { NavigationContainer, createNavigationContainerRef } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
@@ -288,6 +288,27 @@ const tm = StyleSheet.create({
   btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 })
 
+function GuestThemeToggle() {
+  const { user } = useAuth()
+  const { theme, colors, setTheme } = useTheme()
+  if (user) return null
+  const isDark = theme === "dark" || (theme === "system" && true)
+  return (
+    <TouchableOpacity
+      onPress={() => setTheme(isDark ? "light" : "dark")}
+      style={{
+        position: "absolute", top: Platform.OS === "android" ? 48 : 56, right: 16,
+        zIndex: 999, width: 36, height: 36, borderRadius: 18,
+        backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+        alignItems: "center", justifyContent: "center",
+      }}
+      activeOpacity={0.8}
+    >
+      <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={18} color={colors.text} />
+    </TouchableOpacity>
+  )
+}
+
 function AppContent() {
   const { theme, colors } = useTheme()
   const [ageAccepted, setAgeAccepted] = React.useState(false)
@@ -313,6 +334,7 @@ function AppContent() {
       <NavigationContainer ref={navigationRef} theme={navTheme}>
         <StatusBar style={theme === "light" ? "dark" : "light"} translucent={false} backgroundColor={colors.background} />
         <AppNavigator />
+        <GuestThemeToggle />
         <AgeGateModal onAccepted={() => setAgeAccepted(true)} />
         <DisclaimerModal ageAccepted={ageAccepted} />
         <TrialExpiryModal />
