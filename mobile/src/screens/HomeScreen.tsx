@@ -12,36 +12,12 @@ const H_PAD = 24 * 2
 const TILE_SIZE = (Dimensions.get("window").width - H_PAD - GAP) / 2
 
 const FEATURES = [
-  {
-    icon: "search-outline" as const,
-    title: "Find Recipes",
-    desc: "Filter by diet, cuisine, time, budget and more.",
-  },
-  {
-    icon: "camera-outline" as const,
-    title: "Scan Fridge",
-    desc: "Photo your fridge and get instant recipe suggestions.",
-  },
-  {
-    icon: "bookmark-outline" as const,
-    title: "My Recipes",
-    desc: "Save to Try or Tried. Rate, tag, and organise into folders.",
-  },
-  {
-    icon: "calendar-outline" as const,
-    title: "Meal Planner",
-    desc: "Generate a personalised week of meals by goal or custom filters.",
-  },
-  {
-    icon: "cart-outline" as const,
-    title: "Shopping List",
-    desc: "Add ingredients from any recipe. Tick off as you shop.",
-  },
-  {
-    icon: "person-outline" as const,
-    title: "Profile",
-    desc: "Manage your account, theme, and subscription.",
-  },
+  { icon: "search-outline" as const, title: "Find Recipes", desc: "Filter by diet, cuisine, time, budget and more.", screen: "Search" },
+  { icon: "camera-outline" as const, title: "Scan Fridge", desc: "Photo your fridge and get recipe suggestions.", screen: "Scan" },
+  { icon: "bookmark-outline" as const, title: "My Recipes", desc: "Save, rate, tag and organise your recipes.", screen: "MyRecipes" },
+  { icon: "calendar-outline" as const, title: "Meal Planner", desc: "Plan your week by goal or custom filters.", screen: "MealPlan" },
+  { icon: "cart-outline" as const, title: "Shopping List", desc: "Add ingredients and tick off as you shop.", screen: "Shopping" },
+  { icon: "person-outline" as const, title: "Profile", desc: "Manage your account, theme and subscription.", screen: "Profile" },
 ]
 
 export default function HomeScreen() {
@@ -74,7 +50,7 @@ export default function HomeScreen() {
         {/* Hero */}
         <View style={s.hero}>
           <View style={s.iconCircle}>
-            <Ionicons name="restaurant" size={48} color={colors.primary} />
+            <Ionicons name="restaurant" size={42} color={colors.primary} />
           </View>
           <Text style={s.heroTitle}>I Wanna Cook</Text>
           <Text style={s.heroSub}>From fridge scan to meal plan{"\n"}— everything in one place.</Text>
@@ -84,10 +60,11 @@ export default function HomeScreen() {
         <View style={s.tilesSection}>
           <View style={s.tilesGrid}>
             {FEATURES.map((f) => (
-              <View key={f.title} style={s.tile}>
+              <TouchableOpacity key={f.title} style={s.tile} onPress={() => navigation.navigate("Tabs", { screen: f.screen })} activeOpacity={0.7}>
+                <Ionicons name={f.icon} size={28} color={colors.primary} style={{ marginBottom: 6 }} />
                 <Text style={s.tileTitle} numberOfLines={2}>{f.title}</Text>
                 <Text style={s.tileDesc}>{f.desc}</Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -122,17 +99,17 @@ const makeStyles = (colors: any) => StyleSheet.create({
   hero: {
     alignItems: "center",
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
+    paddingTop: 16,
     paddingBottom: 32,
   },
   iconCircle: {
-    width: 96, height: 96, borderRadius: 48,
+    width: 84, height: 84, borderRadius: 42,
     backgroundColor: colors.primary + "22",
     alignItems: "center", justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 10,
   },
-  heroTitle: { fontSize: 30, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 12 },
-  heroSub: { fontSize: 16, color: colors.mutedForeground, textAlign: "center", lineHeight: 26 },
+  heroTitle: { fontSize: 28, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 8 },
+  heroSub: { fontSize: 16, color: colors.mutedForeground, textAlign: "center", lineHeight: 24 },
 
   tilesSection: {
     paddingHorizontal: 24,
@@ -149,9 +126,11 @@ const makeStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 0.5,
     borderColor: colors.primary,
-    padding: 16,
+    padding: 12,
     gap: 0,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 130,
   },
   tileTitle: { fontSize: 16, fontWeight: "700", color: colors.text, textAlign: "center", marginBottom: 4 },
   tileDesc: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18, textAlign: "center" },
@@ -159,7 +138,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
   cta: {
     alignItems: "center",
     paddingHorizontal: spacing.md,
-    paddingTop: 40,
+    paddingTop: "15%",
     paddingBottom: 20,
   },
   ctaTitle: { fontSize: 24, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 8 },

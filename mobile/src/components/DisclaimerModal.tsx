@@ -78,7 +78,7 @@ export default function DisclaimerModal({ ageAccepted }: { ageAccepted: boolean 
 }
 
 const dm = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 24 },
   card: { width: "100%", borderRadius: 16, borderWidth: 1.5, padding: 24, gap: 16, maxHeight: "80%" as any },
   title: { fontSize: 20, fontWeight: "800" },
   scroll: { flexGrow: 0, flexShrink: 1 },

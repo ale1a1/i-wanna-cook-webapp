@@ -117,7 +117,7 @@ export default function AgeGateModal({ onAccepted }: { onAccepted?: () => void }
 }
 
 const ag = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.85)", justifyContent: "center", alignItems: "center", padding: 24 },
   card: { width: "100%", borderRadius: 16, borderWidth: 1.5, padding: 24, gap: 16 },
   title: { fontSize: 20, fontWeight: "800" },
   body: { fontSize: 14, lineHeight: 22 },

@@ -23,7 +23,7 @@ export default function PaywallModal({ visible, onClose, featureName }: Props) {
   const s = makeStyles(colors)
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={s.container}>
         <TouchableOpacity style={s.closeBtn} onPress={onClose}>
           <Ionicons name="close" size={24} color={colors.text} />

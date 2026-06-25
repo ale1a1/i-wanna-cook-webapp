@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react"
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, BackHandler } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
+import { useNavigation, useFocusEffect } from "@react-navigation/native"
 import { useTheme } from "../context/ThemeContext"
 import { useAuth } from "../context/AuthContext"
 import { useSubscription } from "../context/SubscriptionContext"
@@ -96,6 +96,12 @@ export default function MealPlanScreen() {
   const { showError } = useGlobalError()
   const navigation = useNavigation<any>()
   const s = makeStyles(colors)
+
+  useFocusEffect(useCallback(() => {
+    if (!user) { navigation.navigate("Login") }
+  }, [user]))
+
+  if (!user) return null
 
   const [showPaywall, setShowPaywall] = useState(false)
   const [loading, setLoading] = useState(false)

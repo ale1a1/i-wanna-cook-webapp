@@ -180,6 +180,8 @@ function AppNavigator() {
             if (tabState) {
               const activeTab = tabState.routes?.[tabState.index ?? 0]?.name
               if (activeTab) setCurrentRoute(activeTab)
+            } else {
+              setCurrentRoute("Home")
             }
           }
         }}}
@@ -236,6 +238,46 @@ function TrialExpiryModal() {
   )
 }
 
+function TrialExpiredModal() {
+  const { user, trialActive } = useAuth()
+  const { colors } = useTheme()
+  const [visible, setVisible] = useState(false)
+  const prevTrialActive = React.useRef<boolean | null>(null)
+
+  useEffect(() => {
+    if (!user?.trialExpiresAt) return
+    if (prevTrialActive.current === true && trialActive === false) {
+      const key = `trial_expired_shown_${user.id}`
+      AsyncStorage.getItem(key).then((shown) => {
+        if (!shown) {
+          setVisible(true)
+          AsyncStorage.setItem(key, "1")
+        }
+      })
+    }
+    prevTrialActive.current = trialActive
+  }, [trialActive, user])
+
+  if (!visible) return null
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => setVisible(false)}>
+      <View style={tm.backdrop}>
+        <View style={[tm.card, { backgroundColor: colors.card, borderColor: "#ef4444" }]}>
+          <Text style={[tm.title, { color: "#ef4444" }]}>Trial Expired</Text>
+          <Text style={[tm.body, { color: colors.text }]}>
+            Your 14-day free trial has ended. You're now on the free plan — 10 searches and 3 scans per week.{"\n\n"}Upgrade to Premium to restore unlimited access and all features.
+          </Text>
+          <Text style={[tm.price, { color: colors.mutedForeground }]}>$2.49/month or $19.99/year</Text>
+          <TouchableOpacity style={[tm.btn, { backgroundColor: "#ef4444" }]} onPress={() => setVisible(false)}>
+            <Text style={tm.btnText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 const tm = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 },
   card: { width: "100%", borderRadius: 16, borderWidth: 1.5, padding: 24, gap: 12 },
@@ -274,6 +316,7 @@ function AppContent() {
         <AgeGateModal onAccepted={() => setAgeAccepted(true)} />
         <DisclaimerModal ageAccepted={ageAccepted} />
         <TrialExpiryModal />
+        <TrialExpiredModal />
       </NavigationContainer>
     </View>
   )
