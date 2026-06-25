@@ -8,8 +8,9 @@ import { useAuth } from "../context/AuthContext"
 import { spacing, radius } from "../lib/theme"
 
 const GAP = 24
+const GAP_X = 28
 const H_PAD = 24 * 2
-const TILE_SIZE = (Dimensions.get("window").width - H_PAD - GAP) / 2
+const TILE_SIZE = (Dimensions.get("window").width - H_PAD - GAP_X) / 2
 
 const FEATURES = [
   { icon: "search-outline" as const, title: "Find Recipes", desc: "Filter by diet, cuisine, time, budget and more.", screen: "Search" },
@@ -99,8 +100,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
   hero: {
     alignItems: "center",
     paddingHorizontal: spacing.md,
-    paddingTop: 16,
-    paddingBottom: 32,
+    paddingTop: 8,
+    paddingBottom: 22,
   },
   iconCircle: {
     width: 84, height: 84, borderRadius: 42,
@@ -108,8 +109,8 @@ const makeStyles = (colors: any) => StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     marginBottom: 10,
   },
-  heroTitle: { fontSize: 28, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 8 },
-  heroSub: { fontSize: 16, color: colors.mutedForeground, textAlign: "center", lineHeight: 24 },
+  heroTitle: { fontSize: 28, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 5 },
+  heroSub: { fontSize: 16, color: colors.mutedForeground, textAlign: "center", lineHeight: 23 },
 
   tilesSection: {
     paddingHorizontal: 24,
@@ -118,10 +119,12 @@ const makeStyles = (colors: any) => StyleSheet.create({
   tilesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: GAP,
+    columnGap: GAP_X,
+    rowGap: GAP,
+    justifyContent: "center",
   },
   tile: {
-    width: TILE_SIZE,
+    width: TILE_SIZE * 0.95,
     backgroundColor: colors.card,
     borderRadius: radius.lg,
     borderWidth: 0.5,
@@ -133,7 +136,7 @@ const makeStyles = (colors: any) => StyleSheet.create({
     minHeight: 130,
   },
   tileTitle: { fontSize: 16, fontWeight: "700", color: colors.text, textAlign: "center", marginBottom: 4 },
-  tileDesc: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18, textAlign: "center" },
+  tileDesc: { fontSize: 13, color: colors.mutedForeground, lineHeight: 18, textAlign: "center", paddingHorizontal: 8 },
 
   cta: {
     alignItems: "center",
