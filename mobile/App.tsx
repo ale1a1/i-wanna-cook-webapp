@@ -297,7 +297,7 @@ function GuestThemeToggle() {
     <TouchableOpacity
       onPress={() => setTheme(isDark ? "light" : "dark")}
       style={{
-        position: "absolute", top: Platform.OS === "android" ? 48 : 56, right: 16,
+        position: "absolute", top: Platform.OS === "android" ? 12 : 20, right: 16,
         zIndex: 999, width: 36, height: 36, borderRadius: 18,
         backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
         alignItems: "center", justifyContent: "center",
