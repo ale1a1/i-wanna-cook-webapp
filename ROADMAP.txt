@@ -52,6 +52,11 @@ Identify which planned features could be built with existing endpoints, and whic
 unlock cheap wins. Check autocomplete, nutrition facts, food trivia, recipe card images, etc.
 Do this before starting any new feature work.
 
+Migrate DB away from AWS RDS
+RDS incurs an always-on instance charge plus an IPv4 public access fee (required because Amplify
+SSR functions run outside the VPC). Migrate to Supabase or Neon (serverless Postgres, free tier,
+connects over HTTPS — no VPC or public IP needed). Only the DATABASE_URL env var needs updating.
+
 
 ================================================================
 LIST: MUST — iOS Launch (After Android is Stable)
