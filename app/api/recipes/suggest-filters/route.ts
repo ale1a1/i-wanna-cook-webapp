@@ -12,7 +12,10 @@ export async function POST(request: NextRequest) {
 
 Return ONLY a valid JSON object with Spoonacular complexSearch parameters that best match this goal.
 Only include params that are genuinely relevant. Use these exact param names:
-- minCalories, maxCalories (number, kcal per serving)
+- minCalories, maxCalories (number, kcal — this is the user's TOTAL DAILY calorie target across
+  all meals combined for the day, NOT a per-serving or per-recipe amount. For example, a "mass
+  gaining" / "bulking" goal for an adult typically needs a daily surplus of roughly 2800-3500+ kcal,
+  while "weight loss" typically needs roughly 1500-1800 kcal/day. Scale reasonably with the goal.
 - minProtein, maxProtein (number, grams per serving)
 - minCarbs, maxCarbs (number, grams per serving)
 - minFat, maxFat (number, grams per serving)
@@ -25,7 +28,8 @@ Only include params that are genuinely relevant. Use these exact param names:
 - sort (string: "calories", "protein", "carbohydrates", "fat", "healthiness", "time", "popularity")
 - sortDirection (string: "asc" or "desc")
 
-Example for "bulking high protein": {"minProtein":40,"minCalories":600,"sort":"protein","sortDirection":"desc"}
+Example for "bulking high protein / mass gaining": {"minProtein":40,"minCalories":3000,"sort":"protein","sortDirection":"desc"}
+Example for "weight loss": {"maxCalories":1600,"sort":"calories","sortDirection":"asc"}
 
 Return ONLY the JSON object, no explanation.`
 
