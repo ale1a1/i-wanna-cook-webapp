@@ -109,6 +109,15 @@ code system tied to the subscription flow.
 Guided Navigation (contextual help system)
 For non-obvious actions, show a one-time confirmation prompt with a "Don't ask again" option.
 User can also tap a ? icon on any screen to trigger an animated walkthrough. Toggleable in Settings.
+First instance built: ingredient swap helper (mobile/src/components/HelperTipModal.tsx), shown in
+RecipeDetailScreen before replacing an ingredient (both the ingredients-tab swap button and the
+ingredient-check "Yes, replace it" flow), dismissible per-tip via AsyncStorage key
+`helper_tip_hidden_<tipId>`.
+
+Settings screen — helper tips section
+Once a Settings screen exists, add a "Helper Tips" section listing every registered helper tip
+(e.g. "Ingredient swap") with an individual on/off toggle per tip, plus a single "Show all helpers
+again" action that clears every `helper_tip_hidden_*` AsyncStorage key at once.
 
 Dietary profile
 Set dietary restrictions and intolerances once in profile — auto-applied to all searches and meal plans.

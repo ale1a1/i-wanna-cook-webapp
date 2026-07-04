@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       results: good.slice(0, requestedNumber),
       totalResults: totalAvailable,
-      nextOffset: offset,
+      nextOffset: offset < totalAvailable ? offset : null,
     })
   } catch (err) {
     return NextResponse.json({ error: "Failed to fetch recipes" }, { status: 500 })
