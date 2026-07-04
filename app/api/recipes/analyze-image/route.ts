@@ -4,6 +4,17 @@ import { checkClaudeError } from "@/lib/alertOwner"
 
 const FREE_SCAN_LIMIT = 3
 
+// Detect the real image type from base64 magic bytes — client-reported mimeType
+// (from expo-image-picker) is unreliable and can mismatch the actual file content,
+// which Claude's API rejects outright.
+function detectMediaType(base64: string): string {
+  if (base64.startsWith("/9j/")) return "image/jpeg"
+  if (base64.startsWith("iVBORw0KGgo")) return "image/png"
+  if (base64.startsWith("R0lGOD")) return "image/gif"
+  if (base64.startsWith("UklGR")) return "image/webp"
+  return "image/jpeg"
+}
+
 export async function POST(request: NextRequest) {
   let body: { base64: string; mimeType?: string; userId?: string; isPremium?: boolean }
   try {
@@ -12,8 +23,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
   }
 
-  const { base64, mimeType = "image/jpeg", userId, isPremium } = body
+  const { base64, userId, isPremium } = body
   if (!base64) return NextResponse.json({ error: "Missing base64 image data" }, { status: 400 })
+  const mediaType = detectMediaType(base64)
 
   if (userId && !isPremium) {
     const weekStart = new Date()
@@ -55,7 +67,7 @@ export async function POST(request: NextRequest) {
           content: [
             {
               type: "image",
-              source: { type: "base64", media_type: mimeType, data: base64 },
+              source: { type: "base64", media_type: mediaType, data: base64 },
             },
             {
               type: "text",
