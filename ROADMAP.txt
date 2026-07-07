@@ -27,6 +27,51 @@ Google Play store description and keyword optimisation
 Written description with keywords for discoverability. Complete the age rating questionnaire during submission.
 Do not lead the description with the wine pairing feature.
 
+DRAFT — matched to the 8 screenshots below, lead order = Scan Fridge, then AI Meal Planner
+(the two strongest hooks), no wine pairing mentioned at all.
+
+Short description (max 80 chars):
+"AI fridge scanner, smart meal plans & recipes — cook with what you have."
+
+Full description:
+I Wanna Cook — AI-Powered Recipes, Meal Planning & Fridge Scanner
+
+Stop wondering what to cook. Scan your fridge, get instant recipe ideas, and let AI build
+your weekly meal plan — all in one app.
+
+📸 Scan Your Fridge — Snap a photo of your ingredients and instantly get matching recipes.
+No more wasted food or last-minute takeout.
+
+🍳 Smart Recipe Search — Filter by diet, cuisine, prep time, budget, and nutrition goals.
+Find exactly what you're in the mood for.
+
+📅 AI Weekly Meal Planner — Tell us your goal (weight loss, muscle gain, quick meals) and
+get a full week planned in seconds. Or customise every detail yourself.
+
+🛒 Shopping Lists That Write Themselves — Add ingredients straight from any recipe and
+check them off as you shop.
+
+📚 Organise Your Favourites — Save recipes into folders, tag them, rate what you've tried,
+and build your own cookbook.
+
+👨‍🍳 Step-by-Step Cooking Mode — Full-screen, distraction-free instructions with voice
+guidance, so you never lose your place mid-recipe.
+
+🔄 Smart Substitutions — Missing an ingredient? Get an instant AI-suggested swap that
+keeps your recipe on track.
+
+Whether you're meal prepping for the week, trying to eat healthier, or just staring into
+an open fridge with no idea what to make — I Wanna Cook turns "what should I eat?" into
+"let's cook."
+
+Free to start — 14-day free trial, no card required. Premium unlocks unlimited scans,
+searches, and meal plans.
+
+Keywords to work in naturally (Play Store has no separate keyword field — discoverability
+comes from title + description text): recipe app, meal planner, fridge scanner, what to
+cook, recipe finder, meal prep, grocery list, AI recipes, ingredient scanner, weekly meal
+plan, cooking app, recipe organizer.
+
 App store screenshots
 Minimum 5 to 8 screenshots showing key features. Use a real account with populated data, not
 empty states. Suggested order (don't lead with wine pairing — see note above):
