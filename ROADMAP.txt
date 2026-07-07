@@ -12,31 +12,32 @@ LIST: MUST — Before Launch
 ================================================================
 
 
---- Pre-submission code fix ---
-
-Revert DisclaimerModal testing override
-In mobile/src/components/DisclaimerModal.tsx, remove the `setNeedsDisclaimer(true)` line
-and uncomment the two lines below it so the modal only shows to guests who
-haven't accepted yet.
-
-Revert AgeGateModal testing override
-In mobile/src/components/AgeGateModal.tsx, remove the `setVisible(true)` line
-and uncomment the two lines below it so the age gate only shows to guests who
-haven't accepted yet.
+Thing to think about
+- price of subscription (and correct in the app)
+- message in the Go premium modal (check if it is cool and consistent with what is offered but premium)
 
 
 --- Google Play (Android) Submission ---
 
 
-App store screenshots
-Minimum 5 to 8 screenshots showing key features.
+Google Play developer account
+One-time $25 fee.
 
 Google Play store description and keyword optimisation
 Written description with keywords for discoverability. Complete the age rating questionnaire during submission.
 Do not lead the description with the wine pairing feature.
 
-Google Play developer account
-One-time $25 fee.
+App store screenshots
+Minimum 5 to 8 screenshots showing key features. Use a real account with populated data, not
+empty states. Suggested order (don't lead with wine pairing — see note above):
+1. Home screen — hero + feature tiles grid, whole app at a glance
+2. Scan Fridge — detected ingredients results, standout AI feature
+3. Recipe Detail — Ingredients tab, good recipe photo, ideally showing a substitution
+4. Meal Planner — AI Goal weekly view with a few days filled in
+5. Shopping List — populated with items, some ticked off
+6. My Recipes — folder view with a few folders and recipe counts
+7. Cooking Mode — mid-recipe step, full-screen
+8. Search filters panel — advanced filter sheet open (diet, cuisine, macros)
 
 
 ================================================================
