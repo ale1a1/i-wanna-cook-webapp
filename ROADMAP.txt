@@ -89,8 +89,21 @@ empty states. Suggested order (don't lead with wine pairing — see note above):
 LIST: MUST — After Android Launch (Alpha Test)
 ================================================================
 
+Review Play Console analytics vs in-app analytics gap
+Play Console gives store-level analytics only: installs/uninstalls, ratings, crashes/ANRs (Android
+vitals), device/OS breakdown, acquisition source, pre-launch report. It does NOT show in-app
+behaviour (which screens/features are actually used, search terms, conversion funnels, meal
+planner vs scan usage, etc.) — see "Analytics" item further down (Track searches, saves,
+completions, premium conversion, trial retention, meal plan usage), which is still unbuilt.
+Decide whether Play Console's data is enough for early alpha decisions, or whether it's worth
+wiring in a product analytics tool (Firebase Analytics, Mixpanel, PostHog, etc.) sooner rather
+than later given real user behaviour data compounds in value the earlier it starts collecting.
+
 Wire up Google Play Billing
 Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
+Also revisit and confirm the actual subscription price ($2.49/month or $19.99/year, shown
+throughout the app and in PaywallModal) before wiring up real payments — see "Thing to think
+about" note near the top of this file.
 
 Endpoint enhancement audit
 Cross-reference the full Spoonacular endpoint list against SHOULD / COULD / Phase 3 features.
