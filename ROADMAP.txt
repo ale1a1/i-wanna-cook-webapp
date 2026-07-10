@@ -16,6 +16,27 @@ Thing to think about
 - price of subscription (and correct in the app)
 - message in the Go premium modal (check if it is cool and consistent with what is offered but premium)
 
+What to tell internal testers if they ask "what happens to my data?"
+This test build uses the exact same live backend as the real app — not a sandbox. Reuse this
+answer (based on the real Privacy Policy in mobile/src/screens/LegalScreen.tsx):
+
+"This test build uses the exact same live backend as the real app — it's not a sandbox, so your
+data is handled the same way it will be for public users:
+- Your email, username, and password are used to create your account. Passwords are stored
+  securely via AWS Cognito — I never see your plain-text password.
+- Recipes, meal plans, shopping lists, and preferences are stored on AWS (London region) to power
+  the app's features.
+- If you use the fridge scanner, the photo is sent to Anthropic's Claude AI to identify
+  ingredients — it's processed in real time and not stored afterward.
+- Recipe search data goes to Spoonacular, the third-party recipe database this app is built on.
+- I don't sell your data or share it with advertisers, ever.
+- You can delete your account and all associated data at any time from Profile > Delete Account
+  — it's fully removed within 30 days.
+
+Since this is a pre-release test, expect bugs — that's exactly what I'm looking for feedback on.
+But your data itself is handled under the same Privacy Policy as the final release (viewable
+in-app under Profile > Legal), not some throwaway test policy."
+
 
 --- Google Play (Android) Submission ---
 
