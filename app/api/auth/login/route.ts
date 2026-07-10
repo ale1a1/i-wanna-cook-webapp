@@ -42,6 +42,21 @@ export async function POST(request: NextRequest) {
 
     const user = result.rows[0]
 
+    if (process.env.RESEND_API_KEY) {
+      const resend = new Resend(process.env.RESEND_API_KEY)
+      resend.emails.send({
+        from: "I Wanna Cook App <onboarding@resend.dev>",
+        to: NOTIFY_EMAIL,
+        subject: `Login — ${user.username}`,
+        html: `
+          <h2>User logged in</h2>
+          <p><strong>Username:</strong> ${user.username}</p>
+          <p><strong>Email:</strong> ${user.email}</p>
+          <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+        `,
+      }).catch((err) => console.error("Owner login notification failed:", err))
+    }
+
     if (user.email === PORTFOLIO_USERNAME && process.env.RESEND_API_KEY) {
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)

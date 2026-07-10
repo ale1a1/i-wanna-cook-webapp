@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   rateLimitMap.set(ip, now)
 
   const body = await request.json().catch(() => ({}))
-  const { error, screen, platform } = body
+  const { error, screen, platform, user } = body
 
   if (!error || typeof error !== "string") {
     return NextResponse.json({ error: "Missing error field" }, { status: 400 })
@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
       subject: `App Error Report — ${screen ?? "unknown screen"}`,
       html: `
         <h2 style="color:#ef4444">App Error Report</h2>
+        <p><strong>User:</strong> ${user ?? "unknown"}</p>
         <p><strong>Screen:</strong> ${screen ?? "unknown"}</p>
         <p><strong>Platform:</strong> ${platform ?? "unknown"}</p>
         <p><strong>Time:</strong> ${new Date().toISOString()}</p>

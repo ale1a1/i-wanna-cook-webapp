@@ -110,15 +110,34 @@ empty states. Suggested order (don't lead with wine pairing — see note above):
 LIST: MUST — After Android Launch (Alpha Test)
 ================================================================
 
-Review Play Console analytics vs in-app analytics gap
+Wire in Firebase Analytics (DECIDED — free, do this)
 Play Console gives store-level analytics only: installs/uninstalls, ratings, crashes/ANRs (Android
 vitals), device/OS breakdown, acquisition source, pre-launch report. It does NOT show in-app
 behaviour (which screens/features are actually used, search terms, conversion funnels, meal
-planner vs scan usage, etc.) — see "Analytics" item further down (Track searches, saves,
-completions, premium conversion, trial retention, meal plan usage), which is still unbuilt.
-Decide whether Play Console's data is enough for early alpha decisions, or whether it's worth
-wiring in a product analytics tool (Firebase Analytics, Mixpanel, PostHog, etc.) sooner rather
-than later given real user behaviour data compounds in value the earlier it starts collecting.
+planner vs scan usage, etc.).
+Decision: Firebase Analytics is free (core event tracking/dashboards, no tier limits, no card
+required), Google's own product, and the standard choice for Android apps — use it rather than
+Mixpanel/PostHog. Scope: add the Firebase SDK to the mobile app, log events at key action points
+(registration, login — already emailed to owner directly, see below — search performed, recipe
+viewed, ingredient scanned, meal plan generated, recipe saved/tried, subscription upgrade tapped,
+etc.). This is the one system that answers "Track searches, saves, completions, premium
+conversion, trial retention, meal plan usage" (see "Analytics" item further down — supersede that
+item with this one once built).
+
+Registration + login owner email notifications (BUILT)
+Every registration (app/api/auth/register/route.ts) and every login (app/api/auth/login/route.ts)
+now sends a plain notification email to the owner (alessandro.dev.ladu@gmail.com) via the existing
+Resend setup — username, email, time. This covers the two highest-value, low-frequency events
+without needing a full analytics system. Does not scale to per-action tracking (e.g. every search
+or filter tap) — that's what Firebase Analytics above is for.
+
+Error reports now show which user hit them
+mobile/src/lib/api.ts tracks the current logged-in user's identity (set by AuthContext on login/
+logout) and includes it in every error report email, alongside the existing screen/endpoint field
+derived from the API path. Shows "Guest (not logged in)" for guests. Action-level detail (which
+specific button/feature triggered the error, beyond the screen/endpoint name) would require
+manually annotating all ~66 apiFetch call sites with descriptive screen labels — not done, revisit
+if the screen name alone isn't enough to debug a specific report.
 
 Wire up Google Play Billing
 Android real subscription flow. Users can actually subscribe and pay via Google Play Billing.
@@ -228,8 +247,7 @@ Replace current custom Resend email error reporting with Sentry. Crashes, JS err
 AI recipe instruction enrichment
 For recipes with 50-70% ingredients in steps, Claude Haiku enriches instructions. Cost tracking required.
 
-Analytics
-Track searches, saves, completions, premium conversion, trial retention, meal plan usage.
+Analytics — superseded, see "Wire in Firebase Analytics" under "After Android Launch" above.
 
 Redis caching
 Reduce Spoonacular API calls. Lower costs at scale.

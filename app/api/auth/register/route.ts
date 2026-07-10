@@ -97,6 +97,19 @@ export async function POST(request: NextRequest) {
           </div>
         `,
       }).catch((err) => console.error("Welcome email failed:", err))
+
+      resend.emails.send({
+        from: "I Wanna Cook App <onboarding@resend.dev>",
+        to: "alessandro.dev.ladu@gmail.com",
+        subject: `New registration — ${username}`,
+        html: `
+          <h2>New user registered</h2>
+          <p><strong>Username:</strong> ${username}</p>
+          <p><strong>Email:</strong> ${email.toLowerCase()}</p>
+          <p><strong>Marketing consent:</strong> ${marketingConsent ? "Yes" : "No"}</p>
+          <p><strong>Time:</strong> ${now.toISOString()}</p>
+        `,
+      }).catch((err) => console.error("Owner registration notification failed:", err))
     }
 
     return NextResponse.json({ message: "Registration successful. Check your email for the verification code." }, { status: 201 })
